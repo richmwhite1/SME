@@ -1,0 +1,49 @@
+import { currentUser } from "@clerk/nextjs/server";
+import { createClient } from "@/lib/supabase/server";
+
+/**
+ * Checks if the current user has admin role
+ * Returns true if user is admin, false otherwise
+ */
+export async function isAdmin(): Promise<boolean> {
+  try {
+    const user = await currentUser();
+    
+    if (!user) {
+      return false;
+    }
+
+    const supabase = createClient();
+    
+    // Check if user has admin role in profiles table
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", user.id)
+      .single();
+
+    if (error || !profile) {
+      console.error("Error checking admin status:", error);
+      return false;
+    }
+
+    return profile.is_admin === true;
+  } catch (error) {
+    console.error("Error in isAdmin check:", error);
+    return false;
+  }
+}
+
+/**
+ * Gets the current user's ID if they are authenticated
+ */
+export async function getCurrentUserId(): Promise<string | null> {
+  try {
+    const user = await currentUser();
+    return user?.id || null;
+  } catch (error) {
+    console.error("Error getting current user ID:", error);
+    return null;
+  }
+}
+
