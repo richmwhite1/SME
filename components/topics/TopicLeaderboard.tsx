@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@clerk/nextjs";
-import { Hash, TrendingUp, Plus } from "lucide-react";
+import { Hash, TrendingUp, Plus, Sparkles } from "lucide-react";
 import { toggleTopicFollow } from "@/app/actions/topic-actions";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -14,14 +14,21 @@ interface TrendingTopic {
   signal_score: number;
 }
 
+interface MasterTopic {
+  name: string;
+  description: string | null;
+}
+
 export default function TopicLeaderboard() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
   const [topics, setTopics] = useState<TrendingTopic[]>([]);
+  const [masterTopics, setMasterTopics] = useState<MasterTopic[]>([]);
   const [followedTopics, setFollowedTopics] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [followingStates, setFollowingStates] = useState<Record<string, boolean>>({});
   const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
+  const [showMasterTopics, setShowMasterTopics] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -34,8 +41,27 @@ export default function TopicLeaderboard() {
 
       if (error) {
         console.error("Error fetching trending topics:", error);
+        // If RPC fails, fetch master topics as fallback
+        setShowMasterTopics(true);
       } else {
-        setTopics((trendingData || []) as TrendingTopic[]);
+        const trendingTopics = (trendingData || []) as TrendingTopic[];
+        setTopics(trendingTopics);
+        
+        // If no trending topics, show master topics instead
+        if (trendingTopics.length === 0) {
+          setShowMasterTopics(true);
+        }
+      }
+
+      // Fetch master topics (always fetch in case we need them)
+      const { data: masterData, error: masterError } = await supabase
+        .from("master_topics")
+        .select("name, description")
+        .order("display_order", { ascending: true })
+        .limit(12);
+
+      if (!masterError && masterData) {
+        setMasterTopics(masterData as MasterTopic[]);
       }
 
       // Fetch followed topics if user is logged in
@@ -113,14 +139,74 @@ export default function TopicLeaderboard() {
     );
   }
 
-  if (topics.length === 0) {
+  // Show master topics if no trending topics
+  if (showMasterTopics || topics.length === 0) {
     return (
       <div className="rounded-xl bg-white/50 p-6 backdrop-blur-sm">
         <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-deep-stone">
-          <TrendingUp size={20} className="text-earth-green" />
-          Trending Topics
+          <Sparkles size={20} className="text-earth-green" />
+          Discover Topics
         </h3>
-        <p className="text-sm text-deep-stone/60">No trending topics this week.</p>
+        <p className="mb-4 text-xs text-deep-stone/60">
+          Explore our core topics to get started
+        </p>
+        <div className="space-y-2">
+          {masterTopics.map((topic, index) => {
+            const isFollowing = followingStates[topic.name] || false;
+            const isLoading = loadingStates[topic.name] || false;
+
+            return (
+              <div
+                key={topic.name}
+                className="flex items-center justify-between rounded-lg border border-soft-clay/20 bg-white/50 p-3 transition-all duration-200 hover:border-earth-green/30 hover:bg-white/70"
+              >
+                <Link
+                  href={`/topic/${encodeURIComponent(topic.name)}`}
+                  className="flex flex-1 items-center gap-3"
+                >
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-earth-green/20 text-sm font-semibold text-earth-green">
+                    {index + 1}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <Hash size={14} className="text-earth-green" />
+                      <span className="font-medium text-deep-stone">{topic.name}</span>
+                    </div>
+                    {topic.description && (
+                      <p className="mt-1 text-xs text-deep-stone/60">{topic.description}</p>
+                    )}
+                  </div>
+                </Link>
+                {user && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      handleFollow(topic.name);
+                    }}
+                    disabled={isLoading}
+                    className={`ml-2 flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200 ${
+                      isFollowing
+                        ? "bg-earth-green/20 text-earth-green hover:bg-earth-green/30"
+                        : "bg-soft-clay/30 text-deep-stone/60 hover:bg-earth-green/20 hover:text-earth-green"
+                    } ${isLoading ? "opacity-50" : ""}`}
+                    title={isFollowing ? "Unfollow" : "Follow"}
+                  >
+                    {isLoading ? (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    ) : (
+                      <Plus
+                        size={16}
+                        className={isFollowing ? "rotate-45" : ""}
+                        style={{ transition: "transform 0.2s" }}
+                      />
+                    )}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
   }

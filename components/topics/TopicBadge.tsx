@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Hash } from "lucide-react";
 import { toggleTopicFollow } from "@/app/actions/topic-actions";
 import Button from "@/components/ui/Button";
@@ -21,7 +22,6 @@ export default function TopicBadge({
   showFollowButton = false,
 }: TopicBadgeProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [following, setFollowing] = useState(isFollowed);
   const [loading, setLoading] = useState(false);
   const [isMasterTopic, setIsMasterTopic] = useState(false);
@@ -54,12 +54,7 @@ export default function TopicBadge({
     fetchFollowerCount();
   }, [topic]);
 
-  const handleClick = () => {
-    if (!clickable) return;
-
-    // Navigate to topic view page (using /topic for cleaner URLs)
-    router.push(`/topic/${encodeURIComponent(topic)}`);
-  };
+  // No need for handleClick - we'll use Link instead
 
   const handleFollow = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -76,34 +71,49 @@ export default function TopicBadge({
     }
   };
 
+  const badgeContent = (
+    <>
+      {isMasterTopic && (
+        <span className="mr-0.5 text-xs" title="Core Topic">⭐</span>
+      )}
+      <Hash size={14} />
+      {topic}
+      {isMasterTopic && (
+        <span className="ml-1 rounded-full bg-white/40 px-1 text-[10px] font-semibold uppercase">
+          Core
+        </span>
+      )}
+    </>
+  );
+
   return (
     <div className="relative inline-flex items-center gap-2">
-      <button
-        onClick={handleClick}
-        onMouseEnter={() => setShowTooltip(true)}
-        onMouseLeave={() => setShowTooltip(false)}
-        disabled={!clickable}
-        className={`relative inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-medium transition-all duration-200 ${
-          isMasterTopic
-            ? clickable
+      {clickable ? (
+        <Link
+          href={`/topic/${encodeURIComponent(topic)}`}
+          onMouseEnter={() => setShowTooltip(true)}
+          onMouseLeave={() => setShowTooltip(false)}
+          className={`relative inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-medium transition-all duration-200 hover:scale-105 ${
+            isMasterTopic
               ? "bg-earth-green/30 text-earth-green hover:bg-earth-green/40 cursor-pointer border border-earth-green/40"
-              : "bg-earth-green/30 text-earth-green cursor-default border border-earth-green/40"
-            : clickable
-              ? "bg-earth-green/20 text-earth-green hover:bg-earth-green/30 cursor-pointer"
+              : "bg-earth-green/20 text-earth-green hover:bg-earth-green/30 cursor-pointer"
+          }`}
+        >
+          {badgeContent}
+        </Link>
+      ) : (
+        <span
+          onMouseEnter={() => setShowTooltip(true)}
+          onMouseLeave={() => setShowTooltip(false)}
+          className={`relative inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-medium ${
+            isMasterTopic
+              ? "bg-earth-green/30 text-earth-green cursor-default border border-earth-green/40"
               : "bg-earth-green/20 text-earth-green cursor-default"
-        }`}
-      >
-        {isMasterTopic && (
-          <span className="mr-0.5 text-xs" title="Core Topic">⭐</span>
-        )}
-        <Hash size={14} />
-        {topic}
-        {isMasterTopic && (
-          <span className="ml-1 rounded-full bg-white/40 px-1 text-[10px] font-semibold uppercase">
-            Core
-          </span>
-        )}
-      </button>
+          }`}
+        >
+          {badgeContent}
+        </span>
+      )}
       {showTooltip && followerCount !== null && (
         <div className="absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 rounded-lg bg-deep-stone px-3 py-2 text-xs text-sand-beige shadow-lg">
           {followerCount} {followerCount === 1 ? "follower" : "followers"}

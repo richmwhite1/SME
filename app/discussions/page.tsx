@@ -7,6 +7,7 @@ import TrustedVoicesToggle from "@/components/feed/TrustedVoicesToggle";
 import TopicBadge from "@/components/topics/TopicBadge";
 import TopicFilter from "@/components/topics/TopicFilter";
 import TopicLeaderboard from "@/components/topics/TopicLeaderboard";
+import MyTopics from "@/components/topics/MyTopics";
 import { getFollowedTopics } from "@/app/actions/topic-actions";
 
 export const dynamic = "force-dynamic";
@@ -182,7 +183,8 @@ export default async function DiscussionsPage({
           </div>
         )}
           </div>
-          <aside className="lg:col-span-1">
+          <aside className="lg:col-span-1 space-y-6">
+            <MyTopics />
             <TopicLeaderboard />
           </aside>
         </div>

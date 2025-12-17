@@ -52,6 +52,7 @@ export async function toggleTopicFollow(topicName: string) {
     revalidatePath("/feed", "page");
     revalidatePath("/discussions", "page");
     revalidatePath("/topics", "page");
+    revalidatePath("/topic", "page");
     return { success: true, following: false };
   } else {
     // Follow: Insert new follow record
@@ -70,6 +71,7 @@ export async function toggleTopicFollow(topicName: string) {
     revalidatePath("/feed", "page");
     revalidatePath("/discussions", "page");
     revalidatePath("/topics", "page");
+    revalidatePath("/topic", "page");
     return { success: true, following: true };
   }
 }

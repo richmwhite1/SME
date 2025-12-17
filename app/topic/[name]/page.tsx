@@ -2,12 +2,10 @@ import { createClient } from "@/lib/supabase/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Hash } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
-import Image from "next/image";
+import { ArrowLeft, Hash, Home } from "lucide-react";
 import TopicFilter from "@/components/topics/TopicFilter";
 import { getFollowedTopics } from "@/app/actions/topic-actions";
-import TopicBadge from "@/components/topics/TopicBadge";
+import TopicContentList from "@/components/topics/TopicContentList";
 
 export const dynamic = "force-dynamic";
 
@@ -101,20 +99,40 @@ export default async function TopicPage({
   return (
     <main className="min-h-screen bg-sand-beige px-6 py-12">
       <div className="mx-auto max-w-4xl">
-        {/* Header */}
+        {/* Breadcrumbs */}
+        <nav className="mb-6 flex items-center gap-2 text-sm text-deep-stone/60">
+          <Link
+            href="/feed"
+            className="flex items-center gap-1 text-earth-green hover:text-earth-green/80 hover:underline"
+          >
+            <Home size={14} />
+            Feed
+          </Link>
+          <span>/</span>
+          <Link
+            href="/discussions"
+            className="text-earth-green hover:text-earth-green/80 hover:underline"
+          >
+            Discussions
+          </Link>
+          <span>/</span>
+          <span className="text-deep-stone">#{topicName}</span>
+        </nav>
+
+        {/* Back Button */}
         <Link
-          href="/discussions"
-          className="mb-6 inline-flex items-center gap-2 text-earth-green hover:underline"
+          href="/feed"
+          className="mb-4 inline-flex items-center gap-2 text-earth-green hover:underline"
         >
           <ArrowLeft size={16} />
-          Back
+          Back to Feed
         </Link>
 
         <div className="mb-8">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Hash className="h-8 w-8 text-earth-green" />
-              <h1 className="text-4xl font-bold text-deep-stone">#{topicName}</h1>
+              <h1 className="text-4xl font-bold text-deep-stone">Showing posts for #{topicName}</h1>
             </div>
             {user && (
               <TopicFilter topic={topicName} isFollowed={isTopicFollowed} />
@@ -129,95 +147,8 @@ export default async function TopicPage({
           )}
         </div>
 
-        {/* Content List */}
-        {allContent.length === 0 ? (
-          <div className="rounded-xl bg-white/50 p-12 text-center backdrop-blur-sm">
-            <p className="text-deep-stone/70">
-              No content found for #{topicName} yet. Be the first to post about it!
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {allContent.map((item) => (
-              <Link
-                key={`${item.type}-${item.id}`}
-                href={
-                  item.type === "discussion"
-                    ? `/discussions/${item.slug}`
-                    : `/products/${item.slug}`
-                }
-                className="block rounded-xl bg-white/50 p-6 backdrop-blur-sm transition-all duration-300 hover:shadow-lg"
-              >
-                <div className="mb-3">
-                  <div className="mb-2 flex items-center gap-2">
-                    <span className="rounded-full bg-earth-green/20 px-2 py-0.5 text-xs font-medium text-earth-green">
-                      {item.type === "discussion" ? "Discussion" : "Product"}
-                    </span>
-                    <span className="text-sm text-deep-stone/60">
-                      {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
-                    </span>
-                  </div>
-                  <h2 className="mb-2 text-xl font-semibold text-deep-stone">
-                    {item.title}
-                  </h2>
-                  {item.type === "discussion" ? (
-                    <p className="mb-3 line-clamp-2 text-deep-stone/80">
-                      {(item as Discussion).content}
-                    </p>
-                  ) : (
-                    <p className="mb-3 line-clamp-2 text-deep-stone/80">
-                      {(item as Product).problem_solved}
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between">
-                  {item.type === "discussion" && (item as Discussion).profiles && (
-                    <div className="flex items-center gap-3">
-                      {(item as Discussion).profiles?.avatar_url ? (
-                        <Image
-                          src={(item as Discussion).profiles!.avatar_url!}
-                          alt={(item as Discussion).profiles!.full_name || "User"}
-                          width={32}
-                          height={32}
-                          className="h-8 w-8 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-soft-clay text-xs font-semibold text-deep-stone">
-                          {(item as Discussion).profiles?.full_name?.charAt(0).toUpperCase() ||
-                            "U"}
-                        </div>
-                      )}
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-deep-stone">
-                            {(item as Discussion).profiles?.full_name || "Anonymous"}
-                          </span>
-                          {(item as Discussion).profiles?.badge_type === "Trusted Voice" && (
-                            <span className="rounded-full bg-earth-green/20 px-2 py-0.5 text-xs font-medium text-earth-green">
-                              Trusted Voice
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {item.tags && item.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {item.tags
-                        .filter((tag) => tag !== topicName)
-                        .slice(0, 3)
-                        .map((tag) => (
-                          <TopicBadge key={tag} topic={tag} clickable={true} />
-                        ))}
-                    </div>
-                  )}
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
+        {/* Content List with Search */}
+        <TopicContentList allContent={allContent} topicName={topicName} />
       </div>
     </main>
   );
