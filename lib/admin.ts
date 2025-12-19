@@ -1,9 +1,10 @@
 import { currentUser } from "@clerk/nextjs/server";
-import { createClient } from "@/lib/supabase/server";
+import { getDb } from "@/lib/db";
 
 /**
  * Checks if the current user has admin role
  * Returns true if user is admin, false otherwise
+ * Checks both Clerk publicMetadata.role and profile.is_admin
  */
 export async function isAdmin(): Promise<boolean> {
   try {
@@ -13,17 +14,25 @@ export async function isAdmin(): Promise<boolean> {
       return false;
     }
 
-    const supabase = createClient();
+    // Check Clerk publicMetadata.role first
+    const clerkRole = (user.publicMetadata?.role as string) || null;
+    if (clerkRole === "admin") {
+      return true;
+    }
+
+    const sql = getDb();
     
     // Check if user has admin role in profiles table
-    const { data: profile, error } = await supabase
-      .from("profiles")
-      .select("is_admin")
-      .eq("id", user.id)
-      .single();
+    const result = await sql`
+      SELECT is_admin
+      FROM profiles
+      WHERE id = ${user.id}
+    `;
 
-    if (error || !profile) {
-      console.error("Error checking admin status:", error);
+    const profile = result[0];
+
+    if (!profile) {
+      console.error("Profile not found for admin status check");
       return false;
     }
 

@@ -1,7 +1,7 @@
 "use server";
 
-import { currentUser } from "@clerk/nextjs/server";
-import { createClient } from "@/lib/supabase/server";
+import { currentUser, clerkClient } from "@clerk/nextjs/server";
+import { getDb } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 
 export async function updateProfile(
@@ -9,6 +9,7 @@ export async function updateProfile(
   username: string,
   bio: string,
   credentials: string,
+  profession: string,
   websiteUrl: string,
   socialLinks: {
     discord?: string | null;
@@ -23,6 +24,8 @@ export async function updateProfile(
     throw new Error("You must be logged in to update your profile");
   }
 
+  const sql = getDb();
+
   // Validate username format
   if (username) {
     const usernameRegex = /^[a-zA-Z0-9_-]{3,20}$/;
@@ -33,42 +36,56 @@ export async function updateProfile(
     }
 
     // Check if username is taken by another user
-    const supabase = createClient();
-    const { data: existingProfile } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("username", username.toLowerCase())
-      .neq("id", user.id)
-      .maybeSingle();
+    const existingProfileResult = await sql`
+      SELECT id
+      FROM profiles
+      WHERE username = ${username.toLowerCase()}
+        AND id != ${user.id}
+      LIMIT 1
+    `;
 
-    if (existingProfile) {
+    if (existingProfileResult.length > 0) {
       throw new Error("Username is already taken");
     }
   }
 
-  const supabase = createClient();
-
-  const updateData = {
-    full_name: fullName || null,
-    username: username ? username.toLowerCase() : null,
-    bio: bio || null,
-    credentials: credentials || null,
-    website_url: websiteUrl || null,
-    social_links: socialLinks || {},
-  };
-
-  // @ts-ignore - Supabase types may not match exactly
-  const { error } = await supabase.from("profiles").update(updateData).eq("id", user.id);
-
-  if (error) {
-    console.error("Error updating profile:", error);
-    throw new Error(`Failed to update profile: ${error.message}`);
+  // Save social handles to Clerk publicMetadata for site-wide persistence
+  try {
+    await clerkClient.users.updateUserMetadata(user.id, {
+      publicMetadata: {
+        xHandle: socialLinks.x || null,
+        telegramHandle: socialLinks.telegram || null,
+        discordHandle: socialLinks.discord || null,
+        instagramHandle: socialLinks.instagram || null,
+      },
+    });
+  } catch (metadataError) {
+    console.error("Error updating Clerk metadata:", metadataError);
+    // Don't fail the whole operation if metadata update fails
   }
 
-  revalidatePath("/settings");
-  revalidatePath("/u", "page");
+  try {
+    // Update profile using raw SQL
+    await sql`
+      UPDATE profiles
+      SET full_name = ${fullName || null},
+          username = ${username ? username.toLowerCase() : null},
+          bio = ${bio || null},
+          credentials = ${credentials || null},
+          profession = ${profession || null},
+          website_url = ${websiteUrl || null},
+          social_links = ${sql.json(socialLinks || {})}
+      WHERE id = ${user.id}
+    `;
 
-  return { success: true };
+    revalidatePath("/settings");
+    revalidatePath("/u", "page");
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error updating profile:", error);
+    throw new Error(error.message || "Failed to update profile");
+  }
 }
 
 export async function toggleFollow(targetUserId: string) {
@@ -82,44 +99,66 @@ export async function toggleFollow(targetUserId: string) {
     throw new Error("You cannot follow yourself");
   }
 
-  const supabase = createClient();
+  const sql = getDb();
 
-  // Check if already following
-  const { data: existingFollow } = await supabase
-    .from("follows")
-    .select("id")
-    .eq("follower_id", user.id)
-    .eq("following_id", targetUserId)
-    .maybeSingle();
+  try {
+    // Check if already following
+    const existingFollowResult = await sql`
+      SELECT id
+      FROM follows
+      WHERE follower_id = ${user.id}
+        AND following_id = ${targetUserId}
+      LIMIT 1
+    `;
 
-  if (existingFollow) {
-    // Unfollow
-    const { error } = await supabase
-      .from("follows")
-      .delete()
-      .eq("follower_id", user.id)
-      .eq("following_id", targetUserId);
-
-    if (error) {
-      console.error("Error unfollowing:", error);
-      throw new Error(`Failed to unfollow: ${error.message}`);
+    if (existingFollowResult.length > 0) {
+      // Unfollow
+      await sql`
+        DELETE FROM follows
+        WHERE follower_id = ${user.id}
+          AND following_id = ${targetUserId}
+      `;
+    } else {
+      // Follow
+      await sql`
+        INSERT INTO follows (follower_id, following_id)
+        VALUES (${user.id}, ${targetUserId})
+      `;
     }
-  } else {
-    // Follow
-    const { error } = await supabase
-      .from("follows")
-      .insert({
-        follower_id: user.id,
-        following_id: targetUserId,
-      });
 
-    if (error) {
-      console.error("Error following:", error);
-      throw new Error(`Failed to follow: ${error.message}`);
-    }
+    revalidatePath("/u", "page");
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error toggling follow:", error);
+    throw new Error(error.message || "Failed to toggle follow");
+  }
+}
+
+export async function updateSocialHandles(
+  xHandle: string | null,
+  telegramHandle: string | null
+) {
+  const user = await currentUser();
+
+  if (!user) {
+    throw new Error("You must be logged in to update social handles");
+  }
+
+  try {
+    await clerkClient.users.updateUserMetadata(user.id, {
+      publicMetadata: {
+        xHandle: xHandle || null,
+        telegramHandle: telegramHandle || null,
+      },
+    });
+  } catch (error) {
+    console.error("Error updating Clerk metadata:", error);
+    throw new Error(`Failed to update social handles: ${error instanceof Error ? error.message : "Unknown error"}`);
   }
 
   revalidatePath("/u", "page");
+  revalidatePath("/settings");
 
   return { success: true };
 }
