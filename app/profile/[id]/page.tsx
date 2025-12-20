@@ -3,6 +3,10 @@ import { redirect, notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
+interface ProfileData {
+  username: string | null;
+}
+
 export default async function ProfileByIdPage({
   params,
 }: {
@@ -16,7 +20,7 @@ export default async function ProfileByIdPage({
     .from("profiles")
     .select("username")
     .eq("id", id)
-    .single();
+    .single() as { data: ProfileData | null, error: any };
 
   if (error || !profile) {
     notFound();

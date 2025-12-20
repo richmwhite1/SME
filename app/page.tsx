@@ -1,15 +1,10 @@
-"use client";
-
 import Link from "next/link";
 import Button from "@/components/ui/Button";
-import { createClient } from "@/lib/supabase/client";
 import ProtocolCard from "@/components/holistic/ProtocolCard";
 import LatestIntelligence from "@/components/social/LatestIntelligence";
 import VelocityBadge from "@/components/products/VelocityBadge";
-import { useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { useToast } from "@/components/ui/ToastContainer";
 import { Download, Share2 } from "lucide-react";
+import { getDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -30,128 +25,132 @@ interface TrendingProtocol {
   reviewCount: number;
   commentCount: number;
   averageRating?: number;
-  velocityCount: number; // New insights this week
-  activity_score: number; // Total community signals (reviews + comments)
+  velocityCount: number;
+  activity_score: number;
 }
 
-export default function Home() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const { showToast } = useToast();
-  const [trendingProtocols, setTrendingProtocols] = useState<TrendingProtocol[]>([]);
-  const [loading, setLoading] = useState(true);
+interface Protocol {
+  id: string;
+  title: string;
+  problem_solved: string;
+  slug: string;
+  images: string | string[] | null;
+  is_sme_certified: boolean | null;
+  purity_tested: boolean | null;
+  source_transparency: boolean | null;
+  ai_summary: boolean | null;
+  third_party_lab_verified: boolean | null;
+  potency_verified: boolean | null;
+  excipient_audit: boolean | null;
+  operational_legitimacy: boolean | null;
+  created_at: string;
+  review_count?: number;
+  comment_count?: number;
+  average_rating?: number;
+  velocity_count?: number;
+}
 
-  // Handle toast from redirect
-  useEffect(() => {
-    const toast = searchParams.get("toast");
-    if (toast === "Higher+Trust+Weight+Required" || toast === "Higher Trust Weight Required") {
-      showToast("Higher Trust Weight Required", "error");
-      // Clean up the URL
-      router.replace("/");
-    }
-  }, [searchParams, router, showToast]);
+async function fetchTrendingProtocols(): Promise<TrendingProtocol[]> {
+  const sql = getDb();
+  
+  try {
+    // Get start of this month
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+    
+    // Get start of this week (7 days ago)
+    const startOfWeek = new Date();
+    startOfWeek.setDate(startOfWeek.getDate() - 7);
+    startOfWeek.setHours(0, 0, 0, 0);
 
-  // Fetch trending protocols with engagement metrics
-  useEffect(() => {
-    async function fetchTrendingProtocols() {
-      try {
-        const supabase = createClient();
-        
-        // Get start of this month
-        const startOfMonth = new Date();
-        startOfMonth.setDate(1);
-        startOfMonth.setHours(0, 0, 0, 0);
-        
-        // Get start of this week (7 days ago)
-        const startOfWeek = new Date();
-        startOfWeek.setDate(startOfWeek.getDate() - 7);
-        startOfWeek.setHours(0, 0, 0, 0);
+    // Fetch protocols with aggregated metrics
+    const protocols = await sql<Protocol[]>`
+      SELECT 
+        p.id,
+        p.title,
+        p.problem_solved,
+        p.slug,
+        p.images,
+        p.is_sme_certified,
+        p.purity_tested,
+        p.source_transparency,
+        p.ai_summary,
+        p.third_party_lab_verified,
+        p.potency_verified,
+        p.excipient_audit,
+        p.operational_legitimacy,
+        p.created_at,
+        COALESCE(r.review_count, 0) as review_count,
+        COALESCE(c.comment_count, 0) as comment_count,
+        COALESCE(r.average_rating, 0) as average_rating,
+        COALESCE(rv.velocity_count, 0) as velocity_count
+      FROM protocols p
+      LEFT JOIN (
+        SELECT protocol_id, COUNT(*) as review_count, AVG(rating) as average_rating
+        FROM reviews
+        WHERE (is_flagged IS FALSE OR is_flagged IS NULL)
+          AND created_at >= ${startOfMonth.toISOString()}
+        GROUP BY protocol_id
+      ) r ON p.id = r.protocol_id
+      LEFT JOIN (
+        SELECT protocol_id, COUNT(*) as comment_count
+        FROM product_comments
+        WHERE (is_flagged IS FALSE OR is_flagged IS NULL)
+          AND created_at >= ${startOfMonth.toISOString()}
+        GROUP BY protocol_id
+      ) c ON p.id = c.protocol_id
+      LEFT JOIN (
+        SELECT protocol_id, COUNT(*) as velocity_count
+        FROM (
+          SELECT protocol_id, created_at FROM reviews
+          WHERE (is_flagged IS FALSE OR is_flagged IS NULL)
+            AND created_at >= ${startOfWeek.toISOString()}
+          UNION ALL
+          SELECT protocol_id, created_at FROM product_comments
+          WHERE (is_flagged IS FALSE OR is_flagged IS NULL)
+            AND created_at >= ${startOfWeek.toISOString()}
+        ) v
+        GROUP BY protocol_id
+      ) rv ON p.id = rv.protocol_id
+      WHERE (p.is_flagged IS FALSE OR p.is_flagged IS NULL)
+        AND p.created_at >= ${startOfMonth.toISOString()}
+      ORDER BY 
+        (COALESCE(r.review_count, 0) + COALESCE(c.comment_count, 0)) DESC,
+        COALESCE(rv.velocity_count, 0) DESC
+      LIMIT 6
+    `;
 
-        // Fetch protocols with images and metadata
-        const { data: protocols, error: protocolsError } = await supabase
-          .from("protocols")
-          .select("id, title, problem_solved, slug, images, is_sme_certified, purity_tested, source_transparency, ai_summary, third_party_lab_verified, potency_verified, excipient_audit, operational_legitimacy, created_at")
-          .or("is_flagged.eq.false,is_flagged.is.null")
-          .gte("created_at", startOfMonth.toISOString());
+    // Map to TrendingProtocol format
+    return protocols.map((p: any) => ({
+      id: p.id,
+      title: p.title,
+      problem_solved: p.problem_solved,
+      slug: p.slug,
+      images: p.images,
+      is_sme_certified: p.is_sme_certified,
+      purity_tested: p.purity_tested,
+      source_transparency: p.source_transparency,
+      ai_summary: p.ai_summary,
+      third_party_lab_verified: p.third_party_lab_verified,
+      potency_verified: p.potency_verified,
+      excipient_audit: p.excipient_audit,
+      operational_legitimacy: p.operational_legitimacy,
+      created_at: p.created_at,
+      reviewCount: Number(p.review_count || 0),
+      commentCount: Number(p.comment_count || 0),
+      averageRating: p.average_rating ? Number(p.average_rating) : undefined,
+      velocityCount: Number(p.velocity_count || 0),
+      activity_score: (Number(p.review_count || 0) + Number(p.comment_count || 0)),
+    }));
+  } catch (error) {
+    console.error("Error fetching trending protocols:", error);
+    return [];
+  }
+}
 
-        if (protocolsError) {
-          console.error("Error fetching protocols:", protocolsError);
-          setLoading(false);
-          return;
-        }
-
-        // Fetch reviews with ratings for this month
-        const { data: reviews } = await supabase
-          .from("reviews")
-          .select("protocol_id, rating, created_at")
-          .gte("created_at", startOfMonth.toISOString())
-          .or("is_flagged.eq.false,is_flagged.is.null");
-
-        // Fetch comment counts for this month
-        const { data: comments } = await supabase
-          .from("product_comments")
-          .select("protocol_id, created_at")
-          .gte("created_at", startOfMonth.toISOString())
-          .or("is_flagged.eq.false,is_flagged.is.null");
-
-        // Calculate engagement metrics per protocol
-        const protocolsWithMetrics: TrendingProtocol[] = (protocols || []).map((protocol: any) => {
-          const protocolReviews = (reviews || []).filter((r: any) => r.protocol_id === protocol.id);
-          const protocolComments = (comments || []).filter((c: any) => c.protocol_id === protocol.id);
-          
-          // Calculate average rating
-          const averageRating = protocolReviews.length > 0
-            ? protocolReviews.reduce((sum: number, r: any) => sum + (r.rating || 0), 0) / protocolReviews.length
-            : undefined;
-          
-          // Velocity: new insights this week
-          const velocityReviews = protocolReviews.filter((r: any) => 
-            new Date(r.created_at) >= startOfWeek
-          ).length;
-          const velocityComments = protocolComments.filter((c: any) => 
-            new Date(c.created_at) >= startOfWeek
-          ).length;
-          const velocityCount = velocityReviews + velocityComments;
-
-          return {
-            ...protocol,
-            reviewCount: protocolReviews.length,
-            commentCount: protocolComments.length,
-            averageRating,
-            velocityCount,
-          };
-        });
-
-        // Sort by engagement (reviews + comments) this month, then by velocity
-        protocolsWithMetrics.sort((a, b) => {
-          const engagementA = a.reviewCount + a.commentCount;
-          const engagementB = b.reviewCount + b.commentCount;
-          
-          if (engagementB !== engagementA) {
-            return engagementB - engagementA;
-          }
-          
-          // Tie-breaker: velocity
-          return b.velocityCount - a.velocityCount;
-        });
-
-        // Calculate activity_score (reviews + comments this month)
-        const protocolsWithActivityScore = protocolsWithMetrics.map((protocol) => ({
-          ...protocol,
-          activity_score: protocol.reviewCount + protocol.commentCount,
-        }));
-
-        // Take top 6 trending (Popular filter)
-        setTrendingProtocols(protocolsWithActivityScore.slice(0, 6));
-      } catch (error) {
-        console.error("Error:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchTrendingProtocols();
-  }, []);
+export default async function Home() {
+  const trendingProtocols = await fetchTrendingProtocols();
 
   return (
     <main className="min-h-[calc(100vh-4rem)] bg-forest-obsidian px-6 py-16">
@@ -184,57 +183,12 @@ export default function Home() {
         </div>
 
         {/* Trending Products Section */}
-        {!loading && trendingProtocols.length > 0 && (
+        {trendingProtocols.length > 0 && (
           <div className="mt-16">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="font-serif text-3xl font-semibold text-bone-white">
                 Community Pulse: Trending Products This Month
               </h2>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={async () => {
-                    try {
-                      // Generate OG image URL
-                      const ogImageUrl = `${window.location.origin}/api/og/trending`;
-                      
-                      // Create download link
-                      const link = document.createElement('a');
-                      link.href = ogImageUrl;
-                      link.download = `trending-pulse-${new Date().toISOString().split('T')[0]}.png`;
-                      link.click();
-                      
-                      showToast('Share card downloaded!', 'success');
-                    } catch (error) {
-                      console.error('Error downloading trending pulse:', error);
-                      showToast('Failed to download share card. Please try again.', 'error');
-                    }
-                  }}
-                  className="flex items-center gap-2 border border-heart-green bg-heart-green/20 px-4 py-2 text-sm font-mono uppercase tracking-wider text-heart-green hover:bg-heart-green/30 hover:border-heart-green transition-all"
-                  style={{
-                    boxShadow: "0 0 12px rgba(16, 185, 129, 0.3)",
-                  }}
-                >
-                  <Download size={14} />
-                  Download
-                </button>
-                <button
-                  onClick={() => {
-                    try {
-                      const ogImageUrl = `${window.location.origin}/api/og/trending`;
-                      const tweetText = `Community Pulse: Trending Products This Month on @SME_Vibe. See the trending products with the highest community signals. ${window.location.origin}`;
-                      const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(ogImageUrl)}`;
-                      window.open(twitterUrl, "_blank", "width=550,height=420");
-                    } catch (error) {
-                      console.error('Error sharing to X:', error);
-                      showToast('Failed to open X. Please try again.', 'error');
-                    }
-                  }}
-                  className="flex items-center gap-2 border border-translucent-emerald bg-forest-obsidian px-4 py-2 text-sm font-mono uppercase tracking-wider text-bone-white hover:bg-muted-moss hover:border-heart-green transition-all"
-                >
-                  <Share2 size={14} />
-                  Post to X
-                </button>
-              </div>
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {trendingProtocols.map((protocol: TrendingProtocol) => {
@@ -258,7 +212,7 @@ export default function Home() {
                         );
                       } else {
                         // PostgreSQL array format: {url1,url2}
-                        const arrayMatch = protocol.images.match(/^\{([^}]*)\}$/);
+                        const arrayMatch = (protocol.images as string).match(/^\{([^}]*)\}$/);
                         if (arrayMatch) {
                           imagesArray = arrayMatch[1]
                             .split(',')
@@ -268,7 +222,7 @@ export default function Home() {
                       }
                     } catch (e) {
                       // Try PostgreSQL array format directly
-                      const arrayMatch = protocol.images.match(/^\{([^}]*)\}$/);
+                      const arrayMatch = (protocol.images as string).match(/^\{([^}]*)\}$/);
                       if (arrayMatch) {
                         imagesArray = arrayMatch[1]
                           .split(',')
@@ -288,16 +242,10 @@ export default function Home() {
                 
                 imageUrl = firstImage;
 
-                const hasHighVelocity = protocol.velocityCount > 0;
-
                 return (
                   <div 
                     key={protocol.id} 
-                    className={`relative transition-all duration-300 ${
-                      hasHighVelocity 
-                        ? "hover:border-heart-green hover:shadow-[0_0_16px_rgba(16,185,129,0.3)]" 
-                        : "hover:border-translucent-emerald"
-                    }`}
+                    className="relative transition-all duration-300 hover:border-translucent-emerald"
                   >
                     <ProtocolCard
                       title={protocol.title}
@@ -318,10 +266,6 @@ export default function Home() {
                       averageRating={protocol.averageRating}
                       activityScore={protocol.activity_score}
                     />
-                    {/* Velocity Badge - Overlay on image */}
-                    {hasHighVelocity && (
-                      <VelocityBadge velocityCount={protocol.velocityCount} />
-                    )}
                   </div>
                 );
               })}
@@ -329,7 +273,7 @@ export default function Home() {
           </div>
         )}
 
-        {!loading && trendingProtocols.length === 0 && (
+        {trendingProtocols.length === 0 && (
           <div className="mt-8 text-center text-bone-white/70 font-mono">
             No trending products this month. Check back soon!
           </div>

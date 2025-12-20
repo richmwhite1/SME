@@ -7,6 +7,50 @@ import AvatarLink from '@/components/profile/AvatarLink';
 import TopicBadge from '@/components/topics/TopicBadge';
 import { formatDistanceToNow } from 'date-fns';
 
+interface Discussion {
+  id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  author_id: string;
+  is_bounty: boolean;
+  solution_comment_id: string | null;
+  bounty_status: string | null;
+  upvote_count: number;
+  tags: string[];
+  slug: string;
+  profiles: {
+    id: string;
+    full_name: string;
+    username: string;
+    avatar_url: string;
+    contributor_score: number;
+    badge_type: string | null;
+  };
+}
+
+interface DiscussionComment {
+  id: string;
+  content: string;
+  created_at: string;
+  parent_id: string | null;
+  guest_name: string | null;
+  profiles: {
+    id: string;
+    full_name: string;
+    username: string;
+    avatar_url: string;
+    badge_type: string | null;
+    contributor_score: number;
+  } | null;
+}
+
+interface CommentReference {
+  resource_id: string;
+  resource_title: string;
+  resource_url: string;
+}
+
 export default async function DiscussionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = createClient();
@@ -27,7 +71,7 @@ export default async function DiscussionPage({ params }: { params: Promise<{ id:
       )
     `)
     .eq('id', id)
-    .single();
+    .single() as { data: Discussion | null, error: any };
 
   if (error || !discussion) {
     return notFound();
@@ -53,7 +97,7 @@ export default async function DiscussionPage({ params }: { params: Promise<{ id:
     `)
     .eq('discussion_id', id)
     .or('is_flagged.eq.false,is_flagged.is.null')
-    .order('created_at', { ascending: true });
+    .order('created_at', { ascending: true }) as { data: DiscussionComment[] | null };
 
   // Fetch references for each comment with error handling
   const commentsWithReferences = await Promise.all(
@@ -62,7 +106,7 @@ export default async function DiscussionPage({ params }: { params: Promise<{ id:
         const { data: refsData } = await supabase
           .from('comment_references')
           .select('resource_id, resource_title, resource_url')
-          .eq('comment_id', comment.id);
+          .eq('comment_id', comment.id) as { data: CommentReference[] | null };
 
         return {
           ...comment,

@@ -89,12 +89,7 @@ export default function CompareClient({
     };
   }, []);
 
-  // Use optimistic updates if available, otherwise use server data
-  const displayProductA = optimisticProductA || productA;
-  const displayProductB = optimisticProductB || productB;
-  const displayImagesA = optimisticProductA ? parseImages(optimisticProductA.images) : imagesA;
-  const displayImagesB = optimisticProductB ? parseImages(optimisticProductB.images) : imagesB;
-
+  // Helper function to parse image data
   const parseImages = (images: any): string[] => {
     if (!images) return [];
     if (Array.isArray(images)) {
@@ -110,6 +105,12 @@ export default function CompareClient({
     }
     return [];
   }
+
+  // Use optimistic updates if available, otherwise use server data
+  const displayProductA = optimisticProductA || productA;
+  const displayProductB = optimisticProductB || productB;
+  const displayImagesA = optimisticProductA ? parseImages(optimisticProductA.images) : imagesA;
+  const displayImagesB = optimisticProductB ? parseImages(optimisticProductB.images) : imagesB;
 
   const handleSwap = async (column: "A" | "B", newProductId: string) => {
     try {

@@ -20,6 +20,7 @@ interface Discussion {
   upvote_count: number;
   is_pinned?: boolean;
   profiles: {
+    id: string;
     full_name: string | null;
     username: string | null;
     avatar_url: string | null;
@@ -66,6 +67,7 @@ export default async function TopicPage({
       tags,
       is_pinned,
       profiles!discussions_author_id_fkey(
+        id,
         full_name,
         username,
         avatar_url,
@@ -74,7 +76,7 @@ export default async function TopicPage({
     `)
     .eq("is_flagged", false)
     .order("created_at", { ascending: false })
-    .limit(100);
+    .limit(100) as { data: (Discussion & { is_pinned?: boolean })[] | null };
 
   // Filter discussions that have this topic in tags
   const allFilteredDiscussions = (allDiscussions || []).filter((d: any) => {

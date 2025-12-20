@@ -4,6 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+interface UserProfile {
+  username: string | null;
+}
+
 /**
  * /u/me Redirect Route
  * 
@@ -27,7 +31,7 @@ export default async function MyProfileRedirect() {
     .from("profiles")
     .select("username")
     .eq("id", user.id)
-    .maybeSingle();
+    .maybeSingle() as { data: UserProfile | null, error: any };
 
   if (error) {
     console.error("Error fetching user profile:", error);

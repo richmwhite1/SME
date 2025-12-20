@@ -1,6 +1,19 @@
 import { MetadataRoute } from "next";
 import { createClient } from "@/lib/supabase/server";
 
+interface Product {
+  id: string;
+  slug: string;
+  updated_at: string | null;
+  created_at: string;
+}
+
+interface Discussion {
+  slug: string;
+  updated_at: string | null;
+  created_at: string;
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sme.example.com";
   const supabase = createClient();
@@ -10,14 +23,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .from("protocols")
     .select("id, slug, updated_at, created_at")
     .eq("is_flagged", false)
-    .or("is_flagged.is.null");
+    .or("is_flagged.is.null") as { data: Product[] | null };
 
   // Fetch all discussions
   const { data: discussions } = await supabase
     .from("discussions")
     .select("slug, updated_at, created_at")
     .eq("is_flagged", false)
-    .or("is_flagged.is.null");
+    .or("is_flagged.is.null") as { data: Discussion[] | null };
 
   // Build sitemap entries
   const sitemapEntries: MetadataRoute.Sitemap = [

@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 interface Pillar {
   name: string;
-  icon: React.ReactNode;
+  icon: React.ReactElement;
   description: string;
   details: string[];
 }

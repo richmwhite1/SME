@@ -1,31 +1,43 @@
 import { redirect, notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-// 1. Define the interface so TypeScript knows what a 'Discussion' is
 interface DiscussionResult {
-  slug: string;
+  slug: string | null;
 }
 
 export default async function CommunityRedirect({ params }: { params: { id: string } }) {
   const { id } = params;
-  const supabase = createClient();
+  const sql = getDb();
 
-  // 2. Explicitly type the result as DiscussionResult or null
-  const { data: discussion } = await supabase
-    .from('discussions')
-    .select('slug')
-    .eq('id', id)
-    .single() as { data: DiscussionResult | null };
+  try {
+    // Fetch discussion slug using raw SQL
+    const discussions = await sql<DiscussionResult[]>`
+      SELECT slug
+      FROM discussions
+      WHERE id = ${id}
+      LIMIT 1
+    `;
 
-  // 3. This guard now works because TypeScript knows 'discussion' can have a slug
-  if (!discussion || !discussion.slug) {
+    // Proper null check - discussion array should have at least one element
+    if (!discussions || discussions.length === 0) {
+      return notFound();
+    }
+
+    const discussion = discussions[0];
+
+    // Check if slug exists and is valid
+    if (!discussion.slug || typeof discussion.slug !== 'string') {
+      return notFound();
+    }
+
+    // Force the redirect
+    return redirect(`/discussions/${discussion.slug}`);
+  } catch (error) {
+    console.error("Error fetching discussion:", error);
     return notFound();
   }
-
-  // 4. Force the redirect
-  return redirect(`/discussions/${discussion.slug}`);
 }
 
 

@@ -58,6 +58,7 @@ export default function VerificationModal({
 
       const { error } = await supabase
         .from("evidence_submissions")
+        // @ts-ignore - Supabase type system limitation
         .update({ status: newStatus })
         .eq("id", submission.id);
 

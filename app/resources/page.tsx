@@ -26,6 +26,21 @@ interface Resource {
   sourceType?: "Lab Report" | "Clinical Research" | "Product Audit" | "Field Notes" | null;
 }
 
+interface DiscussionTags {
+  tags: string[] | null;
+}
+
+interface ProductVerification {
+  tags: string[] | null;
+  images: string[] | null;
+  is_sme_certified: boolean | null;
+  third_party_lab_verified: boolean | null;
+}
+
+interface UserProfile {
+  badge_type: string | null;
+}
+
 export default function ResourcesPage() {
   const { user, isLoaded } = useUser();
   const [resources, setResources] = useState<Resource[]>([]);
@@ -75,7 +90,7 @@ export default function ResourcesPage() {
                 .from("discussions")
                 .select("tags")
                 .eq("id", resource.origin_id)
-                .single();
+                .single() as { data: DiscussionTags | null };
               return { 
                 ...resource, 
                 tags: discussion?.tags || null,
@@ -87,7 +102,7 @@ export default function ResourcesPage() {
                 .from("protocols")
                 .select("tags, images, is_sme_certified, third_party_lab_verified")
                 .eq("id", resource.origin_id)
-                .single();
+                .single() as { data: ProductVerification | null };
               
               // Check if product has verification
               const hasVerification = 
@@ -136,7 +151,7 @@ export default function ResourcesPage() {
           .from("profiles")
           .select("badge_type")
           .eq("id", user.id)
-          .single();
+          .single() as { data: UserProfile | null };
 
         setIsTrustedVoice(profile?.badge_type === "Trusted Voice");
       }
@@ -342,7 +357,7 @@ export default function ResourcesPage() {
                 if (resource.reference_url?.toLowerCase().includes('.pdf')) {
                   return <Paperclip className="h-3.5 w-3.5 text-bone-white" />;
                 }
-                if (resource.sourceType === "Lab Reports") {
+                if (resource.sourceType === "Lab Report") {
                   return <FlaskConical className="h-3.5 w-3.5 text-bone-white" />;
                 }
                 if (resource.sourceType === "Clinical Research") {
@@ -365,14 +380,14 @@ export default function ResourcesPage() {
                     if (Array.isArray(parsed)) {
                       imageUrl = parsed.find((img: any) => typeof img === 'string' && img.length > 0) || null;
                     } else {
-                      const arrayMatch = resource.images.match(/^\{([^}]*)\}$/);
+                      const arrayMatch = (resource.images as string).match(/^\{([^}]*)\}$/);
                       if (arrayMatch) {
                         const urls = arrayMatch[1].split(',').map((s: string) => s.trim().replace(/^"|"$/g, ''));
                         imageUrl = urls.find((url: string) => url.length > 0) || null;
                       }
                     }
                   } catch (e) {
-                    const arrayMatch = resource.images.match(/^\{([^}]*)\}$/);
+                    const arrayMatch = (resource.images as string).match(/^\{([^}]*)\}$/);
                     if (arrayMatch) {
                       const urls = arrayMatch[1].split(',').map((s: string) => s.trim().replace(/^"|"$/g, ''));
                       imageUrl = urls.find((url: string) => url.length > 0) || null;

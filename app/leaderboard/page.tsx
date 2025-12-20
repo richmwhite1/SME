@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getDb } from "@/lib/db";
 import Image from "next/image";
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
@@ -22,59 +22,67 @@ interface MasterTopic {
   display_order: number;
 }
 
+interface Profile {
+  id: string;
+  full_name: string | null;
+  username: string | null;
+  avatar_url: string | null;
+  contributor_score: number | null;
+}
+
 // Calculate primary niche for a user based on their contributions
 async function getPrimaryNiche(userId: string): Promise<string | null> {
-  const supabase = createClient();
+  const sql = getDb();
   
-  // Get all master topics
-  const { data: masterTopics } = await supabase
-    .from("master_topics")
-    .select("name")
-    .order("display_order", { ascending: true });
+  try {
+    // Get all master topics
+    const masterTopics = await sql<{ name: string }[]>`
+      SELECT name FROM master_topics ORDER BY display_order ASC
+    `;
+    
+    if (!masterTopics || masterTopics.length === 0) {
+      return null;
+    }
+    
+    const masterTopicNames = masterTopics.map((t) => t.name);
+    const topicCounts = new Map<string, number>();
+    
+    // Initialize counts
+    masterTopicNames.forEach((topic) => {
+      topicCounts.set(topic, 0);
+    });
+    
+    // Count topics from discussions (reviews don't have tags)
+    const discussions = await sql<{ tags: string[] | null }[]>`
+      SELECT tags FROM discussions WHERE author_id = ${userId} AND tags IS NOT NULL
+    `;
   
-  if (!masterTopics || masterTopics.length === 0) {
-    return null;
-  }
-  
-  const masterTopicNames = masterTopics.map((t: { name: string }) => t.name);
-  const topicCounts = new Map<string, number>();
-  
-  // Initialize counts
-  masterTopicNames.forEach((topic: string) => {
-    topicCounts.set(topic, 0);
-  });
-  
-  // Count topics from discussions (reviews don't have tags)
-  const { data: discussions } = await supabase
-    .from("discussions")
-    .select("tags")
-    .eq("author_id", userId)
-    .not("tags", "is", null);
-  
-  if (discussions) {
-    discussions.forEach((discussion: any) => {
+    discussions.forEach((discussion) => {
       if (discussion.tags && Array.isArray(discussion.tags)) {
-        discussion.tags.forEach((tag: string) => {
+        discussion.tags.forEach((tag) => {
           if (masterTopicNames.includes(tag)) {
             topicCounts.set(tag, (topicCounts.get(tag) || 0) + 1);
           }
         });
       }
     });
+    
+    // Find the topic with the highest count
+    let maxCount = 0;
+    let primaryNiche: string | null = null;
+    
+    topicCounts.forEach((count, topic) => {
+      if (count > maxCount) {
+        maxCount = count;
+        primaryNiche = topic;
+      }
+    });
+    
+    return primaryNiche;
+  } catch (error) {
+    console.error("Error calculating primary niche:", error);
+    return null;
   }
-  
-  // Find the topic with the highest count
-  let maxCount = 0;
-  let primaryNiche: string | null = null;
-  
-  topicCounts.forEach((count, topic) => {
-    if (count > maxCount) {
-      maxCount = count;
-      primaryNiche = topic;
-    }
-  });
-  
-  return primaryNiche;
 }
 
 export default async function LeaderboardPage({
@@ -82,49 +90,47 @@ export default async function LeaderboardPage({
 }: {
   searchParams: Promise<{ topic?: string }>;
 }) {
-  const supabase = createClient();
+  const sql = getDb();
   const params = await searchParams;
   const topicFilter = params.topic;
   
   // Fetch master topics for filter dropdown
-  const { data: masterTopics } = await supabase
-    .from("master_topics")
-    .select("name, display_order")
-    .order("display_order", { ascending: true });
+  const masterTopics = await sql<MasterTopic[]>`
+    SELECT name, display_order FROM master_topics ORDER BY display_order ASC
+  `;
   
   // Fetch all users with contributor scores, ordered by score descending
-  const { data: profiles, error } = await supabase
-    .from("profiles")
-    .select("id, full_name, username, avatar_url, contributor_score")
-    .not("contributor_score", "is", null)
-    .gt("contributor_score", 0)
-    .order("contributor_score", { ascending: false })
-    .limit(100);
-  
-  if (error) {
+  let profiles: Profile[] = [];
+  try {
+    profiles = await sql<Profile[]>`
+      SELECT id, full_name, username, avatar_url, contributor_score
+      FROM profiles
+      WHERE contributor_score IS NOT NULL AND contributor_score > 0
+      ORDER BY contributor_score DESC
+      LIMIT 100
+    `;
+  } catch (error) {
     console.error("Error fetching profiles:", error);
   }
   
   // Calculate primary niche for each user
   const usersWithNiche: LeaderboardUser[] = [];
-  if (profiles) {
-    for (const profile of profiles) {
-      const primaryNiche = await getPrimaryNiche(profile.id);
-      
-      // Apply topic filter if specified
-      if (topicFilter && primaryNiche !== topicFilter) {
-        continue;
-      }
-      
-      usersWithNiche.push({
-        id: profile.id,
-        full_name: profile.full_name,
-        username: profile.username,
-        avatar_url: profile.avatar_url,
-        contributor_score: profile.contributor_score || 0,
-        primary_niche: primaryNiche,
-      });
+  for (const profile of profiles) {
+    const primaryNiche = await getPrimaryNiche(profile.id);
+    
+    // Apply topic filter if specified
+    if (topicFilter && primaryNiche !== topicFilter) {
+      continue;
     }
+    
+    usersWithNiche.push({
+      id: profile.id,
+      full_name: profile.full_name,
+      username: profile.username,
+      avatar_url: profile.avatar_url,
+      contributor_score: profile.contributor_score || 0,
+      primary_niche: primaryNiche,
+    });
   }
   
   return (

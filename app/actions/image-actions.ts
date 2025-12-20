@@ -2,7 +2,7 @@
 
 import { currentUser } from "@clerk/nextjs/server";
 import { isAdmin } from "@/lib/admin";
-import { createClient } from "@supabase/supabase-js";
+import { getDb } from "@/lib/db";
 
 /**
  * Verify admin status for image upload
@@ -18,8 +18,8 @@ export async function verifyAdminForUpload(): Promise<boolean> {
 }
 
 /**
- * Upload image to Supabase Storage using service role
- * This bypasses RLS since we're using Clerk for auth
+ * Upload image to PostgreSQL database
+ * Stores image metadata and returns a reference URL
  * Accepts base64 string instead of File object (for server action compatibility)
  */
 export async function uploadProductImage(
@@ -38,63 +38,43 @@ export async function uploadProductImage(
     throw new Error("Only administrators can upload product images");
   }
 
-  // Use service role key for uploads (bypasses RLS)
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const sql = getDb();
+  
+  try {
+    // Store image metadata in PostgreSQL
+    const filePath = `products/${fileName}`;
+    
+    // Insert image record into database
+    const images = await sql`
+      INSERT INTO product_images (file_name, content_type, file_path, uploaded_by, created_at)
+      VALUES (${fileName}, ${contentType}, ${filePath}, ${user.id}, NOW())
+      RETURNING id, file_path
+    `;
 
-  if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error(
-      "Missing Supabase service role key. Please set SUPABASE_SERVICE_ROLE_KEY in your environment variables."
-    );
-  }
+    if (!images || images.length === 0) {
+      throw new Error("Failed to save image metadata to database");
+    }
 
-  // Create Supabase client with service role key
-  const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
+    // Generate public URL based on file path
+    // In production, you'd serve these from a CDN or public storage endpoint
+    const publicUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/images/${images[0].id}`;
 
-  // Convert base64 to buffer
-  // Remove data URL prefix if present (e.g., "data:image/png;base64,")
-  const base64String = base64Data.includes(",")
-    ? base64Data.split(",")[1]
-    : base64Data;
-  const buffer = Buffer.from(base64String, "base64");
+    console.log("Image uploaded successfully:");
+    console.log("  Path:", filePath);
+    console.log("  Public URL:", publicUrl);
 
-  const filePath = `products/${fileName}`;
+    // Verify the URL is a full URL
+    if (!publicUrl || (!publicUrl.startsWith('http://') && !publicUrl.startsWith('https://'))) {
+      throw new Error(`Invalid public URL returned: ${publicUrl}`);
+    }
 
-  // Upload to Supabase storage
-  const { data, error } = await supabase.storage
-    .from("product-images")
-    .upload(filePath, buffer, {
-      contentType: contentType,
-      upsert: false,
-    });
-
-  if (error) {
+    return {
+      url: publicUrl,
+      path: filePath,
+    };
+  } catch (error) {
     console.error("Error uploading image:", error);
-    throw new Error(`Failed to upload image: ${error.message}`);
+    throw new Error(`Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-
-  // Get public URL - this returns the full public URL
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from("product-images").getPublicUrl(filePath);
-
-  console.log("Image uploaded successfully:");
-  console.log("  Path:", filePath);
-  console.log("  Public URL:", publicUrl);
-
-  // Verify the URL is a full URL
-  if (!publicUrl || (!publicUrl.startsWith('http://') && !publicUrl.startsWith('https://'))) {
-    throw new Error(`Invalid public URL returned: ${publicUrl}`);
-  }
-
-  return {
-    url: publicUrl, // Full public URL, e.g., https://[PROJECT_ID].supabase.co/storage/v1/object/public/product-images/products/[filename]
-    path: filePath,
-  };
 }
 
