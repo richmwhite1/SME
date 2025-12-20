@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -19,11 +19,17 @@ export default async function CommunityDiscussionPage({
     .eq("is_flagged", false)
     .single();
 
-  if (discussion?.slug) {
+  // Strict null check - discussion must exist and have a slug
+  if (!discussion) {
+    // Discussion not found or is flagged
+    return notFound();
+  }
+
+  if (discussion.slug) {
     // Redirect to the discussion page using the slug
     redirect(`/discussions/${discussion.slug}`);
   } else {
-    // If not found, try redirecting with the ID (the discussion page handles IDs as fallback)
+    // If slug is missing (edge case), redirect with ID as fallback
     redirect(`/discussions/${id}`);
   }
 }
