@@ -34,6 +34,7 @@ interface Comment {
   created_at: string;
   parent_id: string | null;
   guest_name?: string | null;
+  is_flagged: boolean;
   profiles: {
     id: string;
     full_name: string | null;
@@ -424,7 +425,7 @@ function CommentThread({
   const isSolution = solutionCommentId === comment.id;
   const [copied, setCopied] = useState(false);
   const [flagging, setFlagging] = useState(false);
-  const [isFlagged, setIsFlagged] = useState(comment.is_flagged || false);
+  const [isFlagged, setIsFlagged] = useState(comment.is_flagged ?? false);
   const router = useRouter();
   const { showToast } = useToast();
 
