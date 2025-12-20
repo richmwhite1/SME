@@ -9,7 +9,11 @@ import Button from "@/components/ui/Button";
 import { Check, Loader2, X, Image as ImageIcon } from "lucide-react";
 import Image from "next/image";
 
-export default function ProductOnboardForm() {
+interface ProductOnboardFormProps {
+  existingProducts?: any[];
+}
+
+export default function ProductOnboardForm({ existingProducts = [] }: ProductOnboardFormProps) {
   const router = useRouter();
   const { user } = useUser();
   const fileInputRef = useRef<HTMLInputElement>(null);

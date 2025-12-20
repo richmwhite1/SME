@@ -41,9 +41,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider>
-      <html lang="en" className={`${inter.variable} ${playfair.variable} ${geistMono.variable} ${inter.className}`}>
-        <body className="min-h-screen bg-forest-obsidian flex flex-col overflow-x-hidden">
+    <html lang="en" className={`${inter.variable} ${playfair.variable} ${geistMono.variable} ${inter.className}`}>
+      <body className="min-h-screen bg-forest-obsidian flex flex-col overflow-x-hidden">
+        <ClerkProvider>
           <ToastProvider>
             <SignalProvider>
               <ReputationListener />
@@ -55,9 +55,9 @@ export default function RootLayout({
               <Footer />
             </SignalProvider>
           </ToastProvider>
-        </body>
-      </html>
-    </ClerkProvider>
+        </ClerkProvider>
+      </body>
+    </html>
   );
 }
 
