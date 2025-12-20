@@ -1,4 +1,4 @@
-import { getDb } from "@/lib/db";
+import { createClient } from "@/lib/supabase/server";
 import type { Metadata } from "next";
 import ProtocolCard from "@/components/holistic/ProtocolCard";
 import LocalSearchBar from "@/components/search/LocalSearchBar";
@@ -37,7 +37,7 @@ export default async function ProductsPage({
 }: {
   searchParams: Promise<{ search?: string; sort?: string }>;
 }) {
-  const sql = getDb();
+  const supabase = createClient();
   const params = await searchParams;
   const searchQuery = params.search?.toLowerCase() || "";
   const sortBy = params.sort || "certified";
@@ -47,20 +47,19 @@ export default async function ProductsPage({
   let error: any = null;
 
   try {
-    const results = await sql<Protocol[]>`
-      SELECT 
-        id, title, problem_solved, slug, images, is_sme_certified, 
-        purity_tested, source_transparency, ai_summary, 
-        third_party_lab_verified, potency_verified, excipient_audit, 
-        operational_legitimacy
-      FROM protocols
-      WHERE (is_flagged IS FALSE OR is_flagged IS NULL)
-      ORDER BY is_sme_certified DESC NULLS LAST, title ASC
-    `;
+    const { data, error: fetchError } = await supabase
+      .from("protocols")
+      .select("id, title, problem_solved, slug, images, is_sme_certified, purity_tested, source_transparency, ai_summary, third_party_lab_verified, potency_verified, excipient_audit, operational_legitimacy")
+      .or("is_flagged.eq.false,is_flagged.is.null")
+      .order("is_sme_certified", { ascending: false, nullsFirst: false })
+      .order("title", { ascending: true });
     
-    protocols = results;
+    protocols = data;
+    error = fetchError;
 
-    if (protocols) {
+    if (error) {
+      console.error("Error fetching products:", error);
+    } else if (protocols) {
       console.log(`Successfully fetched ${protocols.length} products`);
       // Log first product for debugging
       if (protocols.length > 0) {
@@ -76,7 +75,6 @@ export default async function ProductsPage({
   } catch (err) {
     console.error("Unexpected error fetching products:", err);
     error = err;
-    protocols = null;
   }
 
   // Images should already be full URLs from upload, just use the first one

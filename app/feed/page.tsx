@@ -18,6 +18,27 @@ import { getFollowedTopics } from "@/app/actions/topic-actions";
 
 export const dynamic = "force-dynamic";
 
+interface UserLastComment {
+  created_at: string;
+}
+
+interface NewReply {
+  id: string;
+  created_at: string;
+}
+
+interface DiscussionDetail {
+  id: string;
+  title: string;
+  slug: string;
+  tags: string[] | null;
+  profiles?: {
+    id: string;
+    full_name: string;
+    username: string;
+  };
+}
+
 interface ActiveThread {
   discussion_id: string;
   discussion_slug: string;
@@ -27,6 +48,16 @@ interface ActiveThread {
   author_name: string | null;
   author_username: string | null;
   tags: string[] | null;
+}
+
+interface Evidence {
+  origin_type: string;
+  origin_id: string;
+  title: string;
+  reference_url: string | null;
+  created_at: string;
+  author_name: string | null;
+  author_username: string | null;
 }
 
 interface FollowedSignalItem {
@@ -41,6 +72,21 @@ interface FollowedSignalItem {
   slug: string | null;
   tags: string[] | null;
   is_sme_certified?: boolean;
+}
+
+interface AllDiscussion {
+  id: string;
+  title: string;
+  content: string;
+  slug: string;
+  tags: string[] | null;
+  created_at: string;
+  profiles?: {
+    id: string;
+    full_name: string;
+    username: string;
+    badge_type: string | null;
+  };
 }
 
 interface TrustTrendItem {
@@ -100,16 +146,16 @@ export default async function FeedPage() {
         .eq("author_id", user.id)
         .order("created_at", { ascending: false })
         .limit(1)
-        .single();
+        .single() as { data: UserLastComment | null };
 
-      if (userLastComment) {
+      if (userLastComment && userLastComment.created_at) {
         // Get replies after user's last comment
         const { data: newReplies } = await supabase
           .from("discussion_comments")
           .select("id, created_at")
           .eq("discussion_id", discussionId)
           .gt("created_at", userLastComment.created_at)
-          .neq("author_id", user.id);
+          .neq("author_id", user.id) as { data: NewReply[] | null };
 
         if (newReplies && newReplies.length > 0) {
           // Get discussion details
@@ -117,7 +163,7 @@ export default async function FeedPage() {
             .from("discussions")
             .select("id, title, slug, tags, profiles!discussions_author_id_fkey(id, full_name, username)")
             .eq("id", discussionId)
-            .single();
+            .single() as { data: DiscussionDetail | null };
 
           if (discussion) {
             activeThreads.push({
@@ -241,7 +287,7 @@ export default async function FeedPage() {
         .from("resource_library")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(30);
+        .limit(30) as { data: Evidence[] | null };
 
       if (evidence) {
         // Filter evidence by matching topics (need to check origin items)
@@ -253,9 +299,9 @@ export default async function FeedPage() {
               .from("discussions")
               .select("tags")
               .eq("id", ev.origin_id)
-              .single();
+              .single() as { data: { tags: string[] | null } | null };
             
-            if (discussion?.tags) {
+            if (discussion && discussion.tags) {
               hasMatchingTopic = discussion.tags.some((tag: string) =>
                 followedMasterTopics.includes(tag)
               );
@@ -265,9 +311,9 @@ export default async function FeedPage() {
               .from("protocols")
               .select("tags")
               .eq("id", ev.origin_id)
-              .single();
+              .single() as { data: { tags: string[] | null } | null };
             
-            if (product?.tags) {
+            if (product && product.tags) {
               hasMatchingTopic = product.tags.some((tag: string) =>
                 followedMasterTopics.includes(tag)
               );
@@ -375,7 +421,7 @@ export default async function FeedPage() {
       .select("id, title, content, slug, tags, created_at, profiles!discussions_author_id_fkey(id, full_name, username, badge_type)")
       .eq("is_flagged", false)
       .order("created_at", { ascending: false })
-      .limit(100);
+      .limit(100) as { data: AllDiscussion[] | null };
 
     if (allDiscussions) {
       // Find discussions from Trusted Voices in unfollowed topics
