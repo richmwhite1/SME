@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
-import { createClient } from "@/lib/supabase/client";
 
 export default function FeedNotificationDot() {
   const { user, isLoaded } = useUser();

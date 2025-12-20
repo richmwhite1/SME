@@ -1,4 +1,3 @@
-import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import { currentUser } from '@clerk/nextjs/server';
 import { SignedIn, SignedOut } from '@clerk/nextjs';
@@ -6,7 +5,6 @@ import DiscussionComments from '@/components/discussions/DiscussionComments';
 import AvatarLink from '@/components/profile/AvatarLink';
 import TopicBadge from '@/components/topics/TopicBadge';
 import { formatDistanceToNow } from 'date-fns';
-
 interface Discussion {
   id: string;
   title: string;
@@ -28,7 +26,6 @@ interface Discussion {
     badge_type: string | null;
   };
 }
-
 interface DiscussionComment {
   id: string;
   content: string;
@@ -44,16 +41,13 @@ interface DiscussionComment {
     contributor_score: number;
   } | null;
 }
-
 interface CommentReference {
   resource_id: string;
   resource_title: string;
   resource_url: string;
 }
-
 export default async function DiscussionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const supabase = createClient();
   const user = await currentUser();
   
   // Fetch discussion with full profile data
@@ -72,11 +66,9 @@ export default async function DiscussionPage({ params }: { params: Promise<{ id:
     `)
     .eq('id', id)
     .single() as { data: Discussion | null, error: any };
-
   if (error || !discussion) {
     return notFound();
   }
-
   // Fetch initial comments with references
   const { data: commentsData } = await supabase
     .from('discussion_comments')
@@ -98,7 +90,6 @@ export default async function DiscussionPage({ params }: { params: Promise<{ id:
     .eq('discussion_id', id)
     .or('is_flagged.eq.false,is_flagged.is.null')
     .order('created_at', { ascending: true }) as { data: DiscussionComment[] | null };
-
   // Fetch references for each comment with error handling
   const commentsWithReferences = await Promise.all(
     (commentsData || []).map(async (comment) => {
@@ -107,7 +98,6 @@ export default async function DiscussionPage({ params }: { params: Promise<{ id:
           .from('comment_references')
           .select('resource_id, resource_title, resource_url')
           .eq('comment_id', comment.id) as { data: CommentReference[] | null };
-
         return {
           ...comment,
           references: (refsData || []).map((ref) => ({
@@ -126,12 +116,10 @@ export default async function DiscussionPage({ params }: { params: Promise<{ id:
       }
     })
   );
-
   const isAuthor = user?.id === discussion.author_id;
   const isBounty = discussion.is_bounty || false;
   const solutionCommentId = discussion.solution_comment_id || null;
   const bountyStatus = discussion.bounty_status || null;
-
   return (
     <main className="min-h-screen bg-forest-obsidian text-bone-white">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
@@ -172,7 +160,6 @@ export default async function DiscussionPage({ params }: { params: Promise<{ id:
               )}
             </div>
           </div>
-
           {/* Tags */}
           {discussion.tags && discussion.tags.length > 0 && (
             <div className="mb-4 flex flex-wrap gap-2">
@@ -181,13 +168,11 @@ export default async function DiscussionPage({ params }: { params: Promise<{ id:
               ))}
             </div>
           )}
-
           {/* Content */}
           <div className="prose prose-invert max-w-none text-bone-white/90 leading-relaxed font-mono text-sm">
             {discussion.content}
           </div>
         </div>
-
         {/* Interaction Terminal - Community Audit Section */}
         <div className="border-t-2 border-sme-gold bg-muted-moss">
           <div className="p-6 sm:p-8">

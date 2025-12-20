@@ -1,34 +1,32 @@
 import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
-import { createClient } from "@/lib/supabase/server";
 import { isAdmin } from "@/lib/admin";
+import { getDb } from "@/lib/db";
 import ProductOnboardForm from "@/components/admin/ProductOnboardForm";
-
 export const dynamic = "force-dynamic";
-
 export default async function AdminOnboardPage() {
   const user = await currentUser();
-
   if (!user) {
     redirect("/feed");
   }
-
   // Check if user is admin
   const adminStatus = await isAdmin();
-
   if (!adminStatus) {
     redirect("/feed");
   }
-
-  const supabase = createClient();
-
   // Fetch existing products for editing (optional - can be enhanced later)
-  const { data: products } = await supabase
-    .from("protocols")
-    .select("id, title, slug")
-    .order("created_at", { ascending: false })
-    .limit(50);
-
+  const sql = getDb();
+  let products = [];
+  try {
+    products = await sql`
+      SELECT id, title, slug
+      FROM protocols
+      ORDER BY created_at DESC
+      LIMIT 50
+    `;
+  } catch (error) {
+    console.error("Error fetching products:", error);
+  }
   return (
     <main className="min-h-screen bg-forest-obsidian px-6 py-12">
       <div className="mx-auto max-w-4xl">
@@ -38,13 +36,8 @@ export default async function AdminOnboardPage() {
             Add new products or update existing ones with certification details
           </p>
         </div>
-
-        <ProductOnboardForm existingProducts={products || []} />
+        <ProductOnboardForm existingProducts={products} />
       </div>
     </main>
   );
 }
-
-
-
-

@@ -1,6 +1,5 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import Image from "next/image";
 import { MessageSquare, BookOpen, TrendingUp, Award, ArrowRight } from "lucide-react";
@@ -15,18 +14,14 @@ import FeedClient from "@/components/feed/FeedClient";
 import FeedRefresher from "@/components/feed/FeedRefresher";
 import FeedItemCard from "@/components/feed/FeedItemCard";
 import { getFollowedTopics } from "@/app/actions/topic-actions";
-
 export const dynamic = "force-dynamic";
-
 interface UserLastComment {
   created_at: string;
 }
-
 interface NewReply {
   id: string;
   created_at: string;
 }
-
 interface DiscussionDetail {
   id: string;
   title: string;
@@ -38,7 +33,6 @@ interface DiscussionDetail {
     username: string;
   };
 }
-
 interface ActiveThread {
   discussion_id: string;
   discussion_slug: string;
@@ -49,7 +43,6 @@ interface ActiveThread {
   author_username: string | null;
   tags: string[] | null;
 }
-
 interface Evidence {
   origin_type: string;
   origin_id: string;
@@ -59,7 +52,6 @@ interface Evidence {
   author_name: string | null;
   author_username: string | null;
 }
-
 interface FollowedSignalItem {
   id: string;
   type: "product" | "discussion" | "evidence";
@@ -73,7 +65,6 @@ interface FollowedSignalItem {
   tags: string[] | null;
   is_sme_certified?: boolean;
 }
-
 interface AllDiscussion {
   id: string;
   title: string;
@@ -88,7 +79,6 @@ interface AllDiscussion {
     badge_type: string | null;
   };
 }
-
 interface TrustTrendItem {
   id: string;
   type: "product" | "discussion";
@@ -103,26 +93,19 @@ interface TrustTrendItem {
   topic: string;
   signal_score: number;
 }
-
 export default async function FeedPage() {
   const user = await currentUser();
-
   if (!user) {
     redirect("/");
   }
-
-  const supabase = createClient();
   const followedTopics = await getFollowedTopics();
-
   // Get tracked SMEs (users being followed)
   const { data: trackedSMEs } = await supabase
     .from("follows")
     .select("following_id")
     .eq("follower_id", user.id)
     .eq("target_type", "user");
-
   const trackedSMEIds = (trackedSMEs || []).map((f: any) => f.following_id);
-
   // 1. Active Threads: Discussions user commented on with new replies
   const activeThreads: ActiveThread[] = [];
   
@@ -132,7 +115,6 @@ export default async function FeedPage() {
     .select("discussion_id")
     .eq("author_id", user.id)
     .not("discussion_id", "is", null);
-
   if (userComments && userComments.length > 0) {
     const discussionIds = [...new Set(userComments.map((c: any) => c.discussion_id))];
     
@@ -147,7 +129,6 @@ export default async function FeedPage() {
         .order("created_at", { ascending: false })
         .limit(1)
         .single() as { data: UserLastComment | null };
-
       if (userLastComment && userLastComment.created_at) {
         // Get replies after user's last comment
         const { data: newReplies } = await supabase
@@ -156,7 +137,6 @@ export default async function FeedPage() {
           .eq("discussion_id", discussionId)
           .gt("created_at", userLastComment.created_at)
           .neq("author_id", user.id) as { data: NewReply[] | null };
-
         if (newReplies && newReplies.length > 0) {
           // Get discussion details
           const { data: discussion } = await supabase
@@ -164,7 +144,6 @@ export default async function FeedPage() {
             .select("id, title, slug, tags, profiles!discussions_author_id_fkey(id, full_name, username)")
             .eq("id", discussionId)
             .single() as { data: DiscussionDetail | null };
-
           if (discussion) {
             activeThreads.push({
               discussion_id: discussion.id,
@@ -181,15 +160,12 @@ export default async function FeedPage() {
       }
     }
   }
-
   // Sort by last reply time
   activeThreads.sort(
     (a, b) => new Date(b.last_reply_at).getTime() - new Date(a.last_reply_at).getTime()
   );
-
   // 2. Followed Signal: New products/research in 12 Master Topics user follows
   const followedSignalItems: FollowedSignalItem[] = [];
-
   if (followedTopics.length > 0) {
     // Get master topics (12 core topics)
     const { data: masterTopics } = await supabase
@@ -197,12 +173,10 @@ export default async function FeedPage() {
       .select("name")
       .order("display_order", { ascending: true })
       .limit(12);
-
     const masterTopicNames = (masterTopics || []).map((t: any) => t.name);
     const followedMasterTopics = followedTopics.filter((t) =>
       masterTopicNames.includes(t)
     );
-
     if (followedMasterTopics.length > 0) {
       // Fetch discussions with matching tags
       const { data: discussions } = await supabase
@@ -219,13 +193,11 @@ export default async function FeedPage() {
         .eq("is_flagged", false)
         .order("created_at", { ascending: false })
         .limit(50);
-
       if (discussions) {
         const matchingDiscussions = discussions.filter((d: any) => {
           if (!d.tags || d.tags.length === 0) return false;
           return d.tags.some((tag: string) => followedMasterTopics.includes(tag));
         });
-
         matchingDiscussions.forEach((d: any) => {
           followedSignalItems.push({
             id: d.id,
@@ -241,7 +213,6 @@ export default async function FeedPage() {
           });
         });
       }
-
       // Fetch products with matching tags
       const { data: products } = await supabase
         .from("protocols")
@@ -258,13 +229,11 @@ export default async function FeedPage() {
         .eq("is_flagged", false)
         .order("created_at", { ascending: false })
         .limit(50);
-
       if (products) {
         const matchingProducts = products.filter((p: any) => {
           if (!p.tags || p.tags.length === 0) return false;
           return p.tags.some((tag: string) => followedMasterTopics.includes(tag));
         });
-
         matchingProducts.forEach((p: any) => {
           followedSignalItems.push({
             id: p.id,
@@ -281,14 +250,12 @@ export default async function FeedPage() {
           });
         });
       }
-
       // Fetch evidence from resource_library
       const { data: evidence } = await supabase
         .from("resource_library")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(30) as { data: Evidence[] | null };
-
       if (evidence) {
         // Filter evidence by matching topics (need to check origin items)
         for (const ev of evidence) {
@@ -319,7 +286,6 @@ export default async function FeedPage() {
               );
             }
           }
-
           if (hasMatchingTopic) {
             followedSignalItems.push({
               id: ev.origin_id,
@@ -337,15 +303,12 @@ export default async function FeedPage() {
       }
     }
   }
-
   // Sort by creation date
   followedSignalItems.sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
-
   // 2.5. Tracked SME Intelligence: New discussions and SME Citations contributions from tracked SMEs
   const trackedSMEItems: FollowedSignalItem[] = [];
-
   if (trackedSMEIds.length > 0) {
     // Fetch new discussions from tracked SMEs
     const { data: smeDiscussions } = await supabase
@@ -363,7 +326,6 @@ export default async function FeedPage() {
       .eq("is_flagged", false)
       .order("created_at", { ascending: false })
       .limit(20);
-
     if (smeDiscussions) {
       smeDiscussions.forEach((d: any) => {
         trackedSMEItems.push({
@@ -379,7 +341,6 @@ export default async function FeedPage() {
         });
       });
     }
-
     // Fetch new SME Citations contributions from tracked SMEs
     const { data: smeEvidence } = await supabase
       .from("resource_library")
@@ -387,7 +348,6 @@ export default async function FeedPage() {
       .in("author_id", trackedSMEIds)
       .order("created_at", { ascending: false })
       .limit(20);
-
     if (smeEvidence) {
       smeEvidence.forEach((ev: any) => {
         trackedSMEItems.push({
@@ -405,15 +365,12 @@ export default async function FeedPage() {
       });
     }
   }
-
   // Sort by creation date
   trackedSMEItems.sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
-
   // 3. Trust Trends: One 'High Signal' post from unfollowed topic
   let trustTrendItem: TrustTrendItem | null = null;
-
   if (followedTopics.length > 0) {
     // Get all topics from discussions and products
     const { data: allDiscussions } = await supabase
@@ -422,7 +379,6 @@ export default async function FeedPage() {
       .eq("is_flagged", false)
       .order("created_at", { ascending: false })
       .limit(100) as { data: AllDiscussion[] | null };
-
     if (allDiscussions) {
       // Find discussions from Trusted Voices in unfollowed topics
       const unfollowedDiscussions = allDiscussions.filter((d: any) => {
@@ -432,14 +388,12 @@ export default async function FeedPage() {
         // Check if all tags are unfollowed
         return d.tags.every((tag: string) => !followedTopics.includes(tag));
       });
-
       if (unfollowedDiscussions.length > 0) {
         // Pick the most recent one
         const selected = unfollowedDiscussions[0];
         const firstUnfollowedTopic = selected.tags.find(
           (tag: string) => !followedTopics.includes(tag)
         );
-
         trustTrendItem = {
           id: selected.id,
           type: "discussion",
@@ -457,7 +411,6 @@ export default async function FeedPage() {
       }
     }
   }
-
   return (
     <main className="min-h-screen bg-forest-obsidian px-6 py-12">
       <FeedVisitTracker />
@@ -470,7 +423,6 @@ export default async function FeedPage() {
                 Personalized research intelligence
               </p>
             </div>
-
             {/* Feed Client handles Calibration/Feed transition */}
             <FeedClient initialFollowedTopics={followedTopics}>
               {/* Feed Refresher - Shows when new signals are detected */}
@@ -531,7 +483,6 @@ export default async function FeedPage() {
                 </div>
               </section>
             )}
-
             {/* Tracked SME Intelligence */}
             {trackedSMEItems.length > 0 && (
               <section className="mb-8 border border-sme-gold/30 bg-muted-moss p-6">
@@ -549,7 +500,6 @@ export default async function FeedPage() {
                 </div>
               </section>
             )}
-
             {/* Followed Signal */}
             {followedSignalItems.length > 0 && (
               <section className="mb-8 border border-translucent-emerald bg-muted-moss p-6">
@@ -567,7 +517,6 @@ export default async function FeedPage() {
                 </div>
               </section>
             )}
-
             {/* Trust Trends */}
             {trustTrendItem && (
               <section className="mb-8 border border-sme-gold/30 bg-muted-moss p-6">
@@ -618,7 +567,6 @@ export default async function FeedPage() {
                 </div>
               </section>
             )}
-
             {/* Empty States */}
             {activeThreads.length === 0 && trackedSMEItems.length === 0 && followedSignalItems.length === 0 && !trustTrendItem && (
               <div className="border border-translucent-emerald bg-muted-moss p-12 text-center">
@@ -633,7 +581,6 @@ export default async function FeedPage() {
                 </Link>
               </div>
             )}
-
             {/* Tagline - Anchored below feed content */}
             <div className="mt-12 mb-8 text-center border-t border-translucent-emerald pt-8">
               <p className="text-lg text-bone-white/80 font-mono">
@@ -642,7 +589,6 @@ export default async function FeedPage() {
             </div>
             </FeedClient>
           </div>
-
           <aside className="lg:col-span-1 space-y-6">
             <LatestIntelligence />
             <MyTopics />
@@ -653,4 +599,3 @@ export default async function FeedPage() {
     </main>
   );
 }
-

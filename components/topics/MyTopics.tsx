@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { Hash, X } from "lucide-react";
 import { toggleTopicFollow } from "@/app/actions/topic-actions";
-import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
 export default function MyTopics() {

@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import AvatarLink from "@/components/profile/AvatarLink";
 import TrustWeight from "@/components/ui/TrustWeight";

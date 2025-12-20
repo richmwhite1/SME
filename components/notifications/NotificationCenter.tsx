@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { Bell, X, MessageSquare, ThumbsUp, BookOpen, UserPlus, ChevronRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";

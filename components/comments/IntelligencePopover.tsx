@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { BookOpen, ExternalLink } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 
 interface ResourceData {
   title: string;
@@ -59,97 +58,26 @@ export default function IntelligencePopover({
     const fetchResourceData = async () => {
       setLoading(true);
       try {
-        const supabase = createClient();
-        
-        // Try to get from resource_library view first
-        const { data: rawResourceData, error } = await supabase
-          .from("resource_library")
-          .select("title, reference_url, origin_type, origin_id")
-          .eq("origin_id", resourceId)
-          .single();
+        // Call server action to fetch resource data
+        const response = await fetch("/api/resources/popover", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ resourceId }),
+        });
 
-        // Cast the data explicitly
-        const resourceData = rawResourceData as unknown as ResourceLibraryData;
+        if (!response.ok) {
+          throw new Error("Failed to fetch resource data");
+        }
 
-        if (error || !resourceData) {
-          // If not in resource_library, try to get from protocols or discussions
-          const { data: protocolData } = await supabase
-            .from("protocols")
-            .select("title, reference_url, ai_summary")
-            .eq("id", resourceId)
-            .single();
+        const data = await response.json();
 
-          if (protocolData) {
-            // Cast the data explicitly so TypeScript stops calling it 'never'
-            const typedProtocolData = protocolData as unknown as IntelligenceData;
-            
-            if (typedProtocolData && typedProtocolData.title) {
-              setResourceData({
-                title: typedProtocolData.title,
-                ai_summary: typedProtocolData.ai_summary,
-                reference_url: typedProtocolData.reference_url,
-                integrity_level: "Product Reference",
-                origin_type: "Product",
-              });
-            }
-            setLoading(false);
-            return;
-          }
-
-          const { data: rawDiscussionData } = await supabase
-            .from("discussions")
-            .select("title, reference_url")
-            .eq("id", resourceId)
-            .single();
-
-          // Cast the data explicitly
-          const discussionData = rawDiscussionData as unknown as DiscussionData;
-
-          if (discussionData && discussionData.title) {
-            setResourceData({
-              title: discussionData.title,
-              ai_summary: null,
-              reference_url: discussionData.reference_url,
-              integrity_level: "Discussion Reference",
-              origin_type: "Discussion",
-            });
-            setLoading(false);
-            return;
-          }
-        } else {
-          // Get AI summary and integrity level from source
-          let aiSummary = null;
-          let integrityLevel = "Reference";
-
-          if (resourceData.origin_type === "Product") {
-            const result = await supabase
-              .from("protocols")
-              .select("ai_summary, third_party_lab_verified, purity_verified")
-              .eq("id", resourceId)
-              .single();
-
-            const protocolData = result.data as unknown as ProtocolData | null;
-
-            if (protocolData) {
-              aiSummary = protocolData.ai_summary;
-              if (protocolData.third_party_lab_verified) {
-                integrityLevel = "Lab Report";
-              } else if (protocolData.purity_verified) {
-                integrityLevel = "Purity Verified";
-              } else {
-                integrityLevel = "Product Reference";
-              }
-            }
-          } else if (resourceData.origin_type === "Discussion") {
-            integrityLevel = "Discussion Reference";
-          }
-
+        if (data) {
           setResourceData({
-            title: resourceData.title,
-            ai_summary: aiSummary,
-            reference_url: resourceData.reference_url,
-            integrity_level: integrityLevel,
-            origin_type: resourceData.origin_type,
+            title: data.title,
+            ai_summary: data.ai_summary || null,
+            reference_url: data.reference_url || null,
+            integrity_level: data.integrity_level || "Reference",
+            origin_type: data.origin_type || "Unknown",
           });
         }
       } catch (err) {

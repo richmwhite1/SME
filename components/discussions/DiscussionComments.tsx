@@ -14,7 +14,6 @@ import AcceptSolutionButton from "@/components/discussions/AcceptSolutionButton"
 import Button from "@/components/ui/Button";
 import { Send, Loader2, Reply, BookOpen, ExternalLink, Award, CheckCircle2, Link2, Check, Image, UserCircle, Flag } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { createClient } from "@/lib/supabase/client";
 import AvatarLink from "@/components/profile/AvatarLink";
 import { useToast } from "@/components/ui/ToastContainer";
 import TrustWeight from "@/components/ui/TrustWeight";

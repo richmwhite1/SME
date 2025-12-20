@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { X, Check, XCircle, Flag } from "lucide-react";
 import { useToast } from "@/components/ui/ToastContainer";
-import { createClient } from "@/lib/supabase/client";
 
 interface EvidenceSubmission {
   id: string;

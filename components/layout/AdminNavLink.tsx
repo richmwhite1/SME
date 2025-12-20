@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
-import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { LayoutDashboard } from "lucide-react";
 

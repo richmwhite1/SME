@@ -2,7 +2,6 @@
 
 import { useUser } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
 export default function UserProfileLink() {
@@ -13,15 +12,21 @@ export default function UserProfileLink() {
   useEffect(() => {
     if (isLoaded && user) {
       const fetchUsername = async () => {
-        const supabase = createClient();
-        const { data } = await supabase
-          .from("profiles")
-          .select("username")
-          .eq("id", user.id)
-          .single();
-        
-        if (data?.username) {
-          setUsername(data.username);
+        try {
+          const response = await fetch("/api/profile/username", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: user.id }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data?.username) {
+              setUsername(data.username);
+            }
+          }
+        } catch (err) {
+          console.error("Error fetching username:", err);
         }
       };
       fetchUsername();

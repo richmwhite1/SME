@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Search, X, BookOpen, ExternalLink } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 
 interface ResourceReference {
   resource_id: string;

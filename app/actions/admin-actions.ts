@@ -1,10 +1,10 @@
 "use server";
 
 import { currentUser } from "@clerk/nextjs/server";
-import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { isAdmin } from "@/lib/admin";
 import { logAdminAction } from "@/lib/trust-safety";
+import { getDb } from "@/lib/db";
 
 /**
  * Toggle SME certification status for a product
@@ -29,55 +29,38 @@ export async function toggleProductCertification(
     throw new Error("Only administrators can manage product certification");
   }
 
-  const supabase = createClient();
+  const sql = getDb();
 
-  const updateData: any = {
+  const updateFields: { [key: string]: any } = {
     is_sme_certified: isCertified,
   };
 
   // Update certification fields if provided
   if (certificationData) {
-    if (certificationData.certification_notes !== undefined) {
-      updateData.certification_notes = certificationData.certification_notes;
-    }
-    if (certificationData.third_party_lab_verified !== undefined) {
-      updateData.third_party_lab_verified = certificationData.third_party_lab_verified;
-    }
-    if (certificationData.purity_tested !== undefined) {
-      updateData.purity_tested = certificationData.purity_tested;
-    }
-    if (certificationData.source_transparency !== undefined) {
-      updateData.source_transparency = certificationData.source_transparency;
-    }
-    if (certificationData.potency_verified !== undefined) {
-      updateData.potency_verified = certificationData.potency_verified;
-    }
-    if (certificationData.excipient_audit !== undefined) {
-      updateData.excipient_audit = certificationData.excipient_audit;
-    }
-    if (certificationData.operational_legitimacy !== undefined) {
-      updateData.operational_legitimacy = certificationData.operational_legitimacy;
-    }
-    if (certificationData.coa_url !== undefined) {
-      updateData.coa_url = certificationData.coa_url;
-    }
+    Object.entries(certificationData).forEach(([key, value]) => {
+      if (value !== undefined) {
+        updateFields[key] = value;
+      }
+    });
   }
 
-  const { error } = await (supabase as any)
-    .from("protocols")
-    .update(updateData)
-    .eq("id", protocolId);
+  try {
+    // Build dynamic UPDATE query
+    const setClauses = Object.entries(updateFields)
+      .map(([key, value]) => `${key} = ${sql(value)}`)
+      .join(', ');
 
-  if (error) {
+    await sql`UPDATE protocols SET ${sql(setClauses)} WHERE id = ${protocolId}`;
+
+    revalidatePath("/admin");
+    revalidatePath("/products");
+    revalidatePath(`/products/[slug]`, "page");
+
+    return { success: true };
+  } catch (error) {
     console.error("Error updating product certification:", error);
-    throw new Error(`Failed to update certification: ${error.message}`);
+    throw new Error(`Failed to update certification: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-
-  revalidatePath("/admin");
-  revalidatePath("/products");
-  revalidatePath(`/products/[slug]`, "page");
-
-  return { success: true };
 }
 
 /**
@@ -90,128 +73,78 @@ export async function getFlaggedContent() {
     throw new Error("Only administrators can view flagged content");
   }
 
-  const supabase = createClient();
+  const sql = getDb();
 
-  // Get flagged discussions
-  const { data: flaggedDiscussions, error: discussionsError } = await supabase
-    .from("discussions")
-    .select(
-      `
-      id,
-      title,
-      slug,
-      created_at,
-      flag_count,
-      is_flagged,
-      author_id,
-      profiles!discussions_author_id_fkey(
-        full_name,
-        username
-      )
-    `
-    )
-    .or("is_flagged.eq.true,flag_count.gt.0")
-    .order("flag_count", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(20);
+  try {
+    // Get flagged discussions
+    const flaggedDiscussions = await sql`
+      SELECT 
+        d.id, d.title, d.slug, d.created_at, d.flag_count, d.is_flagged, d.author_id,
+        json_build_object('full_name', p.full_name, 'username', p.username) as profiles
+      FROM discussions d
+      LEFT JOIN profiles p ON d.author_id = p.id
+      WHERE d.is_flagged = true OR d.flag_count > 0
+      ORDER BY d.flag_count DESC, d.created_at DESC
+      LIMIT 20
+    `;
 
-  // Get flagged reviews
-  const { data: flaggedReviews, error: reviewsError } = await supabase
-    .from("reviews")
-    .select(
-      `
-      id,
-      content,
-      created_at,
-      flag_count,
-      is_flagged,
-      user_id,
-      protocol_id,
-      profiles!reviews_user_id_fkey(
-        full_name,
-        username
-      ),
-      protocols!reviews_protocol_id_fkey(
-        title,
-        slug
-      )
-    `
-    )
-    .or("is_flagged.eq.true,flag_count.gt.0")
-    .order("flag_count", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(20);
+    // Get flagged reviews
+    const flaggedReviews = await sql`
+      SELECT 
+        r.id, r.content, r.created_at, r.flag_count, r.is_flagged, r.user_id, r.protocol_id,
+        json_build_object('full_name', p.full_name, 'username', p.username) as profiles,
+        json_build_object('title', pr.title, 'slug', pr.slug) as protocols
+      FROM reviews r
+      LEFT JOIN profiles p ON r.user_id = p.id
+      LEFT JOIN protocols pr ON r.protocol_id = pr.id
+      WHERE r.is_flagged = true OR r.flag_count > 0
+      ORDER BY r.flag_count DESC, r.created_at DESC
+      LIMIT 20
+    `;
 
-  // Get flagged discussion comments
-  const { data: flaggedComments, error: commentsError } = await supabase
-    .from("discussion_comments")
-    .select(
-      `
-      id,
-      content,
-      created_at,
-      flag_count,
-      is_flagged,
-      author_id,
-      discussion_id,
-      profiles!discussion_comments_author_id_fkey(
-        full_name,
-        username
-      ),
-      discussions!discussion_comments_discussion_id_fkey(
-        title,
-        slug
-      )
-    `
-    )
-    .or("is_flagged.eq.true,flag_count.gt.0")
-    .order("flag_count", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(20);
+    // Get flagged discussion comments
+    const flaggedComments = await sql`
+      SELECT 
+        dc.id, dc.content, dc.created_at, dc.flag_count, dc.is_flagged, dc.author_id, dc.discussion_id,
+        json_build_object('full_name', p.full_name, 'username', p.username) as profiles,
+        json_build_object('title', d.title, 'slug', d.slug) as discussions
+      FROM discussion_comments dc
+      LEFT JOIN profiles p ON dc.author_id = p.id
+      LEFT JOIN discussions d ON dc.discussion_id = d.id
+      WHERE dc.is_flagged = true OR dc.flag_count > 0
+      ORDER BY dc.flag_count DESC, dc.created_at DESC
+      LIMIT 20
+    `;
 
-  // Get flagged product comments
-  const { data: flaggedProductComments, error: productCommentsError } = await supabase
-    .from("product_comments")
-    .select(
-      `
-      id,
-      content,
-      created_at,
-      flag_count,
-      is_flagged,
-      author_id,
-      protocol_id,
-      profiles!product_comments_author_id_fkey(
-        full_name,
-        username
-      ),
-      protocols!product_comments_protocol_id_fkey(
-        title,
-        slug
-      )
-    `
-    )
-    .or("is_flagged.eq.true,flag_count.gt.0")
-    .order("flag_count", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(20);
+    // Get flagged product comments
+    const flaggedProductComments = await sql`
+      SELECT 
+        pc.id, pc.content, pc.created_at, pc.flag_count, pc.is_flagged, pc.author_id, pc.protocol_id,
+        json_build_object('full_name', p.full_name, 'username', p.username) as profiles,
+        json_build_object('title', pr.title, 'slug', pr.slug) as protocols
+      FROM product_comments pc
+      LEFT JOIN profiles p ON pc.author_id = p.id
+      LEFT JOIN protocols pr ON pc.protocol_id = pr.id
+      WHERE pc.is_flagged = true OR pc.flag_count > 0
+      ORDER BY pc.flag_count DESC, pc.created_at DESC
+      LIMIT 20
+    `;
 
-  return {
-    discussions: flaggedDiscussions || [],
-    reviews: flaggedReviews || [],
-    discussionComments: flaggedComments || [],
-    productComments: flaggedProductComments || [],
-    errors: {
-      discussions: discussionsError,
-      reviews: reviewsError,
-      comments: commentsError,
-      productComments: productCommentsError,
-    },
-  };
+    return {
+      discussions: flaggedDiscussions || [],
+      reviews: flaggedReviews || [],
+      discussionComments: flaggedComments || [],
+      productComments: flaggedProductComments || [],
+      errors: {},
+    };
+  } catch (error) {
+    console.error("Error fetching flagged content:", error);
+    throw error;
+  }
 }
 
 /**
- * Restore a flagged discussion comment
+ * Restore a flagged comment
  * Admin only - resets flags and makes comment visible again
  */
 export async function restoreComment(commentId: string, type: "discussion" | "product") {
@@ -220,23 +153,21 @@ export async function restoreComment(commentId: string, type: "discussion" | "pr
     throw new Error("Only administrators can restore comments");
   }
 
-  const supabase = createClient();
+  const sql = getDb();
   const tableName = type === "discussion" ? "discussion_comments" : "product_comments";
 
-  const { error } = await (supabase as any)
-    .from(tableName)
-    .update({
-      flag_count: 0,
-      is_flagged: false,
-    })
-    .eq("id", commentId);
+  try {
+    await sql`
+      UPDATE ${sql(tableName)}
+      SET flag_count = 0, is_flagged = false
+      WHERE id = ${commentId}
+    `;
 
-  if (error) {
+    return { success: true };
+  } catch (error) {
     console.error("Error restoring comment:", error);
-    throw new Error(`Failed to restore comment: ${error.message}`);
+    throw new Error(`Failed to restore comment: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-
-  return { success: true };
 }
 
 /**
@@ -249,20 +180,17 @@ export async function deleteComment(commentId: string, type: "discussion" | "pro
     throw new Error("Only administrators can delete comments");
   }
 
-  const supabase = createClient();
+  const sql = getDb();
   const tableName = type === "discussion" ? "discussion_comments" : "product_comments";
 
-  const { error } = await (supabase as any)
-    .from(tableName)
-    .delete()
-    .eq("id", commentId);
+  try {
+    await sql`DELETE FROM ${sql(tableName)} WHERE id = ${commentId}`;
 
-  if (error) {
+    return { success: true };
+  } catch (error) {
     console.error("Error deleting comment:", error);
-    throw new Error(`Failed to delete comment: ${error.message}`);
+    throw new Error(`Failed to delete comment: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-
-  return { success: true };
 }
 
 /**
@@ -275,49 +203,29 @@ export async function getModerationQueue() {
     throw new Error("Only administrators can view moderation queue");
   }
 
-  const supabase = createClient();
+  const sql = getDb();
 
-  const { data: queueItems, error } = await supabase
-    .from("moderation_queue")
-    .select(
-      `
-      id,
-      original_comment_id,
-      comment_type,
-      discussion_id,
-      protocol_id,
-      author_id,
-      guest_name,
-      content,
-      flag_count,
-      original_created_at,
-      queued_at,
-      parent_id,
-      status,
-      dispute_reason,
-      discussions!moderation_queue_discussion_id_fkey(
-        title,
-        slug
-      ),
-      protocols!moderation_queue_protocol_id_fkey(
-        title,
-        slug
-      ),
-      profiles!moderation_queue_author_id_fkey(
-        full_name,
-        username
-      )
-    `
-    )
-    .order("flag_count", { ascending: false })
-    .order("queued_at", { ascending: false });
+  try {
+    const queueItems = await sql`
+      SELECT 
+        mq.id, mq.original_comment_id, mq.comment_type, mq.discussion_id, mq.protocol_id,
+        mq.author_id, mq.guest_name, mq.content, mq.flag_count, mq.original_created_at,
+        mq.queued_at, mq.parent_id, mq.status, mq.dispute_reason,
+        json_build_object('title', d.title, 'slug', d.slug) as discussions,
+        json_build_object('title', pr.title, 'slug', pr.slug) as protocols,
+        json_build_object('full_name', p.full_name, 'username', p.username) as profiles
+      FROM moderation_queue mq
+      LEFT JOIN discussions d ON mq.discussion_id = d.id
+      LEFT JOIN protocols pr ON mq.protocol_id = pr.id
+      LEFT JOIN profiles p ON mq.author_id = p.id
+      ORDER BY mq.flag_count DESC, mq.queued_at DESC
+    `;
 
-  if (error) {
+    return queueItems || [];
+  } catch (error) {
     console.error("Error fetching moderation queue:", error);
-    throw new Error(`Failed to fetch moderation queue: ${error.message}`);
+    throw new Error(`Failed to fetch moderation queue: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-
-  return queueItems || [];
 }
 
 /**
@@ -330,99 +238,85 @@ export async function restoreFromQueue(queueItemId: string, reason?: string) {
     throw new Error("Only administrators can restore comments");
   }
 
-  const supabase = createClient();
+  const sql = getDb();
 
-  // First, get the queue item
-  const { data: queueItemData, error: fetchError } = await (supabase as any)
-    .from("moderation_queue")
-    .select("*")
-    .eq("id", queueItemId)
-    .single();
+  try {
+    // Get the queue item
+    const queueItems = await sql`
+      SELECT * FROM moderation_queue WHERE id = ${queueItemId}
+    `;
 
-  if (fetchError || !queueItemData) {
-    throw new Error("Queue item not found");
-  }
-
-  const queueItem = queueItemData as any;
-
-  // Determine which table to restore to based on comment_type
-  const tableName = queueItem.comment_type === "product" ? "product_comments" : "discussion_comments";
-  
-  // Prepare insert data based on comment type
-  const insertData: any = {
-    id: queueItem.original_comment_id,
-    content: queueItem.content,
-    flag_count: 0, // Reset flag count
-    is_flagged: false, // Reset flagged status
-    created_at: queueItem.original_created_at,
-    updated_at: new Date().toISOString(),
-  };
-
-  if (queueItem.comment_type === "product") {
-    insertData.protocol_id = queueItem.protocol_id;
-    insertData.author_id = queueItem.author_id;
-    insertData.parent_id = queueItem.parent_id || null;
-  } else {
-    insertData.discussion_id = queueItem.discussion_id;
-    insertData.author_id = queueItem.author_id;
-    insertData.guest_name = queueItem.guest_name;
-    insertData.parent_id = queueItem.parent_id || null;
-  }
-
-  // Restore the comment to the appropriate table
-  const { error: insertError } = await (supabase as any)
-    .from(tableName)
-    .insert(insertData);
-
-  if (insertError) {
-    // If the comment already exists (maybe it wasn't deleted), just update it
-    const { error: updateError } = await (supabase as any)
-      .from(tableName)
-      .update({
-        flag_count: 0,
-        is_flagged: false,
-      })
-      .eq("id", queueItem.original_comment_id);
-
-    if (updateError) {
-      console.error("Error restoring comment:", updateError);
-      throw new Error(`Failed to restore comment: ${updateError.message}`);
+    if (!queueItems || queueItems.length === 0) {
+      throw new Error("Queue item not found");
     }
+
+    const queueItem = queueItems[0];
+    const tableName = queueItem.comment_type === "product" ? "product_comments" : "discussion_comments";
+
+    // Prepare insert data
+    const insertData: any = {
+      id: queueItem.original_comment_id,
+      content: queueItem.content,
+      flag_count: 0,
+      is_flagged: false,
+      created_at: queueItem.original_created_at,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (queueItem.comment_type === "product") {
+      insertData.protocol_id = queueItem.protocol_id;
+      insertData.author_id = queueItem.author_id;
+      insertData.parent_id = queueItem.parent_id || null;
+    } else {
+      insertData.discussion_id = queueItem.discussion_id;
+      insertData.author_id = queueItem.author_id;
+      insertData.guest_name = queueItem.guest_name;
+      insertData.parent_id = queueItem.parent_id || null;
+    }
+
+    // Try to insert, or update if already exists
+    try {
+      await sql`
+        INSERT INTO ${sql(tableName)} ${sql(insertData)}
+      `;
+    } catch (insertError) {
+      // If insert fails, try to update
+      await sql`
+        UPDATE ${sql(tableName)}
+        SET flag_count = 0, is_flagged = false
+        WHERE id = ${queueItem.original_comment_id}
+      `;
+    }
+
+    // Delete from moderation_queue
+    await sql`DELETE FROM moderation_queue WHERE id = ${queueItemId}`;
+
+    // Log admin action
+    const user = await currentUser();
+    if (user) {
+      await logAdminAction(
+        user.id,
+        "restore",
+        "comment",
+        queueItem.original_comment_id,
+        reason,
+        {
+          comment_type: queueItem.comment_type,
+          flag_count: queueItem.flag_count,
+          content_preview: queueItem.content.substring(0, 100),
+        }
+      );
+    }
+
+    revalidatePath("/admin");
+    revalidatePath("/discussions");
+    revalidatePath("/products");
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error restoring from queue:", error);
+    throw new Error(`Failed to restore comment: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-
-  // Delete from moderation_queue
-  const { error: deleteError } = await supabase
-    .from("moderation_queue")
-    .delete()
-    .eq("id", queueItemId);
-
-  if (deleteError) {
-    console.error("Error removing from queue:", deleteError);
-    throw new Error(`Failed to remove from queue: ${deleteError.message}`);
-  }
-
-  // Log admin action
-  const user = await currentUser();
-  if (user) {
-    await logAdminAction(
-      user.id,
-      "restore",
-      "comment",
-      queueItem.original_comment_id,
-      reason,
-      {
-        comment_type: queueItem.comment_type,
-        flag_count: queueItem.flag_count,
-        content_preview: queueItem.content.substring(0, 100),
-      }
-    );
-  }
-
-  revalidatePath("/admin");
-  revalidatePath("/discussions");
-  revalidatePath("/products");
-
-  return { success: true };
 }
 
 /**
@@ -435,48 +329,43 @@ export async function purgeFromQueue(queueItemId: string, reason?: string) {
     throw new Error("Only administrators can purge comments");
   }
 
-  const supabase = createClient();
+  const sql = getDb();
 
-  // Get queue item for logging
-  const { data: queueItemData } = await (supabase as any)
-    .from("moderation_queue")
-    .select("*")
-    .eq("id", queueItemId)
-    .single();
+  try {
+    // Get queue item for logging
+    const queueItems = await sql`
+      SELECT * FROM moderation_queue WHERE id = ${queueItemId}
+    `;
 
-  const queueItem = queueItemData as any;
+    const queueItem = queueItems && queueItems.length > 0 ? queueItems[0] : null;
 
-  // Delete from moderation_queue (this permanently removes it)
-  const { error: deleteError } = await (supabase as any)
-    .from("moderation_queue")
-    .delete()
-    .eq("id", queueItemId);
+    // Delete from moderation_queue
+    await sql`DELETE FROM moderation_queue WHERE id = ${queueItemId}`;
 
-  if (deleteError) {
-    console.error("Error purging comment:", deleteError);
-    throw new Error(`Failed to purge comment: ${deleteError.message}`);
+    // Log admin action
+    const user = await currentUser();
+    if (user && queueItem) {
+      await logAdminAction(
+        user.id,
+        "purge",
+        "comment",
+        queueItem.original_comment_id,
+        reason,
+        {
+          comment_type: queueItem.comment_type,
+          flag_count: queueItem.flag_count,
+          content_preview: queueItem.content.substring(0, 100),
+        }
+      );
+    }
+
+    revalidatePath("/admin");
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error purging comment:", error);
+    throw new Error(`Failed to purge comment: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-
-  // Log admin action
-  const user = await currentUser();
-  if (user && queueItem) {
-    await logAdminAction(
-      user.id,
-      "purge",
-      "comment",
-      queueItem.original_comment_id,
-      reason,
-      {
-        comment_type: queueItem.comment_type,
-        flag_count: queueItem.flag_count,
-        content_preview: queueItem.content.substring(0, 100),
-      }
-    );
-  }
-
-  revalidatePath("/admin");
-
-  return { success: true };
 }
 
 /**
@@ -490,36 +379,32 @@ export async function addBlacklistKeyword(keyword: string, reason?: string) {
   }
 
   const user = await currentUser();
-  const supabase = createClient();
+  const sql = getDb();
 
-  const { error } = await (supabase as any)
-    .from("keyword_blacklist")
-    .insert({
-      keyword: keyword.trim().toLowerCase(),
-      reason: reason || null,
-      created_by: user?.id || null,
-      is_active: true,
-    });
+  try {
+    await sql`
+      INSERT INTO keyword_blacklist (keyword, reason, created_by, is_active, created_at)
+      VALUES (${keyword.trim().toLowerCase()}, ${reason || null}, ${user?.id || null}, true, NOW())
+    `;
 
-  if (error) {
+    // Log admin action
+    if (user) {
+      await logAdminAction(
+        user.id,
+        "add_blacklist",
+        "keyword",
+        keyword,
+        reason,
+        { keyword: keyword.trim().toLowerCase() }
+      );
+    }
+
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (error) {
     console.error("Error adding blacklist keyword:", error);
-    throw new Error(`Failed to add keyword: ${error.message}`);
+    throw new Error(`Failed to add keyword: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-
-  // Log admin action
-  if (user) {
-    await logAdminAction(
-      user.id,
-      "add_blacklist",
-      "keyword",
-      keyword,
-      reason,
-      { keyword: keyword.trim().toLowerCase() }
-    );
-  }
-
-  revalidatePath("/admin");
-  return { success: true };
 }
 
 /**
@@ -533,39 +418,38 @@ export async function removeBlacklistKeyword(keywordId: string) {
   }
 
   const user = await currentUser();
-  const supabase = createClient();
+  const sql = getDb();
 
-  // Get keyword before deleting for logging
-  const { data: keyword } = await (supabase as any)
-    .from("keyword_blacklist")
-    .select("keyword")
-    .eq("id", keywordId)
-    .single();
+  try {
+    // Get keyword before updating for logging
+    const keywords = await sql`
+      SELECT keyword FROM keyword_blacklist WHERE id = ${keywordId}
+    `;
 
-  const { error } = await (supabase as any)
-    .from("keyword_blacklist")
-    .update({ is_active: false })
-    .eq("id", keywordId);
+    const keyword = keywords && keywords.length > 0 ? keywords[0] : null;
 
-  if (error) {
+    await sql`
+      UPDATE keyword_blacklist SET is_active = false WHERE id = ${keywordId}
+    `;
+
+    // Log admin action
+    if (user && keyword) {
+      await logAdminAction(
+        user.id,
+        "remove_blacklist",
+        "keyword",
+        keywordId,
+        undefined,
+        { keyword: keyword.keyword }
+      );
+    }
+
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (error) {
     console.error("Error removing blacklist keyword:", error);
-    throw new Error(`Failed to remove keyword: ${error.message}`);
+    throw new Error(`Failed to remove keyword: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-
-  // Log admin action
-  if (user && keyword) {
-    await logAdminAction(
-      user.id,
-      "remove_blacklist",
-      "keyword",
-      keywordId,
-      undefined,
-      { keyword: keyword.keyword }
-    );
-  }
-
-  revalidatePath("/admin");
-  return { success: true };
 }
 
 /**
@@ -578,19 +462,20 @@ export async function getBlacklistKeywords() {
     throw new Error("Only administrators can view blacklist");
   }
 
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("keyword_blacklist")
-    .select("*")
-    .eq("is_active", true)
-    .order("created_at", { ascending: false });
+  const sql = getDb();
 
-  if (error) {
+  try {
+    const data = await sql`
+      SELECT * FROM keyword_blacklist
+      WHERE is_active = true
+      ORDER BY created_at DESC
+    `;
+
+    return data || [];
+  } catch (error) {
     console.error("Error fetching blacklist keywords:", error);
-    throw new Error(`Failed to fetch keywords: ${error.message}`);
+    throw new Error(`Failed to fetch keywords: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-
-  return data || [];
 }
 
 /**
@@ -604,44 +489,49 @@ export async function toggleUserBan(userId: string, ban: boolean, reason?: strin
   }
 
   const user = await currentUser();
-  const supabase = createClient();
+  const sql = getDb();
 
-  const updateData: any = {
-    is_banned: ban,
-  };
+  try {
+    const updateData: any = {
+      is_banned: ban,
+      banned_at: ban ? new Date().toISOString() : null,
+      ban_reason: ban ? (reason || null) : null,
+    };
 
-  if (ban) {
-    updateData.banned_at = new Date().toISOString();
-    updateData.ban_reason = reason || null;
-  } else {
-    updateData.banned_at = null;
-    updateData.ban_reason = null;
-  }
+    // Build UPDATE query dynamically
+    const updates = Object.entries(updateData);
+    if (updates.length === 0) {
+      throw new Error("No update data provided");
+    }
 
-  const { error } = await (supabase as any)
-    .from("profiles")
-    .update(updateData)
-    .eq("id", userId);
+    // Use unsafe for dynamic column updates (in this controlled admin context, this is acceptable)
+    const setClausesStr = updates
+      .map(([key], index) => `${key} = $${index + 1}`)
+      .join(', ');
+    
+    const values: any[] = updates.map(([, value]) => value);
+    values.push(userId);
 
-  if (error) {
+    await sql.unsafe(`UPDATE profiles SET ${setClausesStr} WHERE id = $${updates.length + 1}`, values as any);
+
+    // Log admin action
+    if (user) {
+      await logAdminAction(
+        user.id,
+        ban ? "ban" : "unban",
+        "user",
+        userId,
+        reason,
+        { is_banned: ban }
+      );
+    }
+
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (error) {
     console.error("Error toggling user ban:", error);
-    throw new Error(`Failed to ${ban ? "ban" : "unban"} user: ${error.message}`);
+    throw new Error(`Failed to ${ban ? "ban" : "unban"} user: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-
-  // Log admin action
-  if (user) {
-    await logAdminAction(
-      user.id,
-      ban ? "ban" : "unban",
-      "user",
-      userId,
-      reason,
-      { is_banned: ban }
-    );
-  }
-
-  revalidatePath("/admin");
-  return { success: true };
 }
 
 /**
@@ -654,19 +544,21 @@ export async function getAllUsers() {
     throw new Error("Only administrators can view users");
   }
 
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, full_name, username, is_banned, banned_at, ban_reason, created_at")
-    .order("created_at", { ascending: false })
-    .limit(100);
+  const sql = getDb();
 
-  if (error) {
+  try {
+    const data = await sql`
+      SELECT id, full_name, username, is_banned, banned_at, ban_reason, created_at
+      FROM profiles
+      ORDER BY created_at DESC
+      LIMIT 100
+    `;
+
+    return data || [];
+  } catch (error) {
     console.error("Error fetching users:", error);
-    throw new Error(`Failed to fetch users: ${error.message}`);
+    throw new Error(`Failed to fetch users: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-
-  return data || [];
 }
 
 /**
@@ -678,41 +570,37 @@ export async function submitDispute(queueItemId: string, disputeReason: string) 
     throw new Error("You must be logged in to submit a dispute");
   }
 
-  const supabase = createClient();
+  const sql = getDb();
 
-  // Verify the user is the author of the comment
-  const { data: queueItemData, error: fetchError } = await (supabase as any)
-    .from("moderation_queue")
-    .select("author_id")
-    .eq("id", queueItemId)
-    .single();
+  try {
+    // Verify the user is the author of the comment
+    const queueItems = await sql`
+      SELECT author_id FROM moderation_queue WHERE id = ${queueItemId}
+    `;
 
-  if (fetchError || !queueItemData) {
-    throw new Error("Queue item not found");
+    if (!queueItems || queueItems.length === 0) {
+      throw new Error("Queue item not found");
+    }
+
+    const queueItem = queueItems[0];
+
+    if (queueItem.author_id !== user.id) {
+      throw new Error("You can only dispute your own comments");
+    }
+
+    // Update moderation queue with dispute
+    await sql`
+      UPDATE moderation_queue
+      SET dispute_reason = ${disputeReason.trim()}, status = 'disputed'
+      WHERE id = ${queueItemId}
+    `;
+
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (error) {
+    console.error("Error submitting dispute:", error);
+    throw error;
   }
-
-  const queueItem = queueItemData as any;
-
-  if (queueItem.author_id !== user.id) {
-    throw new Error("You can only dispute your own comments");
-  }
-
-  // Update moderation queue with dispute
-  const { error: updateError } = await (supabase as any)
-    .from("moderation_queue")
-    .update({
-      dispute_reason: disputeReason.trim(),
-      status: "disputed",
-    })
-    .eq("id", queueItemId);
-
-  if (updateError) {
-    console.error("Error submitting dispute:", updateError);
-    throw new Error(`Failed to submit dispute: ${updateError.message}`);
-  }
-
-  revalidatePath("/admin");
-  return { success: true };
 }
 
 /**
@@ -720,44 +608,26 @@ export async function submitDispute(queueItemId: string, disputeReason: string) 
  * Allows users to see and dispute their own flagged content
  */
 export async function getMyFlaggedComments(userId: string) {
-  const supabase = createClient();
+  const sql = getDb();
 
-  const { data: queueItems, error } = await supabase
-    .from("moderation_queue")
-    .select(
-      `
-      id,
-      original_comment_id,
-      comment_type,
-      discussion_id,
-      protocol_id,
-      content,
-      flag_count,
-      original_created_at,
-      queued_at,
-      status,
-      dispute_reason,
-      discussions!moderation_queue_discussion_id_fkey(
-        title,
-        slug
-      ),
-      protocols!moderation_queue_protocol_id_fkey(
-        title,
-        slug
-      )
-    `
-    )
-    .eq("author_id", userId)
-    .order("queued_at", { ascending: false });
+  try {
+    const queueItems = await sql`
+      SELECT 
+        mq.id, mq.original_comment_id, mq.comment_type, mq.discussion_id, mq.protocol_id,
+        mq.content, mq.flag_count, mq.original_created_at, mq.queued_at, mq.status,
+        mq.dispute_reason,
+        json_build_object('title', d.title, 'slug', d.slug) as discussions,
+        json_build_object('title', pr.title, 'slug', pr.slug) as protocols
+      FROM moderation_queue mq
+      LEFT JOIN discussions d ON mq.discussion_id = d.id
+      LEFT JOIN protocols pr ON mq.protocol_id = pr.id
+      WHERE mq.author_id = ${userId}
+      ORDER BY mq.queued_at DESC
+    `;
 
-  if (error) {
+    return queueItems || [];
+  } catch (error) {
     console.error("Error fetching user's flagged comments:", error);
-    throw new Error(`Failed to fetch flagged comments: ${error.message}`);
+    throw new Error(`Failed to fetch flagged comments: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-
-  return queueItems || [];
 }
-
-
-
-

@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { createClient } from "@/lib/supabase/client";
 import { RefreshCw } from "lucide-react";
 
 interface FeedRefresherProps {

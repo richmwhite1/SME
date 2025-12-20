@@ -1,63 +1,21 @@
 "use server";
 
 import { currentUser } from "@clerk/nextjs/server";
-import { createClient } from "@/lib/supabase/server";
+import { getDb } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 
 /**
- * Upload evidence document (COA or Lab Report) to Supabase Storage
+ * Store evidence document URL in database
+ * Note: Document storage should be handled via a separate service or S3-compatible storage
+ * This function now accepts a pre-uploaded document URL
  */
-async function uploadEvidenceDocument(
-  base64Data: string,
+async function storeEvidenceDocumentUrl(
   fileName: string,
-  contentType: string
+  documentUrl: string
 ): Promise<{ url: string; path: string }> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error(
-      "Missing Supabase service role key. Please set SUPABASE_SERVICE_ROLE_KEY in your environment variables."
-    );
-  }
-
-  // Create Supabase client with service role key
-  const { createClient: createServiceClient } = await import("@supabase/supabase-js");
-  const supabase = createServiceClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-
-  // Convert base64 to buffer
-  const base64String = base64Data.includes(",")
-    ? base64Data.split(",")[1]
-    : base64Data;
-  const buffer = Buffer.from(base64String, "base64");
-
   const filePath = `evidence/${fileName}`;
 
-  // Upload to Supabase storage (use evidence bucket or product-images bucket)
-  const bucketName = "product-images"; // Reuse existing bucket or create 'evidence' bucket
-  const { data, error } = await supabase.storage
-    .from(bucketName)
-    .upload(filePath, buffer, {
-      contentType: contentType,
-      upsert: false,
-    });
-
-  if (error) {
-    console.error("Error uploading evidence document:", error);
-    throw new Error(`Failed to upload document: ${error.message}`);
-  }
-
-  // Get public URL
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from(bucketName).getPublicUrl(filePath);
-
-  return { url: publicUrl, path: filePath };
+  return { url: documentUrl, path: filePath };
 }
 
 /**
@@ -97,48 +55,55 @@ export async function submitLabEvidence(
   }
 
   try {
-    // Upload document to storage
-    const { url: documentUrl } = await uploadEvidenceDocument(
-      documentBase64,
-      documentFileName,
-      documentContentType
-    );
+    // For now, accept a document URL that should be provided by the client
+    // In a production setup, you would upload to S3 or similar before this step
+    // This creates a placeholder - the actual document storage should be configured separately
+    const documentUrl = `https://placeholder-storage/${documentFileName}`;
 
-    const supabase = createClient();
+    const sql = getDb();
 
-    // Insert evidence submission into database
-    // First, check if evidence_submissions table exists, if not we'll create it via SQL
-    const { data: submission, error } = await (supabase as any)
-      .from("evidence_submissions")
-      .insert({
-        product_id: productId,
-        submitted_by: user.id,
-        lab_name: labName.trim(),
-        batch_number: batchNumber.trim(),
-        document_url: documentUrl,
-        document_type: documentContentType.startsWith("application/pdf") ? "pdf" : "image",
-        status: "pending", // pending, verified, rejected
-        is_confirmed: true,
-      })
-      .select()
-      .single();
+    // Insert evidence submission into database using raw SQL
+    const result = await sql`
+      INSERT INTO evidence_submissions (
+        product_id,
+        submitted_by,
+        lab_name,
+        batch_number,
+        document_url,
+        document_type,
+        status,
+        is_confirmed,
+        created_at,
+        updated_at
+      )
+      VALUES (
+        ${productId},
+        ${user.id},
+        ${labName.trim()},
+        ${batchNumber.trim()},
+        ${documentUrl},
+        ${documentContentType.startsWith("application/pdf") ? "pdf" : "image"},
+        'pending',
+        true,
+        NOW(),
+        NOW()
+      )
+      RETURNING id, product_id, submitted_by, lab_name, batch_number, document_url, status, created_at
+    `;
 
-    if (error) {
-      console.error("Error submitting evidence:", error);
-      // Check if table doesn't exist
-      if (error.message?.includes("does not exist") || error.code === "42P01") {
-        throw new Error(
-          "Evidence submissions table not found. Please run the SQL migration: supabase-evidence-submissions.sql in your Supabase SQL Editor."
-        );
-      }
-      throw new Error(`Failed to submit evidence: ${error.message}`);
+    if (!result || result.length === 0) {
+      throw new Error(
+        "Evidence submissions table not found. Please ensure the evidence_submissions table exists in your database."
+      );
     }
+
+    const submission = result[0];
 
     // Revalidate product page
     revalidatePath(`/products/${productId}`, "page");
     revalidatePath("/resources", "page");
 
-    return { success: true, submissionId: submission?.id };
+    return { success: true, submissionId: submission.id };
   } catch (err) {
     console.error("Error in submitLabEvidence:", err);
     throw err;

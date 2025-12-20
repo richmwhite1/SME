@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@clerk/nextjs";
 import { Hash, TrendingUp, Plus, Sparkles } from "lucide-react";
 import { toggleTopicFollow } from "@/app/actions/topic-actions";

@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/server";
 import { currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { MessageSquare, Plus } from "lucide-react";
@@ -15,6 +14,7 @@ import DiscussionsClient from "@/components/discussions/DiscussionsClient";
 import DiscussionCard from "@/components/discussions/DiscussionCard";
 import { Suspense } from "react";
 import { getFollowedTopics } from "@/app/actions/topic-actions";
+import { getDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -23,9 +23,7 @@ export default async function DiscussionsPage({
 }: {
   searchParams: Promise<{ trusted?: string; topic?: string; search?: string }>;
 }) {
-  const supabase = createClient();
   const user = await currentUser();
-
   const params = await searchParams;
   const isTrustedOnly = params.trusted === "true";
   const topicFilter = params.topic;
@@ -34,62 +32,43 @@ export default async function DiscussionsPage({
   // Get followed topics
   const followedTopics = await getFollowedTopics();
   const isTopicFollowed = topicFilter ? followedTopics.includes(topicFilter) : false;
+  
+  const sql = getDb();
+  let allDiscussions: any[] = [];
 
-  // Fetch all discussions
-  // If trusted only, get trusted user IDs first
-  let authorIds: string[] | undefined = undefined;
-  if (isTrustedOnly) {
-    const { data: trustedUsers } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("badge_type", "Trusted Voice");
-    
-    authorIds = trustedUsers?.map((u: { id: string }) => u.id) || [];
-    
-    // If no trusted users, return empty
-    if (authorIds.length === 0) {
-      // Return empty discussions
+  try {
+    // Fetch all discussions
+    if (isTrustedOnly) {
+      // Get trusted user IDs first
+      const trustedUsers = await sql`
+        SELECT id FROM profiles WHERE badge_type = 'Trusted Voice'
+      `;
+      
+      const authorIds = trustedUsers.map((u: { id: string }) => u.id);
+      
+      if (authorIds.length > 0) {
+        const placeholders = authorIds.map((_, i) => `$${i + 1}`).join(',');
+        allDiscussions = await sql.unsafe(`
+          SELECT id, title, content, tags, slug, created_at, upvote_count, author_id
+          FROM discussions
+          WHERE is_flagged = false AND author_id IN (${placeholders})
+          ORDER BY created_at DESC
+          LIMIT 100
+        `, authorIds);
+      }
+    } else {
+      allDiscussions = await sql`
+        SELECT id, title, content, tags, slug, created_at, upvote_count, author_id
+        FROM discussions
+        WHERE is_flagged = false
+        ORDER BY created_at DESC
+        LIMIT 100
+      `;
     }
-  }
-
-  let discussionsQuery = supabase
-    .from("discussions")
-    .select(`
-      id,
-      title,
-      content,
-      tags,
-      slug,
-      created_at,
-      upvote_count,
-      author_id,
-      profiles(
-        id,
-        full_name,
-        username,
-        avatar_url,
-        badge_type,
-        contributor_score,
-        is_verified_expert
-      )
-    `)
-    .eq("is_flagged", false);
-
-  if (isTrustedOnly && authorIds && authorIds.length > 0) {
-    discussionsQuery = discussionsQuery.in("author_id", authorIds);
-  } else if (isTrustedOnly) {
-    // No trusted users, return empty
-    discussionsQuery = discussionsQuery.eq("id", "00000000-0000-0000-0000-000000000000"); // Impossible match
-  }
-
-  const { data: allDiscussions, error } = await discussionsQuery
-    .order("created_at", { ascending: false })
-    .limit(100);
-
-  if (error) {
+  } catch (error) {
     console.error("Error fetching discussions:", error);
+    allDiscussions = [];
   }
-
   // Extract all unique tags from ALL discussions (before filtering) with counts
   // This ensures the sidebar shows all available tags regardless of current filters
   const tagCounts = new Map<string, number>();
@@ -104,10 +83,8 @@ export default async function DiscussionsPage({
   const tagsWithCounts = Array.from(tagCounts.entries())
     .map(([tag, count]) => ({ tag, count }))
     .sort((a, b) => b.count - a.count); // Sort by count descending
-
   // Also get simple array for TagFilterBar (backward compatibility)
   const allTags = tagsWithCounts.map((t) => t.tag);
-
   // Apply topic filter if present
   let discussions = allDiscussions || [];
   if (topicFilter) {
@@ -116,7 +93,6 @@ export default async function DiscussionsPage({
       return d.tags.includes(topicFilter);
     });
   }
-
   // Apply search filter if present
   if (searchQuery) {
     discussions = discussions.filter((d: any) => {
@@ -125,7 +101,6 @@ export default async function DiscussionsPage({
       return titleMatch || contentMatch;
     });
   }
-
   return (
     <main className="min-h-screen bg-forest-obsidian">
       <div className="mx-auto max-w-7xl px-6 py-8">
@@ -155,7 +130,6 @@ export default async function DiscussionsPage({
               <DiscussionsClient searchQuery={searchQuery} />
             </Suspense>
           </div>
-
           {/* Filters Row */}
           <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
             <div className="flex-1 min-w-0">
@@ -166,11 +140,9 @@ export default async function DiscussionsPage({
             </div>
           </div>
         </div>
-
         {topicFilter && (
           <TopicFilter topic={topicFilter} isFollowed={isTopicFollowed} />
         )}
-
         {!discussions || discussions.length === 0 ? (
           <div className="border border-translucent-emerald bg-muted-moss p-12 text-center">
             <MessageSquare className="mx-auto mb-4 h-12 w-12 text-bone-white/30" />
@@ -204,4 +176,3 @@ export default async function DiscussionsPage({
     </main>
   );
 }
-

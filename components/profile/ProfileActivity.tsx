@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { Star, MessageSquare } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";

@@ -115,18 +115,18 @@ export default function CompareClient({
   const handleSwap = async (column: "A" | "B", newProductId: string) => {
     try {
       // Fetch new product data optimistically
-      const { createClient } = await import("@/lib/supabase/client");
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("protocols")
-        .select("*")
-        .eq("id", newProductId)
-        .single();
-      
-      if (error || !data) {
-        console.error("Error fetching product:", error);
+      const response = await fetch("/api/products/by-id", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId: newProductId }),
+      });
+
+      if (!response.ok) {
+        console.error("Error fetching product");
         return;
       }
+
+      const data = await response.json();
 
       // Optimistic update
       if (column === "A") {
@@ -284,7 +284,7 @@ export default function CompareClient({
                       alt={displayProductA.title}
                       fill
                       className="object-contain"
-                      unoptimized={displayImagesA[0].includes('supabase.co') || displayImagesA[0].includes('unsplash.com')}
+                      unoptimized={displayImagesA[0].includes('unsplash.com')}
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-white/5 border-2 border-white/20 inset-2">
@@ -317,7 +317,7 @@ export default function CompareClient({
                       alt={displayProductB.title}
                       fill
                       className="object-contain"
-                      unoptimized={displayImagesB[0].includes('supabase.co') || displayImagesB[0].includes('unsplash.com')}
+                      unoptimized={displayImagesB[0].includes('unsplash.com')}
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-white/5 border-2 border-white/20 inset-2">

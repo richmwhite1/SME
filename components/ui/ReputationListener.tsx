@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useSignal } from "./SignalReceivedContainer";
-import { createClient } from "@/lib/supabase/client";
 
 /**
  * Listens for reputation updates and shows Signal Received toasts

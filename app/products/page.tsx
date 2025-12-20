@@ -1,13 +1,10 @@
-import { createClient } from "@/lib/supabase/server";
 import type { Metadata } from "next";
 import ProtocolCard from "@/components/holistic/ProtocolCard";
 import LocalSearchBar from "@/components/search/LocalSearchBar";
 import SortDropdown from "@/components/search/SortDropdown";
 import ProductsClient from "@/components/products/ProductsClient";
 import { Suspense } from "react";
-
 export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = {
   title: "Products - SME Transparency Reports",
   description: "Browse verified products with research-based transparency reports and SME certification.",
@@ -15,7 +12,6 @@ export const metadata: Metadata = {
     canonical: `${process.env.NEXT_PUBLIC_SITE_URL || "https://sme.example.com"}/products`,
   },
 };
-
 interface Protocol {
   id: string;
   title: string;
@@ -31,21 +27,17 @@ interface Protocol {
   excipient_audit?: boolean | null;
   operational_legitimacy?: boolean | null;
 }
-
 export default async function ProductsPage({
   searchParams,
 }: {
   searchParams: Promise<{ search?: string; sort?: string }>;
 }) {
-  const supabase = createClient();
   const params = await searchParams;
   const searchQuery = params.search?.toLowerCase() || "";
   const sortBy = params.sort || "certified";
-
   // Fetch products with all necessary data for tiered display and signal badges
   let protocols: Protocol[] | null = null;
   let error: any = null;
-
   try {
     const { data, error: fetchError } = await supabase
       .from("protocols")
@@ -56,7 +48,6 @@ export default async function ProductsPage({
     
     protocols = data;
     error = fetchError;
-
     if (error) {
       console.error("Error fetching products:", error);
     } else if (protocols) {
@@ -76,7 +67,6 @@ export default async function ProductsPage({
     console.error("Unexpected error fetching products:", err);
     error = err;
   }
-
   // Images should already be full URLs from upload, just use the first one
   const protocolsWithFullImageUrls = (protocols || [])?.map((protocol: Protocol) => {
     // Handle images - PostgreSQL TEXT[] arrays should come as arrays from Supabase
@@ -128,7 +118,6 @@ export default async function ProductsPage({
           ? imagesArray[0]
           : null)
       : null;
-
     console.log(`Product ${protocol.id} - Images:`, {
       raw: protocol.images,
       type: typeof protocol.images,
@@ -136,13 +125,11 @@ export default async function ProductsPage({
       parsed: imagesArray,
       firstImage: firstImage
     });
-
     return {
       ...protocol,
       fullImageUrl: firstImage,
     };
   });
-
   // Apply search filter if present
   let filteredProtocols = protocolsWithFullImageUrls || [];
   if (searchQuery) {
@@ -152,7 +139,6 @@ export default async function ProductsPage({
       return titleMatch || problemMatch;
     });
   }
-
   // Apply sorting
   let sortedProtocols = [...filteredProtocols];
   if (sortBy === "recent") {
@@ -195,13 +181,11 @@ export default async function ProductsPage({
       return a.title.localeCompare(b.title);
     });
   }
-
   // Fetch reviews with ratings for all products to calculate average ratings
   const { data: allReviews } = await supabase
     .from("reviews")
     .select("protocol_id, rating")
     .or("is_flagged.eq.false,is_flagged.is.null");
-
   // Fetch comment counts for all products from product_comments table
   const protocolsWithCommentCounts = await Promise.all(
     sortedProtocols.map(async (protocol) => {
@@ -210,18 +194,15 @@ export default async function ProductsPage({
         .select("*", { count: "exact", head: true })
         .eq("protocol_id", protocol.id)
         .or("is_flagged.eq.false,is_flagged.is.null");
-
       if (error) {
         console.error(`Error fetching comment count for product ${protocol.id}:`, error);
       }
-
       return {
         ...protocol,
         commentCount: count || 0,
       };
     })
   );
-
   // Calculate average rating for each protocol
   const protocolsWithRatings = protocolsWithCommentCounts.map((protocol) => {
     const protocolReviews = (allReviews || []).filter((r: any) => r.protocol_id === protocol.id);
@@ -235,11 +216,9 @@ export default async function ProductsPage({
       reviewCount: protocolReviews.length,
     };
   });
-
   // Separate products into tiers
   const smeCertified = protocolsWithRatings.filter((p) => p.is_sme_certified === true);
   const trendingProtocols = protocolsWithRatings.filter((p) => p.is_sme_certified !== true);
-
   return (
     <main className="min-h-screen bg-forest-obsidian">
       <div className="mx-auto max-w-7xl px-6 py-8">
@@ -263,7 +242,6 @@ export default async function ProductsPage({
               defaultOption="certified"
             />
           </div>
-
           {/* Search Bar - Apothecary Terminal */}
           <div className="mb-6">
             <Suspense fallback={<div className="h-10 w-full border border-translucent-emerald bg-muted-moss" />}>
@@ -271,7 +249,6 @@ export default async function ProductsPage({
             </Suspense>
           </div>
         </div>
-
         {protocolsWithFullImageUrls && protocolsWithFullImageUrls.length > 0 ? (
           <div className="space-y-12">
             {/* Tier 1: Featured Certified Products */}
@@ -313,7 +290,6 @@ export default async function ProductsPage({
                 </div>
               </section>
             )}
-
             {/* Tier 2: Community Catalog */}
             {trendingProtocols.length > 0 && (
               <section>
@@ -359,7 +335,6 @@ export default async function ProductsPage({
             <p className="text-bone-white/70">No products available yet.</p>
           </div>
         )}
-
         {error && (
           <div className="mt-8 text-center text-heart-green text-sm font-mono">
             Error loading products. Please try again later.
@@ -369,4 +344,3 @@ export default async function ProductsPage({
     </main>
   );
 }
-

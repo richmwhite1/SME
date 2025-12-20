@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -16,11 +15,9 @@ import Button from "@/components/ui/Button";
 import CompareButton from "@/components/products/CompareButton";
 import ReactMarkdown from "react-markdown";
 import SearchBar from "@/components/search/SearchBar";
-
 // Force dynamic rendering to bypass caching issues
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
 // Generate dynamic metadata for SEO
 export async function generateMetadata({
   params,
@@ -28,22 +25,18 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const supabase = createClient();
-
   try {
     const { data: protocol } = await supabase
       .from("protocols")
       .select("title, ai_summary, is_sme_certified, images")
       .eq("id", id)
       .single();
-
     if (!protocol) {
       return {
         title: "Product Not Found",
         description: "The requested product could not be found.",
       };
     }
-
     // Type assertion for protocol data
     const protocolData = protocol as {
       title: string;
@@ -51,25 +44,20 @@ export async function generateMetadata({
       is_sme_certified: boolean | null;
       images: string[] | null;
     };
-
     // Prefix title with certified badge if SME certified
     const titlePrefix = protocolData.is_sme_certified ? "✅ Certified: " : "";
     const title = `${titlePrefix}${protocolData.title}`;
-
     // Use first 160 characters of ai_summary as description
     const description = protocolData.ai_summary
       ? protocolData.ai_summary.substring(0, 160).replace(/\n/g, " ").trim()
       : `Transparency report for ${protocolData.title}. Research-based analysis and verification.`;
-
     // Get first image for Open Graph
     let imageUrl: string | undefined;
     if (protocolData.images && Array.isArray(protocolData.images) && protocolData.images.length > 0) {
       imageUrl = protocolData.images[0];
     }
-
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sme.example.com";
     const canonicalUrl = `${baseUrl}/products/${id}`;
-
     return {
       title,
       description,
@@ -98,7 +86,6 @@ export async function generateMetadata({
     };
   }
 }
-
 interface ProtocolItem {
   step_order: number;
   usage_instructions: string;
@@ -107,7 +94,6 @@ interface ProtocolItem {
     brand: string;
   } | null;
 }
-
 interface Protocol {
   id: string;
   title: string;
@@ -134,7 +120,6 @@ interface Protocol {
   images?: string[] | null;
   protocol_items: ProtocolItem[];
 }
-
 export default async function ProtocolDetailPage({
   params,
 }: {
@@ -144,9 +129,6 @@ export default async function ProtocolDetailPage({
   const { id } = await params;
   
   console.log("Product Detail Page - Fetching product with ID:", id);
-
-  const supabase = createClient();
-
   try {
     // Explicit fetch by ID - explicitly select images array to ensure proper handling
     console.log("Fetching product with ID:", id);
@@ -161,7 +143,6 @@ export default async function ProtocolDetailPage({
       `)
       .eq("id", id)
       .single();
-
     if (error) {
       console.error("Supabase error fetching protocol:", error);
       console.error("Error code:", error.code);
@@ -178,16 +159,13 @@ export default async function ProtocolDetailPage({
       
       notFound();
     }
-
     if (!protocol) {
       console.error("Protocol not found for ID:", id);
       console.error("This might mean the ID doesn't exist in the database");
       notFound();
     }
-
     console.log("Product found:", (protocol as any).title);
     console.log("Product ID:", (protocol as any).id);
-
     // Type assertion - ensure we have a valid protocol object
     if (!protocol || typeof protocol !== 'object') {
       console.error("Invalid protocol data received:", protocol);
@@ -195,7 +173,6 @@ export default async function ProtocolDetailPage({
     }
     
     const typedProtocol = protocol as Protocol;
-
     // Debug: Log images data
     console.log("Raw images data from DB:", typedProtocol.images);
     console.log("Images type:", typeof typedProtocol.images);
@@ -249,7 +226,6 @@ export default async function ProtocolDetailPage({
     imagesArray.forEach((img, idx) => {
       console.log(`  Image ${idx}:`, img);
     });
-
     // Image protection - images should already be full URLs from upload
     // Just validate they're valid URLs
     const safeImages = imagesArray.length > 0
@@ -266,15 +242,12 @@ export default async function ProtocolDetailPage({
     
     console.log("Safe images after filtering:", safeImages);
     console.log("Safe images count:", safeImages.length);
-
     console.log("Safe images after filtering:", safeImages);
     console.log("Safe images count:", safeImages.length);
-
     // Sort protocol items by step_order
     const sortedItems = (typedProtocol.protocol_items || []).sort(
       (a, b) => a.step_order - b.step_order
     );
-
     // Fetch comments for this product with error handling
     let serializedComments: any[] = [];
     try {
@@ -297,7 +270,6 @@ export default async function ProtocolDetailPage({
         .eq("protocol_id", typedProtocol.id)
         .eq("is_flagged", false)
         .order("created_at", { ascending: true });
-
       if (commentsError) {
         console.error("Error fetching product comments:", commentsError);
         // Continue with empty comments array instead of failing
@@ -326,14 +298,11 @@ export default async function ProtocolDetailPage({
       // Continue with empty comments array
       serializedComments = [];
     }
-
     // Check if product is SME certified
     const isSMECertified = typedProtocol.is_sme_certified === true;
-
     // Build base URL for canonical and structured data
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sme.example.com";
     const canonicalUrl = `${baseUrl}/products/${id}`;
-
     // Build JSON-LD structured data for SEO
     const jsonLd = {
       "@context": "https://schema.org",
@@ -400,7 +369,6 @@ export default async function ProtocolDetailPage({
         },
       }),
     };
-
     return (
       <>
         {/* JSON-LD Structured Data */}
@@ -411,7 +379,6 @@ export default async function ProtocolDetailPage({
         
         {/* Canonical URL */}
         <link rel="canonical" href={canonicalUrl} />
-
         <main className="min-h-screen bg-forest-obsidian">
           <div className="mx-auto max-w-7xl px-6 py-8">
             {/* Global Search Bar - Most Prominent Tool */}
@@ -426,7 +393,6 @@ export default async function ProtocolDetailPage({
                 </p>
               </div>
             </div>
-
             {/* Back to Products Button */}
             <div className="mb-6">
               <Link href="/products">
@@ -436,7 +402,6 @@ export default async function ProtocolDetailPage({
                 </button>
               </Link>
             </div>
-
             {/* Two-Column Grid Layout - 60/40 Split (Spec Sheet Layout) */}
             <div className="grid grid-cols-1 lg:grid-cols-5 lg:gap-8 mb-12">
               {/* Left Column: Visuals (60% - 3/5 columns) */}
@@ -451,7 +416,6 @@ export default async function ProtocolDetailPage({
                   </div>
                 )}
               </div>
-
               {/* Right Column: High-Density Data Stack (40% - 2/5 columns) */}
               <div className="lg:col-span-2 space-y-6">
                 {/* Header - Serif Product Name */}
@@ -463,7 +427,6 @@ export default async function ProtocolDetailPage({
                     {typedProtocol.problem_solved}
                   </p>
                 </div>
-
                 {/* SME Certified Badge */}
                 {isSMECertified && (
                   <div>
@@ -477,7 +440,6 @@ export default async function ProtocolDetailPage({
                     />
                   </div>
                 )}
-
                 {/* 5-Pillar Transparency Checklist - High-Density Data Stack */}
                 {isSMECertified && (
                   <TransparencyCard
@@ -490,7 +452,6 @@ export default async function ProtocolDetailPage({
                     certificationNotes={typedProtocol.certification_notes}
                   />
                 )}
-
                 {/* Purchase Button - SME Gold */}
                 {typedProtocol.buy_url && (
                   <a 
@@ -507,7 +468,6 @@ export default async function ProtocolDetailPage({
                     </button>
                   </a>
                 )}
-
                 {/* Reference Links - Technical */}
                 <div className="flex flex-wrap gap-2">
                   <CompareButton productId={typedProtocol.id} productTitle={typedProtocol.title} />
@@ -533,7 +493,6 @@ export default async function ProtocolDetailPage({
                 </div>
               </div>
             </div>
-
             {/* AI Summary / Expert Notebook - Full Width Below Grid */}
             {typedProtocol.ai_summary && (
               <div className="mb-12 border border-translucent-emerald bg-muted-moss p-8">
@@ -553,7 +512,6 @@ export default async function ProtocolDetailPage({
                 </div>
               </div>
             )}
-
             {/* Timeline Steps - Clinical Layout */}
             {sortedItems.length > 0 && (
               <div className="mb-12 space-y-6">
@@ -571,14 +529,12 @@ export default async function ProtocolDetailPage({
                           </div>
                         )}
                       </div>
-
                       {/* Step Content */}
                       <div className="flex-1 pb-6">
                         <div className="mb-2 flex items-center gap-2 text-xs font-mono text-bone-white/70 uppercase tracking-wider">
                           <Clock className="h-3 w-3" />
                           <span>Step {item.step_order}</span>
                         </div>
-
                         {/* Product Card */}
                         {item.products && (
                           <ProductCard
@@ -593,7 +549,6 @@ export default async function ProtocolDetailPage({
                 ))}
               </div>
             )}
-
             {/* Reviews Section */}
           <div className="mt-16 border-t border-translucent-emerald pt-12">
             <div className="mb-8 flex items-center justify-between">
@@ -611,7 +566,6 @@ export default async function ProtocolDetailPage({
               productTitle={typedProtocol.title}
             />
           </div>
-
           {/* Comments Section */}
           <ProductComments
             protocolId={typedProtocol.id}

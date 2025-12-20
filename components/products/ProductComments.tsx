@@ -9,7 +9,6 @@ import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import AvatarLink from "@/components/profile/AvatarLink";
 import TrustWeight from "@/components/ui/TrustWeight";
-import { createClient } from "@/lib/supabase/client";
 import UserBadge from "@/components/UserBadge";
 
 // Recursive comment thread component with Binary Indent Firewall

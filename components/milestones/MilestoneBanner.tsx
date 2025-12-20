@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { Award, X, Image } from "lucide-react";
 import SocialCard from "@/components/social/SocialCard";
 import { useShareCard } from "@/components/social/useShareCard";

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
-import { createClient } from "@/lib/supabase/client";
 import { toggleTopicFollow } from "@/app/actions/topic-actions";
 import { useRouter } from "next/navigation";
 import {

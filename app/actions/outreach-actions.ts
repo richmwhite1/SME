@@ -1,9 +1,9 @@
 "use server";
 
 import { currentUser } from "@clerk/nextjs/server";
-import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { isAdmin } from "@/lib/admin";
+import { getDb } from "@/lib/db";
 
 /**
  * Mark an invite as sent for a product
@@ -21,15 +21,17 @@ export async function markInviteSent(protocolId: string) {
     throw new Error("Unauthorized: Admin access required");
   }
 
-  const supabase = createClient();
+  const sql = getDb();
 
-  const { error } = await (supabase.from("protocols") as any)
-    .update({ invite_sent: true })
-    .eq("id", protocolId);
+  const result = await sql`
+    UPDATE protocols
+    SET invite_sent = true, updated_at = NOW()
+    WHERE id = ${protocolId}
+    RETURNING id
+  `;
 
-  if (error) {
-    console.error("Error marking invite as sent:", error);
-    throw new Error(`Failed to mark invite as sent: ${error.message}`);
+  if (!result || result.length === 0) {
+    throw new Error("Failed to mark invite as sent: Protocol not found");
   }
 
   revalidatePath("/admin");

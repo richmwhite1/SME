@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import ReviewForm from "./ReviewForm";
 import ReviewFormPrompt from "./ReviewFormPrompt";
 import ReviewCard from "./ReviewCard";
-import { createClient } from "@/lib/supabase/client";
 
 interface Review {
   id: string;

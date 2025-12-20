@@ -1,6 +1,6 @@
-import { createClient } from "@/lib/supabase/server";
 import { isAdmin } from "@/lib/admin";
 import { redirect } from "next/navigation";
+import { getDb } from "@/lib/db";
 import {
   getFlaggedContent,
   getModerationQueue,
@@ -14,57 +14,63 @@ import {
 } from "@/app/actions/intake-actions";
 import UnifiedAdminClient from "@/components/admin/UnifiedAdminClient";
 import { Shield, AlertTriangle, Package, TrendingUp, Users, Award } from "lucide-react";
-
 export const dynamic = "force-dynamic";
-
 export default async function UnifiedAdminPage() {
   const adminStatus = await isAdmin();
-
   if (!adminStatus) {
     redirect("/");
   }
-
-  const supabase = createClient();
-
+  
+  const sql = getDb();
+  
   // Fetch all products with review counts
-  const { data: products, error: productsError } = await supabase
-    .from("protocols")
-    .select(
-      `
-      id,
-      title,
-      slug,
-      created_at,
-      is_sme_certified,
-      invite_sent,
-      certification_notes,
-      third_party_lab_verified,
-      purity_tested,
-      source_transparency,
-      potency_verified,
-      excipient_audit,
-      operational_legitimacy,
-      coa_url
-    `
-    )
-    .order("created_at", { ascending: false });
+  let products = [];
+  try {
+    products = await sql`
+      SELECT 
+        id,
+        title,
+        slug,
+        created_at,
+        is_sme_certified,
+        invite_sent,
+        certification_notes,
+        third_party_lab_verified,
+        purity_tested,
+        source_transparency,
+        potency_verified,
+        excipient_audit,
+        operational_legitimacy,
+        coa_url
+      FROM protocols
+      ORDER BY created_at DESC
+    `;
+  } catch (error) {
+    console.error("Error fetching products:", error);
+  }
 
   // Get review counts for each product
   const productsWithReviews = await Promise.all(
     (products || []).map(async (product) => {
-      const { count } = await supabase
-        .from("reviews")
-        .select("*", { count: "exact", head: true })
-        .eq("protocol_id", (product as any).id)
-        .or("is_flagged.eq.false,is_flagged.is.null");
-
-      return {
-        ...(product as any),
-        review_count: count || 0,
-      };
+      try {
+        const reviewCount = await sql`
+          SELECT COUNT(*) as count
+          FROM reviews
+          WHERE protocol_id = ${(product as any).id}
+          AND (is_flagged = false OR is_flagged IS NULL)
+        `;
+        return {
+          ...(product as any),
+          review_count: reviewCount?.[0]?.count || 0,
+        };
+      } catch (err) {
+        return {
+          ...(product as any),
+          review_count: 0,
+        };
+      }
     })
   );
-
   // Fetch flagged content
   let flaggedContent;
   try {
@@ -79,7 +85,6 @@ export default async function UnifiedAdminPage() {
       errors: {},
     };
   }
-
   // Fetch moderation queue
   let queueItems;
   try {
@@ -88,7 +93,6 @@ export default async function UnifiedAdminPage() {
     console.error("Error fetching moderation queue:", error);
     queueItems = [];
   }
-
   // Fetch blacklist keywords
   let keywords;
   try {
@@ -97,7 +101,6 @@ export default async function UnifiedAdminPage() {
     console.error("Error fetching blacklist keywords:", error);
     keywords = [];
   }
-
   // Fetch all users
   let allUsers;
   try {
@@ -106,7 +109,6 @@ export default async function UnifiedAdminPage() {
     console.error("Error fetching users:", error);
     allUsers = [];
   }
-
   // Fetch intake pipeline data
   let contactSubmissions, brandApplications, productIntake;
   try {
@@ -115,21 +117,18 @@ export default async function UnifiedAdminPage() {
     console.error("Error fetching contact submissions:", error);
     contactSubmissions = [];
   }
-
   try {
     brandApplications = await getBrandApplications();
   } catch (error) {
     console.error("Error fetching brand applications:", error);
     brandApplications = [];
   }
-
   try {
     productIntake = await getProductIntakeSubmissions();
   } catch (error) {
     console.error("Error fetching product intake:", error);
     productIntake = [];
   }
-
   // Calculate stats
   const totalProducts = productsWithReviews.length;
   const certifiedProducts = productsWithReviews.filter((p: any) => (p as any).is_sme_certified).length;
@@ -139,7 +138,6 @@ export default async function UnifiedAdminPage() {
     (flaggedContent.reviews?.length || 0) +
     (flaggedContent.discussionComments?.length || 0) +
     (flaggedContent.productComments?.length || 0);
-
   return (
     <main className="min-h-screen bg-forest-obsidian px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
@@ -155,7 +153,6 @@ export default async function UnifiedAdminPage() {
             Laboratory management and moderation control center
           </p>
         </div>
-
         {/* Stats Cards */}
         <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="border border-bone-white/20 bg-bone-white/5 p-4 font-mono">
@@ -187,7 +184,6 @@ export default async function UnifiedAdminPage() {
             <p className="text-2xl font-bold text-red-500">{totalFlagged}</p>
           </div>
         </div>
-
         {/* Tabbed Interface */}
         <UnifiedAdminClient
           products={productsWithReviews}
@@ -203,4 +199,3 @@ export default async function UnifiedAdminPage() {
     </main>
   );
 }
-

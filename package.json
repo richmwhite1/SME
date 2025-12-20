@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^5.0.0",
-    "@supabase/supabase-js": "^2.39.0",
     "@vercel/og": "^0.8.6",
     "clsx": "^2.1.0",
     "date-fns": "^4.1.0",

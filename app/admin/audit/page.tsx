@@ -1,62 +1,57 @@
-import { createClient } from "@/lib/supabase/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import AuditDashboardClient from "@/components/admin/AuditDashboardClient";
-
+import { getDb } from "@/lib/db";
 export const dynamic = "force-dynamic";
-
 export default async function AuditDashboardPage() {
   const user = await currentUser();
-
   if (!user) {
     redirect("/");
   }
-
-  const supabase = createClient();
-
+  const sql = getDb();
+  
   // Check user's reputation and SME status
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .select("contributor_score, is_verified_expert")
-    .eq("id", user.id)
-    .single();
-
-  if (error || !profile) {
+  const profiles = await sql`
+    SELECT contributor_score, is_verified_expert
+    FROM profiles
+    WHERE id = ${user.id}
+    LIMIT 1
+  `;
+  
+  if (!profiles || profiles.length === 0) {
     redirect("/");
   }
-
+  
+  const profile = profiles[0];
   const contributorScore = (profile as { contributor_score?: number }).contributor_score || 0;
   const isCertifiedSME = (profile as { is_verified_expert?: boolean }).is_verified_expert || false;
-
   // Access control: reputation > 500 OR certified_sme
   if (contributorScore <= 500 && !isCertifiedSME) {
     redirect("/?toast=Higher+Trust+Weight+Required");
   }
-
   // Fetch pending evidence submissions
-  const { data: submissions, error: submissionsError } = await supabase
-    .from("evidence_submissions")
-    .select(`
-      id,
-      protocol_id,
-      lab_name,
-      batch_number,
-      document_url,
-      document_type,
-      status,
-      submitted_at,
-      protocols:protocol_id (
-        id,
-        title
-      )
-    `)
-    .eq("status", "pending_audit")
-    .order("submitted_at", { ascending: true });
-
-  if (submissionsError) {
-    console.error("Error fetching evidence submissions:", submissionsError);
+  let submissions = [];
+  try {
+    submissions = await sql`
+      SELECT 
+        es.id,
+        es.protocol_id,
+        es.lab_name,
+        es.batch_number,
+        es.document_url,
+        es.document_type,
+        es.status,
+        es.created_at as submitted_at,
+        p.id as protocol_id,
+        p.title as protocol_title
+      FROM evidence_submissions es
+      LEFT JOIN protocols p ON es.product_id = p.id
+      WHERE es.status = 'pending'
+      ORDER BY es.created_at ASC
+    `;
+  } catch (error) {
+    console.error("Error fetching evidence submissions:", error);
   }
-
   return (
     <main className="min-h-screen bg-forest-obsidian px-6 py-12">
       <div className="mx-auto max-w-7xl">
@@ -69,7 +64,6 @@ export default async function AuditDashboardPage() {
             High-security terminal for Trusted Voices
           </p>
         </div>
-
         {/* Audit Queue */}
         <div className="border border-translucent-emerald bg-muted-moss">
           <div className="border-b border-translucent-emerald p-4">
@@ -85,6 +79,3 @@ export default async function AuditDashboardPage() {
     </main>
   );
 }
-
-
-

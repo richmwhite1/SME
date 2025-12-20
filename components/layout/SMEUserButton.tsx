@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
-import { createClient } from "@/lib/supabase/client";
 import { UserButton } from "@clerk/nextjs";
 
 export default function SMEUserButton() {

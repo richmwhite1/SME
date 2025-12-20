@@ -1,14 +1,11 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
-import { createClient } from "@/lib/supabase/client";
 import { Search, ExternalLink, BookOpen, MessageSquare, Paperclip, FlaskConical, FileText, ClipboardList } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow, format } from "date-fns";
 import TopicBadge from "@/components/topics/TopicBadge";
 import Image from "next/image";
-
 interface Resource {
   origin_type: "Product" | "Discussion";
   origin_id: string;
@@ -25,22 +22,18 @@ interface Resource {
   hasVerifiedCOA?: boolean; // Has verified evidence submission
   sourceType?: "Lab Report" | "Clinical Research" | "Product Audit" | "Field Notes" | null;
 }
-
 interface DiscussionTags {
   tags: string[] | null;
 }
-
 interface ProductVerification {
   tags: string[] | null;
   images: string[] | null;
   is_sme_certified: boolean | null;
   third_party_lab_verified: boolean | null;
 }
-
 interface UserProfile {
   badge_type: string | null;
 }
-
 export default function ResourcesPage() {
   const { user, isLoaded } = useUser();
   const [resources, setResources] = useState<Resource[]>([]);
@@ -52,10 +45,8 @@ export default function ResourcesPage() {
   const [availableTopics, setAvailableTopics] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [isTrustedVoice, setIsTrustedVoice] = useState(false);
-
   useEffect(() => {
     async function fetchResources() {
-      const supabase = createClient();
       
       // Fetch resources from view
       const { data: resourcesData, error } = await supabase
@@ -68,7 +59,6 @@ export default function ResourcesPage() {
         const bDate = b.created_at ? new Date(b.created_at).getTime() : 0;
         return bDate - aDate; // Descending order
       });
-
       if (error) {
         console.error("Error fetching resources:", error);
         setResources([]);
@@ -81,7 +71,6 @@ export default function ResourcesPage() {
           .eq("status", "verified");
         
         const verifiedProductIds = new Set((verifiedEvidence || []).map((e: any) => e.product_id));
-
         // Fetch tags and product data for each resource from origin items
         const resourcesWithTags = await Promise.all(
           (sortedResources || []).map(async (resource: any) => {
@@ -114,7 +103,6 @@ export default function ResourcesPage() {
               if (!hasVerification) {
                 return null;
               }
-
               // Determine source type based on verification
               let sourceType: "Lab Reports" | "Clinical Research" | "Product Audit" | "Field Notes" | null = null;
               if (product?.third_party_lab_verified || verifiedProductIds.has(resource.origin_id)) {
@@ -124,7 +112,6 @@ export default function ResourcesPage() {
               } else {
                 sourceType = "Clinical Research";
               }
-
               return { 
                 ...resource, 
                 tags: product?.tags || null,
@@ -137,14 +124,11 @@ export default function ResourcesPage() {
             }
           })
         );
-
         // Filter out null entries (unverified products)
         const validResources = resourcesWithTags.filter((r): r is Resource => r !== null);
-
         setResources(validResources as Resource[]);
         setFilteredResources(validResources as Resource[]);
       }
-
       // Check if user is Trusted Voice
       if (user) {
         const { data: profile } = await supabase
@@ -152,10 +136,8 @@ export default function ResourcesPage() {
           .select("badge_type")
           .eq("id", user.id)
           .single() as { data: UserProfile | null };
-
         setIsTrustedVoice(profile?.badge_type === "Trusted Voice");
       }
-
       // Get topics that actually have resources from Trusted Voices
       // Fetch discussions with reference URLs and tags
       const { data: discussions } = await supabase
@@ -164,7 +146,6 @@ export default function ResourcesPage() {
         .not("reference_url", "is", null)
         .not("tags", "is", null)
         .eq("is_flagged", false);
-
       // Fetch products with reference URLs and tags
       const { data: products } = await supabase
         .from("protocols")
@@ -172,7 +153,6 @@ export default function ResourcesPage() {
         .not("reference_url", "is", null)
         .not("tags", "is", null)
         .eq("is_flagged", false);
-
       const topicsWithResources = new Set<string>();
       
       // Only include topics from Trusted Voices
@@ -187,31 +167,25 @@ export default function ResourcesPage() {
           p.tags.forEach((tag: string) => topicsWithResources.add(tag));
         }
       });
-
       // Fetch master topics and filter to only those with resources
       const { data: masterTopics } = await supabase
         .from("master_topics")
         .select("name")
         .order("display_order", { ascending: true });
-
       if (masterTopics) {
         const available = masterTopics
           .map((t: { name: string }) => t.name)
           .filter((name: string) => topicsWithResources.has(name));
         setAvailableTopics(available);
       }
-
       setLoading(false);
     }
-
     if (isLoaded) {
       fetchResources();
     }
   }, [user, isLoaded]);
-
   useEffect(() => {
     let filtered = resources;
-
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -221,17 +195,14 @@ export default function ResourcesPage() {
           resource.reference_url.toLowerCase().includes(query)
       );
     }
-
     // Apply origin type filter
     if (originFilter !== "all") {
       filtered = filtered.filter((resource) => resource.origin_type === originFilter);
     }
-
     // Apply archive filter
     if (archiveFilter !== "all") {
       filtered = filtered.filter((resource) => resource.sourceType === archiveFilter);
     }
-
     // Apply topic filter
     if (topicFilter !== "all") {
       filtered = filtered.filter((resource) => {
@@ -239,10 +210,8 @@ export default function ResourcesPage() {
         return resource.tags.includes(topicFilter);
       });
     }
-
     setFilteredResources(filtered);
   }, [searchQuery, originFilter, archiveFilter, topicFilter, resources]);
-
   return (
     <main className="min-h-screen bg-forest-obsidian">
       <div className="mx-auto max-w-7xl px-6 py-8">
@@ -259,7 +228,6 @@ export default function ResourcesPage() {
             A permanent record of community-verified research and laboratory audits.
           </p>
         </div>
-
         {/* Gatekeeper Message */}
         {isLoaded && !isTrustedVoice && (
           <div className="mb-6 border border-translucent-emerald bg-muted-moss p-4">
@@ -269,7 +237,6 @@ export default function ResourcesPage() {
             </p>
           </div>
         )}
-
         {/* Search and Filter - Apothecary Terminal */}
         <div className="mb-8 flex flex-col gap-4 md:flex-row">
           {/* Search */}
@@ -285,7 +252,6 @@ export default function ResourcesPage() {
               />
             </div>
           </div>
-
           {/* Origin Type Filter */}
           <div className="flex gap-2">
             <button
@@ -319,9 +285,7 @@ export default function ResourcesPage() {
               Discussions
             </button>
           </div>
-
         </div>
-
         {/* Results Count - Technical */}
         <div className="mb-6 text-xs text-bone-white/70 font-mono uppercase tracking-wider">
           {loading ? (
@@ -332,7 +296,6 @@ export default function ResourcesPage() {
             </>
           )}
         </div>
-
         {/* Resources List - Apothecary Terminal Cards */}
         {loading ? (
           <div className="border border-translucent-emerald bg-muted-moss p-12 text-center">
@@ -368,7 +331,6 @@ export default function ResourcesPage() {
                 }
                 return <Paperclip className="h-3.5 w-3.5 text-bone-white" />;
               };
-
               // Parse product images
               let imageUrl: string | null = null;
               if (resource.images) {
@@ -395,12 +357,10 @@ export default function ResourcesPage() {
                   }
                 }
               }
-
               // Format date with Geist Mono
               const formattedDate = resource.created_at
                 ? format(new Date(resource.created_at), "MMM d, yyyy")
                 : null;
-
               return (
                 <div
                   key={`${resource.origin_type}-${resource.origin_id}`}
@@ -577,4 +537,3 @@ export default function ResourcesPage() {
     </main>
   );
 }
-

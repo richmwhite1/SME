@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/server";
 import { currentUser } from "@clerk/nextjs/server";
 import ReviewSectionClient from "./ReviewSectionClient";
 

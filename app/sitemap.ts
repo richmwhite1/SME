@@ -1,37 +1,29 @@
 import { MetadataRoute } from "next";
-import { createClient } from "@/lib/supabase/server";
-
 interface Product {
   id: string;
   slug: string;
   updated_at: string | null;
   created_at: string;
 }
-
 interface Discussion {
   slug: string;
   updated_at: string | null;
   created_at: string;
 }
-
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sme.example.com";
-  const supabase = createClient();
-
   // Fetch all products (protocols)
   const { data: products } = await supabase
     .from("protocols")
     .select("id, slug, updated_at, created_at")
     .eq("is_flagged", false)
     .or("is_flagged.is.null") as { data: Product[] | null };
-
   // Fetch all discussions
   const { data: discussions } = await supabase
     .from("discussions")
     .select("slug, updated_at, created_at")
     .eq("is_flagged", false)
     .or("is_flagged.is.null") as { data: Discussion[] | null };
-
   // Build sitemap entries
   const sitemapEntries: MetadataRoute.Sitemap = [
     // Static pages
@@ -72,7 +64,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     },
   ];
-
   // Add product pages (using ID for canonical URLs)
   if (products) {
     products.forEach((product) => {
@@ -88,7 +79,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       });
     });
   }
-
   // Add discussion pages
   if (discussions) {
     discussions.forEach((discussion) => {
@@ -104,11 +94,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       });
     });
   }
-
   return sitemapEntries;
 }
-
-
-
-
-

@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { createClient } from "@/lib/supabase/client";
 import { toggleTopicFollow } from "@/app/actions/topic-actions";
 import Button from "@/components/ui/Button";
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { X, Plus } from "lucide-react";
 import Button from "@/components/ui/Button";
 

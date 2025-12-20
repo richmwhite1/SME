@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
 import Image from "next/image";
@@ -9,9 +8,7 @@ import ProfileActivity from "@/components/profile/ProfileActivity";
 import EditProfileButton from "@/components/profile/EditProfileButton";
 import Button from "@/components/ui/Button";
 import TrustWeight from "@/components/ui/TrustWeight";
-
 export const dynamic = "force-dynamic";
-
 interface Profile {
   id: string;
   full_name: string | null;
@@ -30,26 +27,22 @@ interface Profile {
     instagram?: string | null;
   } | null;
 }
-
 export default async function PublicProfilePage({
   params,
 }: {
   params: Promise<{ username: string }>;
 }) {
   const { username } = await params;
-  const supabase = createClient();
   
   // Fetch current user from Clerk
   const clerkUser = await currentUser();
   const currentUserId = clerkUser?.id || null;
-
   // Fetch profile by username from Supabase
   const { data: profile, error } = await supabase
     .from("profiles")
     .select("id, full_name, username, bio, credentials, profession, website_url, avatar_url, contributor_score, email, social_links, badge_type")
     .eq("username", username.toLowerCase())
     .single();
-
   // If viewing own profile, get social handles from Clerk publicMetadata
   let clerkXHandle: string | null = null;
   let clerkTelegramHandle: string | null = null;
@@ -86,11 +79,9 @@ export default async function PublicProfilePage({
       }
     }
   }
-
   if (error || !profile) {
     notFound();
   }
-
   // @ts-ignore - Profile type may not match exactly due to optional credentials
   const typedProfile = profile as Profile;
   
@@ -119,18 +110,15 @@ export default async function PublicProfilePage({
   
   // Determine if current user is the profile owner
   const isOwner = clerkUser?.id === typedProfile.id;
-
   // Fetch follower/following counts
   const { count: followerCount } = await supabase
     .from("follows")
     .select("*", { count: "exact", head: true })
     .eq("following_id", typedProfile.id);
-
   const { count: followingCount } = await supabase
     .from("follows")
     .select("*", { count: "exact", head: true })
     .eq("follower_id", typedProfile.id);
-
   // Check if current user is following this profile (only if not owner)
   let isFollowing = false;
   if (currentUserId && !isOwner) {
@@ -140,10 +128,8 @@ export default async function PublicProfilePage({
       .eq("follower_id", currentUserId)
       .eq("following_id", typedProfile.id)
       .maybeSingle();
-
     isFollowing = !!follow;
   }
-
   // Calculate total upvotes received (only if owner viewing their own profile)
   let totalUpvotes = 0;
   if (isOwner) {
@@ -152,7 +138,6 @@ export default async function PublicProfilePage({
       .from("reviews")
       .select("id")
       .eq("user_id", typedProfile.id);
-
     const reviewIds = (reviews || []).map((r: { id: string }) => r.id);
     
     // Count helpful votes on those reviews
@@ -164,13 +149,11 @@ export default async function PublicProfilePage({
       
       totalUpvotes += reviewVotesCount || 0;
     }
-
     // Get all discussion IDs authored by this user
     const { data: discussions } = await supabase
       .from("discussions")
       .select("id")
       .eq("author_id", typedProfile.id);
-
     const discussionIds = (discussions || []).map((d: { id: string }) => d.id);
     
     // Count discussion votes on those discussions
@@ -183,7 +166,6 @@ export default async function PublicProfilePage({
       totalUpvotes += discussionVotesCount || 0;
     }
   }
-
   return (
     <main className="min-h-screen bg-forest-obsidian px-6 py-12">
       <div className="mx-auto max-w-4xl">
@@ -206,7 +188,6 @@ export default async function PublicProfilePage({
                 </div>
               )}
             </div>
-
             {/* Profile Info */}
             <div className="flex-1">
               <div className="mb-4">
@@ -240,14 +221,12 @@ export default async function PublicProfilePage({
                   )}
                 </div>
               </div>
-
               {/* Bio */}
               {typedProfile.bio && (
                 <p className="mb-4 leading-relaxed text-bone-white/80 font-mono">
                   {typedProfile.bio}
                 </p>
               )}
-
               {/* Website Link */}
               {typedProfile.website_url && (
                 <div className="mb-4">
@@ -261,7 +240,6 @@ export default async function PublicProfilePage({
                   </a>
                 </div>
               )}
-
               {/* Social Media Links */}
               {typedProfile.social_links && (
                 <div className="mb-4 flex flex-wrap gap-2">
@@ -319,7 +297,6 @@ export default async function PublicProfilePage({
                   )}
                 </div>
               )}
-
               {/* Stats */}
               <div className="mb-4 flex gap-6 text-xs font-mono">
                 <div>
@@ -337,7 +314,6 @@ export default async function PublicProfilePage({
                   <span className="ml-1 text-bone-white/60 uppercase tracking-wider">Contributor Score</span>
                 </div>
               </div>
-
               {/* Badge Progress - Only visible to profile owner */}
               {isOwner && (
                 <div className="mb-4 border border-translucent-emerald bg-forest-obsidian p-4">
@@ -361,7 +337,6 @@ export default async function PublicProfilePage({
                   </div>
                 </div>
               )}
-
               {/* Action Button - Self-view vs Public view */}
               {isOwner ? (
                 // Owner: Show Private View indicator and Edit Profile button
@@ -383,11 +358,9 @@ export default async function PublicProfilePage({
             </div>
           </div>
         </div>
-
         {/* Activity Section */}
         <ProfileActivity userId={typedProfile.id} />
       </div>
     </main>
   );
 }
-
