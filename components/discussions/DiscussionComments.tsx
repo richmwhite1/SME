@@ -505,7 +505,7 @@ function CommentThread({
         showToast("Signal reported. Thank you for maintaining laboratory quality.", "success");
         
         // If comment was hidden (3+ flags), refresh the page to remove it
-        if (result.isHidden) {
+        if (result.success) {
           setIsFlagged(true);
           // Refresh after a short delay to show the toast
           setTimeout(() => {
