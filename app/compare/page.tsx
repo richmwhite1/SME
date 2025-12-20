@@ -127,22 +127,15 @@ export default async function ComparePage({
     );
   }
   // Fetch both products
-  const productAResult = await supabase
-    .from("protocols")
-    .select("*")
-    .eq("id", productAId)
-    .single();
-  
-  const productBResult = await supabase
-    .from("protocols")
-    .select("*")
-    .eq("id", productBId)
-    .single();
-  if (productAResult.error || productBResult.error) {
-    notFound();
-  }
-  const productAData = productAResult.data;
-  const productBData = productBResult.data;
+  const sql = getDb();
+  const [productAResult, productBResult] = await Promise.all([
+    sql`SELECT * FROM protocols WHERE id = ${productAId} LIMIT 1`,
+    sql`SELECT * FROM protocols WHERE id = ${productBId} LIMIT 1`
+  ]);
+
+  const productAData = productAResult?.[0];
+  const productBData = productBResult?.[0];
+
   if (!productAData || !productBData) {
     notFound();
   }
@@ -174,26 +167,26 @@ export default async function ComparePage({
   const imagesA = parseImages(typedProductA.images);
   const imagesB = parseImages(typedProductB.images);
   // Fetch most recent review for each product
-  const [reviewA, reviewB] = await Promise.all([
-    supabase
-      .from("reviews")
-      .select("id, content, rating, created_at")
-      .eq("protocol_id", productAId)
-      .or("is_flagged.eq.false,is_flagged.is.null")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    supabase
-      .from("reviews")
-      .select("id, content, rating, created_at")
-      .eq("protocol_id", productBId)
-      .or("is_flagged.eq.false,is_flagged.is.null")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+  const [reviewAResult, reviewBResult] = await Promise.all([
+    sql`
+      SELECT id, content, rating, created_at 
+      FROM reviews 
+      WHERE protocol_id = ${productAId} 
+        AND (is_flagged IS FALSE OR is_flagged IS NULL)
+      ORDER BY created_at DESC 
+      LIMIT 1
+    `,
+    sql`
+      SELECT id, content, rating, created_at 
+      FROM reviews 
+      WHERE protocol_id = ${productBId} 
+        AND (is_flagged IS FALSE OR is_flagged IS NULL)
+      ORDER BY created_at DESC 
+      LIMIT 1
+    `
   ]);
-  const recentReviewA = reviewA.data as Review | null;
-  const recentReviewB = reviewB.data as Review | null;
+  const recentReviewA = (reviewAResult?.[0] || null) as Review | null;
+  const recentReviewB = (reviewBResult?.[0] || null) as Review | null;
   // Get sentiment snippet (first 100 chars of review)
   const getSentimentSnippet = (review: Review | null): string => {
     if (!review || !review.content) return "Signal Pending: Be the first auditor to share your intuition.";
@@ -206,34 +199,38 @@ export default async function ComparePage({
     return sentences.slice(0, 2).join(". ").trim() + (sentences.length > 2 ? "." : "");
   };
   // Count helpful votes (sum of helpful_count from all reviews)
-  const [reviewsA, reviewsB] = await Promise.all([
-    supabase
-      .from("reviews")
-      .select("helpful_count")
-      .eq("protocol_id", productAId)
-      .or("is_flagged.eq.false,is_flagged.is.null"),
-    supabase
-      .from("reviews")
-      .select("helpful_count")
-      .eq("protocol_id", productBId)
-      .or("is_flagged.eq.false,is_flagged.is.null"),
+  const [reviewsAResult, reviewsBResult] = await Promise.all([
+    sql`
+      SELECT helpful_count 
+      FROM reviews 
+      WHERE protocol_id = ${productAId} 
+        AND (is_flagged IS FALSE OR is_flagged IS NULL)
+    `,
+    sql`
+      SELECT helpful_count 
+      FROM reviews 
+      WHERE protocol_id = ${productBId} 
+        AND (is_flagged IS FALSE OR is_flagged IS NULL)
+    `
   ]);
-  const upvoteCountA = ((reviewsA.data as Array<{ helpful_count?: number }>) || []).reduce((sum, review) => sum + (review.helpful_count || 0), 0);
-  const upvoteCountB = ((reviewsB.data as Array<{ helpful_count?: number }>) || []).reduce((sum, review) => sum + (review.helpful_count || 0), 0);
+  const upvoteCountA = (reviewsAResult as any[] || []).reduce((sum: number, review: any) => sum + (review.helpful_count || 0), 0);
+  const upvoteCountB = (reviewsBResult as any[] || []).reduce((sum: number, review: any) => sum + (review.helpful_count || 0), 0);
   // Fetch intuitive reviews (reviews containing [INTUITIVE] tag)
-  const [intuitiveReviewsA, intuitiveReviewsB] = await Promise.all([
-    supabase
-      .from("reviews")
-      .select("rating")
-      .eq("protocol_id", productAId)
-      .ilike("content", "%[INTUITIVE]%")
-      .or("is_flagged.eq.false,is_flagged.is.null"),
-    supabase
-      .from("reviews")
-      .select("rating")
-      .eq("protocol_id", productBId)
-      .ilike("content", "%[INTUITIVE]%")
-      .or("is_flagged.eq.false,is_flagged.is.null"),
+  const [intuitiveReviewsAResult, intuitiveReviewsBResult] = await Promise.all([
+    sql`
+      SELECT rating 
+      FROM reviews 
+      WHERE protocol_id = ${productAId} 
+        AND content ILIKE '%[INTUITIVE]%'
+        AND (is_flagged IS FALSE OR is_flagged IS NULL)
+    `,
+    sql`
+      SELECT rating 
+      FROM reviews 
+      WHERE protocol_id = ${productBId} 
+        AND content ILIKE '%[INTUITIVE]%'
+        AND (is_flagged IS FALSE OR is_flagged IS NULL)
+    `
   ]);
   // Calculate average intuitive score
   const getIntuitiveScore = (reviews: Array<{ rating?: number }>): string => {
@@ -241,8 +238,8 @@ export default async function ComparePage({
     const avg = reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length;
     return avg.toFixed(1);
   };
-  const intuitiveScoreA = getIntuitiveScore((intuitiveReviewsA.data as Array<{ rating?: number }>) || []);
-  const intuitiveScoreB = getIntuitiveScore((intuitiveReviewsB.data as Array<{ rating?: number }>) || []);
+  const intuitiveScoreA = getIntuitiveScore((intuitiveReviewsAResult as Array<{ rating?: number }>) || []);
+  const intuitiveScoreB = getIntuitiveScore((intuitiveReviewsBResult as Array<{ rating?: number }>) || []);
   // Calculate price per serving (placeholder - would need actual price data)
   const getPricePerServing = (buyUrl: string | null): string => {
     if (!buyUrl) return "N/A";
@@ -253,24 +250,24 @@ export default async function ComparePage({
   const pricePerServingA = getPricePerServing(typedProductA.buy_url);
   const pricePerServingB = getPricePerServing(typedProductB.buy_url);
   // Check for verified COA evidence
-  const [evidenceA, evidenceB] = await Promise.all([
-    supabase
-      .from("evidence_submissions")
-      .select("id, status")
-      .eq("product_id", productAId)
-      .eq("status", "verified")
-      .limit(1)
-      .maybeSingle(),
-    supabase
-      .from("evidence_submissions")
-      .select("id, status")
-      .eq("product_id", productBId)
-      .eq("status", "verified")
-      .limit(1)
-      .maybeSingle(),
+  const [evidenceAResult, evidenceBResult] = await Promise.all([
+    sql`
+      SELECT id, status 
+      FROM evidence_submissions 
+      WHERE product_id = ${productAId} 
+        AND status = 'verified' 
+      LIMIT 1
+    `,
+    sql`
+      SELECT id, status 
+      FROM evidence_submissions 
+      WHERE product_id = ${productBId} 
+        AND status = 'verified' 
+      LIMIT 1
+    `
   ]);
-  const hasVerifiedCOAA = !!evidenceA.data;
-  const hasVerifiedCOAB = !!evidenceB.data;
+  const hasVerifiedCOAA = !!evidenceAResult?.[0];
+  const hasVerifiedCOAB = !!evidenceBResult?.[0];
   return (
     <CompareClient
       productA={typedProductA}

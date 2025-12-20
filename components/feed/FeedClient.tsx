@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import FeedCalibration from "./FeedCalibration";
 import { useRouter } from "next/navigation";
+import { getFollowedTopics } from "@/app/actions/topic-actions";
 
 interface FeedClientProps {
   initialFollowedTopics: string[];
@@ -23,29 +24,27 @@ export default function FeedClient({ initialFollowedTopics, children }: FeedClie
         return;
       }
 
-      const supabase = createClient();
-      const { data: follows } = await supabase
-        .from("topic_follows")
-        .select("topic_name")
-        .eq("user_id", user.id);
-
-      const followed = (follows || []).map((f: { topic_name: string }) => f.topic_name);
-      
-      // If we transition from 0 to >= 3 topics, trigger Signal Lock animation
-      if (followedTopics.length < 3 && followed.length >= 3 && !isTransitioning) {
-        setIsTransitioning(true);
-        setShowSignalLock(true);
+      try {
+        const followed = await getFollowedTopics();
         
-        // Hide animation after fade completes
-        setTimeout(() => {
-          setShowSignalLock(false);
-          setIsTransitioning(false);
-        }, 1000);
-      }
-      
-      // Only update if changed to avoid unnecessary re-renders
-      if (JSON.stringify(followed.sort()) !== JSON.stringify(followedTopics.sort())) {
-        setFollowedTopics(followed);
+        // If we transition from 0 to >= 3 topics, trigger Signal Lock animation
+        if (followedTopics.length < 3 && followed.length >= 3 && !isTransitioning) {
+          setIsTransitioning(true);
+          setShowSignalLock(true);
+          
+          // Hide animation after fade completes
+          setTimeout(() => {
+            setShowSignalLock(false);
+            setIsTransitioning(false);
+          }, 1000);
+        }
+        
+        // Only update if changed to avoid unnecessary re-renders
+        if (JSON.stringify(followed.sort()) !== JSON.stringify(followedTopics.sort())) {
+          setFollowedTopics(followed);
+        }
+      } catch (error) {
+        console.error("Error fetching followed topics:", error);
       }
     }
 
@@ -130,6 +129,3 @@ export default function FeedClient({ initialFollowedTopics, children }: FeedClie
     </>
   );
 }
-
-
-

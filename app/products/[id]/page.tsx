@@ -15,9 +15,12 @@ import Button from "@/components/ui/Button";
 import CompareButton from "@/components/products/CompareButton";
 import ReactMarkdown from "react-markdown";
 import SearchBar from "@/components/search/SearchBar";
+import { getDb } from "@/lib/db";
+
 // Force dynamic rendering to bypass caching issues
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
 // Generate dynamic metadata for SEO
 export async function generateMetadata({
   params,
@@ -25,39 +28,43 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
+  const sql = getDb();
+  
   try {
-    const { data: protocol } = await supabase
-      .from("protocols")
-      .select("title, ai_summary, is_sme_certified, images")
-      .eq("id", id)
-      .single();
+    const result = await sql`
+      SELECT title, ai_summary, is_sme_certified, images
+      FROM protocols
+      WHERE id = ${id}
+      LIMIT 1
+    `;
+    
+    const protocol = result[0];
+
     if (!protocol) {
       return {
         title: "Product Not Found",
         description: "The requested product could not be found.",
       };
     }
-    // Type assertion for protocol data
-    const protocolData = protocol as {
-      title: string;
-      ai_summary: string | null;
-      is_sme_certified: boolean | null;
-      images: string[] | null;
-    };
+
     // Prefix title with certified badge if SME certified
-    const titlePrefix = protocolData.is_sme_certified ? "✅ Certified: " : "";
-    const title = `${titlePrefix}${protocolData.title}`;
+    const titlePrefix = protocol.is_sme_certified ? "✅ Certified: " : "";
+    const title = `${titlePrefix}${protocol.title}`;
+
     // Use first 160 characters of ai_summary as description
-    const description = protocolData.ai_summary
-      ? protocolData.ai_summary.substring(0, 160).replace(/\n/g, " ").trim()
-      : `Transparency report for ${protocolData.title}. Research-based analysis and verification.`;
+    const description = protocol.ai_summary
+      ? protocol.ai_summary.substring(0, 160).replace(/\n/g, " ").trim()
+      : `Transparency report for ${protocol.title}. Research-based analysis and verification.`;
+
     // Get first image for Open Graph
     let imageUrl: string | undefined;
-    if (protocolData.images && Array.isArray(protocolData.images) && protocolData.images.length > 0) {
-      imageUrl = protocolData.images[0];
+    if (protocol.images && Array.isArray(protocol.images) && protocol.images.length > 0) {
+      imageUrl = protocol.images[0];
     }
+
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sme.example.com";
     const canonicalUrl = `${baseUrl}/products/${id}`;
+
     return {
       title,
       description,
@@ -86,6 +93,7 @@ export async function generateMetadata({
     };
   }
 }
+
 interface ProtocolItem {
   step_order: number;
   usage_instructions: string;
@@ -94,6 +102,7 @@ interface ProtocolItem {
     brand: string;
   } | null;
 }
+
 interface Protocol {
   id: string;
   title: string;
@@ -120,6 +129,7 @@ interface Protocol {
   images?: string[] | null;
   protocol_items: ProtocolItem[];
 }
+
 export default async function ProtocolDetailPage({
   params,
 }: {
@@ -127,182 +137,123 @@ export default async function ProtocolDetailPage({
 }) {
   // Await params (Next.js 15+ requirement)
   const { id } = await params;
+  const sql = getDb();
   
   console.log("Product Detail Page - Fetching product with ID:", id);
   try {
-    // Explicit fetch by ID - explicitly select images array to ensure proper handling
-    console.log("Fetching product with ID:", id);
-    console.log("ID type:", typeof id);
-    console.log("ID length:", id?.length);
+    // Fetch protocol details
+    const protocolResult = await sql`
+      SELECT *
+      FROM protocols
+      WHERE id = ${id}
+      LIMIT 1
+    `;
     
-    const { data: protocol, error } = await supabase
-      .from("protocols")
-      .select(`
-        *,
-        images
-      `)
-      .eq("id", id)
-      .single();
-    if (error) {
-      console.error("Supabase error fetching protocol:", error);
-      console.error("Error code:", error.code);
-      console.error("Error message:", error.message);
-      console.error("Error details:", JSON.stringify(error, null, 2));
-      console.error("ID attempted:", id);
-      
-      // Try to fetch all products to see what IDs exist
-      const { data: allProducts } = await supabase
-        .from("protocols")
-        .select("id, title, slug")
-        .limit(5);
-      console.log("Sample product IDs in database:", allProducts?.map((p: any) => ({ id: p.id, title: p.title, slug: p.slug })));
-      
-      notFound();
-    }
+    const protocol = protocolResult[0];
+
     if (!protocol) {
       console.error("Protocol not found for ID:", id);
-      console.error("This might mean the ID doesn't exist in the database");
       notFound();
     }
-    console.log("Product found:", (protocol as any).title);
-    console.log("Product ID:", (protocol as any).id);
-    // Type assertion - ensure we have a valid protocol object
-    if (!protocol || typeof protocol !== 'object') {
-      console.error("Invalid protocol data received:", protocol);
-      notFound();
+
+    // Fetch protocol items (steps) with product details
+    // Assuming protocol_items table exists and links to products
+    // If protocol_items is a JSON column, we'd handle it differently, but assuming table based on structure
+    let protocolItems: ProtocolItem[] = [];
+    try {
+      const itemsResult = await sql`
+        SELECT 
+          pi.step_order, 
+          pi.usage_instructions,
+          p.name as product_name,
+          p.brand as product_brand
+        FROM protocol_items pi
+        LEFT JOIN products p ON pi.product_id = p.id
+        WHERE pi.protocol_id = ${id}
+        ORDER BY pi.step_order ASC
+      `;
+      
+      protocolItems = itemsResult.map((item: any) => ({
+        step_order: item.step_order,
+        usage_instructions: item.usage_instructions,
+        products: item.product_name ? {
+          name: item.product_name,
+          brand: item.product_brand
+        } : null
+      }));
+    } catch (err) {
+      console.warn("Error fetching protocol items:", err);
+      // Fallback if table doesn't exist or error
     }
-    
-    const typedProtocol = protocol as Protocol;
-    // Debug: Log images data
-    console.log("Raw images data from DB:", typedProtocol.images);
-    console.log("Images type:", typeof typedProtocol.images);
-    console.log("Is array?", Array.isArray(typedProtocol.images));
-    console.log("Images value:", JSON.stringify(typedProtocol.images));
-    
-    // Handle images - PostgreSQL TEXT[] arrays should come as arrays from Supabase
-    // But sometimes they come as strings or need special handling
+
+    // Construct full protocol object
+    const typedProtocol: Protocol = {
+      ...(protocol as any),
+      protocol_items: protocolItems
+    };
+
+    // Handle images
     let imagesArray: string[] = [];
-    
     if (typedProtocol.images) {
       if (Array.isArray(typedProtocol.images)) {
-        // Direct array - this is the expected format
         imagesArray = typedProtocol.images.filter((img): img is string => typeof img === 'string' && img.length > 0);
-        console.log("Images are already an array, using directly");
       } else if (typeof typedProtocol.images === 'string') {
-        // String format - try to parse
-        console.log("Images are a string, attempting to parse");
+        // Handle string format if necessary (Postgres array string)
         const imagesString: string = typedProtocol.images;
-        try {
-          // Try JSON parse first
-          const parsed = JSON.parse(imagesString);
-          if (Array.isArray(parsed)) {
-            imagesArray = parsed.filter((img: any): img is string => typeof img === 'string' && img.length > 0);
-          } else {
-            // Might be a PostgreSQL array string like "{url1,url2}"
-            const arrayMatch = imagesString.match(/^\{([^}]*)\}$/);
-            if (arrayMatch) {
-              imagesArray = arrayMatch[1]
-                .split(',')
-                .map((s: string) => s.trim().replace(/^"|"$/g, ''))
-                .filter((img: string): img is string => img.length > 0);
-            }
-          }
-        } catch (e) {
-          console.error("Failed to parse images:", e);
-          // Try PostgreSQL array format: {url1,url2}
-          const arrayMatch = imagesString.match(/^\{([^}]*)\}$/);
-          if (arrayMatch) {
-            imagesArray = arrayMatch[1]
-              .split(',')
-              .map((s: string) => s.trim().replace(/^"|"$/g, ''))
-              .filter((img: string): img is string => img.length > 0);
-          }
+        const arrayMatch = imagesString.match(/^\{([^}]*)\}$/);
+        if (arrayMatch) {
+          imagesArray = arrayMatch[1]
+            .split(',')
+            .map((s: string) => s.trim().replace(/^"|"$/g, ''))
+            .filter((img: string): img is string => img.length > 0);
         }
       }
     }
     
-    console.log("Processed images array:", imagesArray);
-    console.log("Images array length:", imagesArray.length);
-    imagesArray.forEach((img, idx) => {
-      console.log(`  Image ${idx}:`, img);
-    });
-    // Image protection - images should already be full URLs from upload
-    // Just validate they're valid URLs
-    const safeImages = imagesArray.length > 0
-      ? imagesArray
-          .filter((img): img is string => {
-            // Only keep valid URLs
-            const isValid = !!img && typeof img === 'string' && (img.startsWith('http://') || img.startsWith('https://'));
-            if (!isValid && img) {
-              console.warn("Invalid image URL filtered out:", img);
-            }
-            return isValid;
-          })
-      : [];
-    
-    console.log("Safe images after filtering:", safeImages);
-    console.log("Safe images count:", safeImages.length);
-    console.log("Safe images after filtering:", safeImages);
-    console.log("Safe images count:", safeImages.length);
-    // Sort protocol items by step_order
-    const sortedItems = (typedProtocol.protocol_items || []).sort(
-      (a, b) => a.step_order - b.step_order
+    const safeImages = imagesArray.filter(img => 
+      !!img && (img.startsWith('http://') || img.startsWith('https://'))
     );
-    // Fetch comments for this product with error handling
+
+    // Fetch comments
     let serializedComments: any[] = [];
     try {
-      const { data: comments, error: commentsError } = await supabase
-        .from("product_comments")
-        .select(`
-          id,
-          content,
-          created_at,
-          parent_id,
-          profiles!product_comments_author_id_fkey(
-            id,
-            full_name,
-            username,
-            avatar_url,
-            badge_type,
-            contributor_score
-          )
-        `)
-        .eq("protocol_id", typedProtocol.id)
-        .eq("is_flagged", false)
-        .order("created_at", { ascending: true });
-      if (commentsError) {
-        console.error("Error fetching product comments:", commentsError);
-        // Continue with empty comments array instead of failing
-      } else {
-        // Serialize comments data - convert Date objects to ISO strings
-        // Map author_id to archive_clerk_id if applicable
-        serializedComments = (comments || []).map((comment: any) => ({
-          ...comment,
-          created_at: comment.created_at instanceof Date 
-            ? comment.created_at.toISOString() 
-            : typeof comment.created_at === 'string' 
-              ? comment.created_at 
-              : new Date(comment.created_at).toISOString(),
-          profiles: comment.profiles ? {
-            ...comment.profiles,
-            // Ensure all profile fields are serializable
-            // Use archive_clerk_id if available, otherwise use id
-            id: String(comment.profiles.id),
-            archive_clerk_id: comment.profiles.archive_clerk_id || comment.profiles.id,
-            contributor_score: comment.profiles.contributor_score ?? null,
-          } : null,
-        }));
-      }
+      const commentsResult = await sql`
+        SELECT 
+          dc.id, dc.content, dc.created_at, dc.parent_id,
+          p.id as author_id, p.full_name, p.username, p.avatar_url, p.badge_type, p.contributor_score, p.archive_clerk_id
+        FROM discussion_comments dc
+        LEFT JOIN profiles p ON dc.author_id = p.id
+        WHERE dc.protocol_id = ${id}
+          AND (dc.is_flagged IS FALSE OR dc.is_flagged IS NULL)
+        ORDER BY dc.created_at ASC
+      `;
+
+      serializedComments = commentsResult.map((comment: any) => ({
+        id: comment.id,
+        content: comment.content,
+        created_at: comment.created_at instanceof Date ? comment.created_at.toISOString() : comment.created_at,
+        parent_id: comment.parent_id,
+        profiles: comment.author_id ? {
+          id: String(comment.author_id),
+          full_name: comment.full_name,
+          username: comment.username,
+          avatar_url: comment.avatar_url,
+          badge_type: comment.badge_type,
+          contributor_score: comment.contributor_score,
+          archive_clerk_id: comment.archive_clerk_id || comment.author_id
+        } : null
+      }));
     } catch (commentsErr) {
-      console.error("Unexpected error fetching comments:", commentsErr);
-      // Continue with empty comments array
-      serializedComments = [];
+      console.error("Error fetching comments:", commentsErr);
     }
+
     // Check if product is SME certified
     const isSMECertified = typedProtocol.is_sme_certified === true;
+
     // Build base URL for canonical and structured data
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sme.example.com";
     const canonicalUrl = `${baseUrl}/products/${id}`;
+
     // Build JSON-LD structured data for SEO
     const jsonLd = {
       "@context": "https://schema.org",
@@ -369,6 +320,7 @@ export default async function ProtocolDetailPage({
         },
       }),
     };
+
     return (
       <>
         {/* JSON-LD Structured Data */}
@@ -379,6 +331,7 @@ export default async function ProtocolDetailPage({
         
         {/* Canonical URL */}
         <link rel="canonical" href={canonicalUrl} />
+
         <main className="min-h-screen bg-forest-obsidian">
           <div className="mx-auto max-w-7xl px-6 py-8">
             {/* Global Search Bar - Most Prominent Tool */}
@@ -393,6 +346,7 @@ export default async function ProtocolDetailPage({
                 </p>
               </div>
             </div>
+
             {/* Back to Products Button */}
             <div className="mb-6">
               <Link href="/products">
@@ -402,6 +356,7 @@ export default async function ProtocolDetailPage({
                 </button>
               </Link>
             </div>
+
             {/* Two-Column Grid Layout - 60/40 Split (Spec Sheet Layout) */}
             <div className="grid grid-cols-1 lg:grid-cols-5 lg:gap-8 mb-12">
               {/* Left Column: Visuals (60% - 3/5 columns) */}
@@ -416,6 +371,7 @@ export default async function ProtocolDetailPage({
                   </div>
                 )}
               </div>
+
               {/* Right Column: High-Density Data Stack (40% - 2/5 columns) */}
               <div className="lg:col-span-2 space-y-6">
                 {/* Header - Serif Product Name */}
@@ -427,6 +383,7 @@ export default async function ProtocolDetailPage({
                     {typedProtocol.problem_solved}
                   </p>
                 </div>
+
                 {/* SME Certified Badge */}
                 {isSMECertified && (
                   <div>
@@ -440,6 +397,7 @@ export default async function ProtocolDetailPage({
                     />
                   </div>
                 )}
+
                 {/* 5-Pillar Transparency Checklist - High-Density Data Stack */}
                 {isSMECertified && (
                   <TransparencyCard
@@ -452,6 +410,7 @@ export default async function ProtocolDetailPage({
                     certificationNotes={typedProtocol.certification_notes}
                   />
                 )}
+
                 {/* Purchase Button - SME Gold */}
                 {typedProtocol.buy_url && (
                   <a 
@@ -468,6 +427,7 @@ export default async function ProtocolDetailPage({
                     </button>
                   </a>
                 )}
+
                 {/* Reference Links - Technical */}
                 <div className="flex flex-wrap gap-2">
                   <CompareButton productId={typedProtocol.id} productTitle={typedProtocol.title} />
@@ -493,6 +453,7 @@ export default async function ProtocolDetailPage({
                 </div>
               </div>
             </div>
+
             {/* AI Summary / Expert Notebook - Full Width Below Grid */}
             {typedProtocol.ai_summary && (
               <div className="mb-12 border border-translucent-emerald bg-muted-moss p-8">
@@ -512,29 +473,32 @@ export default async function ProtocolDetailPage({
                 </div>
               </div>
             )}
+
             {/* Timeline Steps - Clinical Layout */}
-            {sortedItems.length > 0 && (
+            {typedProtocol.protocol_items && typedProtocol.protocol_items.length > 0 && (
               <div className="mb-12 space-y-6">
                 <h2 className="font-serif text-xl font-bold text-bone-white mb-6">Product Steps</h2>
-                {sortedItems.map((item, index) => (
+                {typedProtocol.protocol_items.map((item, index) => (
                   <div key={item.step_order} className="relative">
                     <div className="flex items-start gap-4">
                       <div className="flex flex-shrink-0 flex-col items-center">
                         <div className="flex h-8 w-8 items-center justify-center border border-translucent-emerald bg-muted-moss text-xs font-mono font-semibold text-bone-white">
                           {item.step_order}
                         </div>
-                        {index < sortedItems.length - 1 && (
+                        {index < typedProtocol.protocol_items.length - 1 && (
                           <div className="mt-2 flex flex-col items-center">
                             <ArrowDown className="h-4 w-4 text-bone-white/30" />
                           </div>
                         )}
                       </div>
+                      
                       {/* Step Content */}
                       <div className="flex-1 pb-6">
                         <div className="mb-2 flex items-center gap-2 text-xs font-mono text-bone-white/70 uppercase tracking-wider">
                           <Clock className="h-3 w-3" />
                           <span>Step {item.step_order}</span>
                         </div>
+                        
                         {/* Product Card */}
                         {item.products && (
                           <ProductCard
@@ -549,37 +513,39 @@ export default async function ProtocolDetailPage({
                 ))}
               </div>
             )}
+
             {/* Reviews Section */}
-          <div className="mt-16 border-t border-translucent-emerald pt-12">
-            <div className="mb-8 flex items-center justify-between">
-              <h2 className="font-serif text-3xl font-semibold text-bone-white">
-                Community Reviews
-              </h2>
-              <SubmitEvidenceButton
-                productId={typedProtocol.id}
+            <div className="mt-16 border-t border-translucent-emerald pt-12">
+              <div className="mb-8 flex items-center justify-between">
+                <h2 className="font-serif text-3xl font-semibold text-bone-white">
+                  Community Reviews
+                </h2>
+                <SubmitEvidenceButton
+                  productId={typedProtocol.id}
+                  productTitle={typedProtocol.title}
+                />
+              </div>
+              <ReviewSection
+                protocolId={typedProtocol.id}
+                protocolSlug={typedProtocol.id}
                 productTitle={typedProtocol.title}
               />
             </div>
-            <ReviewSection
+
+            {/* Comments Section */}
+            <ProductComments
               protocolId={typedProtocol.id}
               protocolSlug={typedProtocol.id}
-              productTitle={typedProtocol.title}
+              initialComments={serializedComments}
             />
           </div>
-          {/* Comments Section */}
-          <ProductComments
-            protocolId={typedProtocol.id}
-            protocolSlug={typedProtocol.id}
-            initialComments={serializedComments}
-          />
-        </div>
-      </main>
+        </main>
       </>
     );
   } catch (err) {
     console.error("Unexpected error in product detail page:", err);
     
-    // Fallback UI if Supabase query fails
+    // Fallback UI if query fails
     return (
       <main className="min-h-screen bg-forest-obsidian px-6 py-12">
         <div className="mx-auto max-w-4xl">

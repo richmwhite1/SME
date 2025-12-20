@@ -142,3 +142,23 @@ export async function getFollowedTopics(): Promise<string[]> {
     return [];
   }
 }
+
+/**
+ * Get master topics for calibration
+ */
+export async function getMasterTopics() {
+  const sql = getDb();
+  try {
+    // Try to fetch from topics table first
+    const topics = await sql`
+      SELECT name, description, icon
+      FROM topics
+      ORDER BY name ASC
+    `;
+    return topics;
+  } catch (error) {
+    console.error("Error fetching master topics:", error);
+    // Fallback or return empty
+    return [];
+  }
+}

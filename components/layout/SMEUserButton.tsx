@@ -18,19 +18,16 @@ export default function SMEUserButton() {
       }
 
       try {
-        const supabase = createClient();
-        const { data: profile, error } = await supabase
-          .from("profiles")
-          .select("contributor_score, is_verified_expert, is_admin")
-          .eq("id", user.id)
-          .single();
-
-        if (!error && profile) {
-          const contributorScore = (profile as { contributor_score?: number }).contributor_score || 0;
-          const isCertifiedSME = (profile as { is_verified_expert?: boolean }).is_verified_expert || false;
-          const adminStatus = (profile as { is_admin?: boolean }).is_admin || false;
-          setIsSME(contributorScore > 500 || isCertifiedSME);
-          setIsAdmin(adminStatus);
+        const response = await fetch('/api/profile');
+        if (response.ok) {
+          const profile = await response.json();
+          if (profile) {
+            const contributorScore = profile.contributor_score || 0;
+            const isCertifiedSME = profile.is_verified_expert || false;
+            const adminStatus = profile.is_admin || false;
+            setIsSME(contributorScore > 500 || isCertifiedSME);
+            setIsAdmin(adminStatus);
+          }
         }
       } catch (error) {
         console.error("Error checking status:", error);

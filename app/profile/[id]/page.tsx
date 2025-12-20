@@ -1,23 +1,30 @@
 import { redirect, notFound } from "next/navigation";
+import { getDb } from "@/lib/db";
+
 export const dynamic = "force-dynamic";
-interface ProfileData {
-  username: string | null;
-}
+
 export default async function ProfileByIdPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const sql = getDb();
+
   // Fetch profile by ID to get username
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .select("username")
-    .eq("id", id)
-    .single() as { data: ProfileData | null, error: any };
-  if (error || !profile) {
+  const result = await sql`
+    SELECT username
+    FROM profiles
+    WHERE id = ${id}
+    LIMIT 1
+  `;
+  
+  const profile = result[0];
+
+  if (!profile) {
     notFound();
   }
+
   // Redirect to username route if available, otherwise to /u/me
   if (profile.username) {
     redirect(`/u/${profile.username}`);

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Search, X, BookOpen, ExternalLink } from "lucide-react";
+import { searchResources } from "@/app/actions/resource-actions";
 
 interface ResourceReference {
   resource_id: string;
@@ -53,18 +54,11 @@ export default function CitationInput({
       setIsOpen(true);
 
       try {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from("resource_library")
-          .select("origin_id, title, reference_url")
-          .ilike("title", `%${query.trim()}%`)
-          .limit(10);
-
-        if (error) {
-          console.error("Search error:", error);
-          setResults([]);
+        const response = await searchResources(query.trim());
+        if (response.success && response.data) {
+          setResults(response.data);
         } else {
-          setResults(data || []);
+          setResults([]);
         }
       } catch (err) {
         console.error("Search error:", err);
@@ -215,6 +209,3 @@ export default function CitationInput({
     </div>
   );
 }
-
-
-

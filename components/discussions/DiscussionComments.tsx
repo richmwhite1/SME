@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 import { SignInButton } from "@clerk/nextjs";
-import { flagComment, createDiscussionComment } from "@/app/actions/discussion-actions";
+import { flagComment, createDiscussionComment, getDiscussionComments } from "@/app/actions/discussion-actions";
 import CommentForm from "@/components/comments/CommentForm";
 import CitationText from "@/components/comments/CitationText";
 import CitationSearch from "@/components/comments/CitationSearch";
@@ -119,7 +119,7 @@ export default function DiscussionComments({
   // Sort comments based on mode
   const sortComments = (comments: Comment[]): Comment[] => {
     const sorted = [...comments];
-    
+
     if (sortMode === "reputation") {
       sorted.sort((a, b) => {
         const aIsTrusted = a.profiles?.badge_type === "Trusted Voice" ? 1 : 0;
@@ -147,54 +147,12 @@ export default function DiscussionComments({
 
   // Fetch comments with references
   const fetchComments = async () => {
-    const supabase = createClient();
-    const { data: commentsData, error: commentsError } = await supabase
-      .from("discussion_comments")
-      .select(`
-        id,
-        content,
-        created_at,
-        parent_id,
-        profiles!discussion_comments_author_id_fkey(
-          id,
-          full_name,
-          username,
-          avatar_url,
-          badge_type,
-          contributor_score
-        )
-      `)
-      .eq("discussion_id", discussionId)
-      .or("is_flagged.eq.false,is_flagged.is.null")
-      .order("created_at", { ascending: true });
-
-    if (commentsError) {
-      console.error("Error fetching comments:", commentsError);
-      return;
+    try {
+      const commentsData = await getDiscussionComments(discussionId);
+      setComments((commentsData || []) as Comment[]);
+    } catch (err) {
+      console.error("Error fetching comments:", err);
     }
-
-    // Schema Cleanup: comment_references table query disabled until table is confirmed to exist
-    // TODO: Re-enable when comment_references table is created in database
-    // const commentsWithReferences = await Promise.all(
-    //   (commentsData || []).map(async (comment) => {
-    //     const { data: refsData } = await supabase
-    //       .from("comment_references")
-    //       .select("resource_id, resource_title, resource_url")
-    //       .eq("comment_id", comment.id);
-    //
-    //     return {
-    //       ...comment,
-    //       references: (refsData || []).map((ref) => ({
-    //         resource_id: ref.resource_id,
-    //         resource_title: ref.resource_title,
-    //         resource_url: ref.resource_url,
-    //       })),
-    //     };
-    //   })
-    // );
-
-    // Set comments without references until table exists
-    setComments((commentsData || []) as Comment[]);
   };
 
   useEffect(() => {
@@ -204,29 +162,29 @@ export default function DiscussionComments({
   // Handle scroll to comment when commentId is in URL (query param or hash anchor)
   useEffect(() => {
     if (typeof window === "undefined") return;
-    
+
     // Check for query parameter first, then hash anchor
     const urlParams = new URLSearchParams(window.location.search);
     let commentId = urlParams.get("commentId");
-    
+
     // Fallback to hash anchor if no query param
     if (!commentId) {
       const hash = window.location.hash;
       const hashMatch = hash.match(/^#(.+)$/);
       commentId = hashMatch ? hashMatch[1] : null;
     }
-    
+
     if (commentId) {
       // Small delay to ensure comments are rendered
       setTimeout(() => {
         // Try multiple ID formats for compatibility
-        const commentElement = document.getElementById(commentId) || 
-                              document.getElementById(`comment-${commentId}`) ||
-                              document.querySelector(`[data-comment-id="${commentId}"]`);
+        const commentElement = document.getElementById(commentId) ||
+          document.getElementById(`comment-${commentId}`) ||
+          document.querySelector(`[data-comment-id="${commentId}"]`);
         if (commentElement) {
-          commentElement.scrollIntoView({ 
-            behavior: "smooth", 
-            block: "start" 
+          commentElement.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
           });
           // Highlight the comment briefly with Emerald Aura
           commentElement.classList.add("highlight-signal");
@@ -269,17 +227,17 @@ export default function DiscussionComments({
 
       // Small delay to ensure database transaction has committed
       await new Promise(resolve => setTimeout(resolve, 200));
-      
+
       // Refresh to get real comment from server
       await fetchComments();
       router.refresh();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to post reply";
       setError(errorMessage);
-      
+
       // Revert optimistic update on error by refetching from server
       await fetchComments();
-      
+
       // Show toast notification
       showToast(errorMessage, "error");
     } finally {
@@ -432,22 +390,22 @@ function CommentThread({
   const handleCopyLink = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     // Debug: Check if discussionId is undefined
     console.log("Copy Link Debug - discussionId:", discussionId, "comment.id:", comment.id);
-    
+
     if (!discussionId) {
       console.error("Copy Link Error: discussionId is undefined");
       showToast("Failed to copy link: Discussion ID missing", "error");
       return;
     }
-    
+
     // Deep-link format: query param only (no hash anchor)
     const id = discussionId; // Use discussionId as id for URL generation
-    const commentUrl = typeof window !== "undefined" 
+    const commentUrl = typeof window !== "undefined"
       ? `${window.location.origin}/discussions/${id}?commentId=${comment.id}`
       : `?commentId=${comment.id}`;
-    
+
     try {
       await navigator.clipboard.writeText(commentUrl);
       setCopied(true);
@@ -464,12 +422,12 @@ function CommentThread({
   const handleGenerateShareCard = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (!onGenerateShareCard) return;
 
     // Deep-link format: query param only (no hash anchor)
     const id = discussionId; // Use discussionId as id for URL generation
-    const commentUrl = typeof window !== "undefined" 
+    const commentUrl = typeof window !== "undefined"
       ? `${window.location.origin}/discussions/${id}?commentId=${comment.id}`
       : `?commentId=${comment.id}`;
 
@@ -499,17 +457,19 @@ function CommentThread({
 
     try {
       const result = await flagComment(comment.id);
-      
+
       if (result.success) {
         showToast("Signal reported. Thank you for maintaining laboratory quality.", "success");
-        
+
         // If comment was hidden (3+ flags), refresh the page to remove it
         if (result.success) {
           setIsFlagged(true);
           // Refresh after a short delay to show the toast
-          setTimeout(() => {
-            router.refresh();
-          }, 1000);
+          if (result.isHidden) {
+            setTimeout(() => {
+              router.refresh();
+            }, 1000);
+          }
         }
       }
     } catch (error: any) {
@@ -523,7 +483,7 @@ function CommentThread({
   // Hard Firewall: Binary indentation - exactly 20px if depth > 0, 0px otherwise
   // Zero exceptions: Even if depth is 100, margin remains exactly 20px
   // Removed all recursive margin calculations - using exact className logic
-  
+
   // Signal Bridge: Show "Replying to @username" for ANY nested comment (depth > 0)
   // Use parent username if available, otherwise use parent full_name or "user"
   const showSignalBridge = depth > 0 && comment.parent_id !== null;
@@ -536,7 +496,7 @@ function CommentThread({
   const marginLeft = depth === 0 ? '0px' : '20px';
 
   return (
-      <div 
+    <div
       className={depth === 0 ? 'ml-0' : 'ml-5 border-l border-white/10'}
       style={{ scrollMarginTop: '80px', marginLeft }}
       data-comment-id={comment.id}
@@ -544,9 +504,9 @@ function CommentThread({
     >
       {/* Signal Bridge - Replying to @username for nested comments */}
       {showSignalBridge && (
-        <span 
-          style={{ 
-            fontFamily: 'var(--font-geist-mono)', 
+        <span
+          style={{
+            fontFamily: 'var(--font-geist-mono)',
             color: '#B8860B',
             fontSize: '0.7rem',
             display: 'block',
@@ -556,12 +516,11 @@ function CommentThread({
           Replying to @{parentUsername}
         </span>
       )}
-      
+
       {/* Comment Card */}
       <div
-        className={`border border-translucent-emerald p-3 transition-all ${
-          depth === 0 ? "bg-muted-moss" : "bg-forest-obsidian"
-        }`}
+        className={`border border-translucent-emerald p-3 transition-all ${depth === 0 ? "bg-muted-moss" : "bg-forest-obsidian"
+          }`}
       >
         {/* Author Info */}
         <div className="mb-2 flex items-center gap-2">
@@ -578,8 +537,8 @@ function CommentThread({
           ) : comment.profiles ? (
             <>
               <Link
-                href={comment.profiles.username 
-                  ? `/u/${comment.profiles.username}` 
+                href={comment.profiles.username
+                  ? `/u/${comment.profiles.username}`
                   : `/profile/${comment.profiles.id || ""}`}
                 onClick={(e) => e.stopPropagation()}
                 className="flex items-center gap-2 hover:opacity-80 transition-opacity"
@@ -689,7 +648,7 @@ function CommentThread({
               discussionSlug={discussionSlug}
             />
           )}
-          
+
           {/* Copy Link to Signal Button */}
           <button
             type="button"
@@ -720,7 +679,7 @@ function CommentThread({
             <Image size={12} />
             <span>Generate Share Card</span>
           </button>
-          
+
           {/* Reply Button - No limit on replies, only visual indentation limit */}
           {isSignedIn && (
             <button
@@ -779,7 +738,7 @@ function CommentThread({
               minLength={3}
               maxLength={2000}
             />
-            
+
             {/* Citation Search for Reply */}
             <CitationSearch
               textareaRef={replyTextareaRef}
@@ -791,7 +750,7 @@ function CommentThread({
               }}
             />
           </div>
-          
+
           <CitationInput
             onAddReference={(ref) => {
               if (replyReferences.length < 5) {

@@ -69,7 +69,7 @@ export default function IntelligencePopover({
           throw new Error("Failed to fetch resource data");
         }
 
-        const data = await response.json();
+        const data = await response.json() as any;
 
         if (data) {
           setResourceData({

@@ -631,3 +631,30 @@ export async function getMyFlaggedComments(userId: string) {
     throw new Error(`Failed to fetch flagged comments: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
+
+/**
+ * Update evidence submission status
+ * Admin only
+ */
+export async function updateSubmissionStatus(submissionId: string, status: string) {
+  const adminStatus = await isAdmin();
+  if (!adminStatus) {
+    throw new Error("Only administrators can update submission status");
+  }
+
+  const sql = getDb();
+
+  try {
+    await sql`
+      UPDATE evidence_submissions
+      SET status = ${status}
+      WHERE id = ${submissionId}
+    `;
+
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating submission status:", error);
+    throw new Error(`Failed to update status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}

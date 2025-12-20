@@ -1,158 +1,73 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useUser } from "@clerk/nextjs";
-import { toggleTopicFollow } from "@/app/actions/topic-actions";
-import { useRouter } from "next/navigation";
-import {
-  Zap,
-  Clock,
-  BookOpen,
-  Pill,
-  Apple,
-  Heart,
-  Salad,
-  Brain,
-  Dumbbell,
-  Moon,
-  Activity,
-  Shield,
-  Plus,
-  Check,
-} from "lucide-react";
+import { Check, Plus } from "lucide-react";
+import { toggleTopicFollow, getFollowedTopics, getMasterTopics } from "@/app/actions/topic-actions";
 
-interface MasterTopic {
+interface Topic {
   name: string;
   description: string | null;
-  icon: React.ReactNode;
+  icon: string | null;
 }
 
-const TOPIC_ICONS: Record<string, React.ReactNode> = {
-  Biohacking: <Zap size={20} className="text-heart-green" />,
-  Longevity: <Clock size={20} className="text-heart-green" />,
-  Research: <BookOpen size={20} className="text-heart-green" />,
-  Supplements: <Pill size={20} className="text-heart-green" />,
-  Nutrition: <Apple size={20} className="text-heart-green" />,
-  Wellness: <Heart size={20} className="text-heart-green" />,
-  "Gut Health": <Salad size={20} className="text-heart-green" />,
-  "Mental Health": <Brain size={20} className="text-heart-green" />,
-  Fitness: <Dumbbell size={20} className="text-heart-green" />,
-  Sleep: <Moon size={20} className="text-heart-green" />,
-  Hormones: <Activity size={20} className="text-heart-green" />,
-  Prevention: <Shield size={20} className="text-heart-green" />,
-};
+const CALIBRATION_THRESHOLD = 3;
 
 export default function FeedCalibration() {
-  const { user, isLoaded } = useUser();
-  const router = useRouter();
-  const [masterTopics, setMasterTopics] = useState<MasterTopic[]>([]);
+  const [masterTopics, setMasterTopics] = useState<Topic[]>([]);
   const [followedTopics, setFollowedTopics] = useState<string[]>([]);
-  const [followingStates, setFollowingStates] = useState<Record<string, boolean>>({});
-  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
-  const [signalConfirmed, setSignalConfirmed] = useState<Record<string, boolean>>({});
-  const [errorStates, setErrorStates] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
+  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
+  const [errorStates, setErrorStates] = useState<Record<string, boolean>>({});
   const [showConfetti, setShowConfetti] = useState(false);
-  
-  const CALIBRATION_THRESHOLD = 3;
+  const [signalConfirmed, setSignalConfirmed] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     async function fetchData() {
-      const supabase = createClient();
-
-      // Fetch master topics
-      const { data: topicsData, error: topicsError } = await supabase
-        .from("master_topics")
-        .select("name, description")
-        .order("display_order", { ascending: true })
-        .limit(12);
-
-      if (!topicsError && topicsData) {
-        const topicsWithIcons = topicsData.map((topic) => ({
-          name: topic.name,
-          description: topic.description,
-          icon: TOPIC_ICONS[topic.name] || <BookOpen size={20} className="text-heart-green" />,
-        }));
-        setMasterTopics(topicsWithIcons);
-      }
-
-      // Fetch followed topics if user is logged in
-      if (isLoaded && user) {
-        const { data: follows } = await supabase
-          .from("topic_follows")
-          .select("topic_name")
-          .eq("user_id", user.id);
-
-        const followed = (follows || []).map((f: { topic_name: string }) => f.topic_name);
+      try {
+        const [topics, followed] = await Promise.all([
+          getMasterTopics(),
+          getFollowedTopics()
+        ]);
+        setMasterTopics(topics as Topic[]);
         setFollowedTopics(followed);
-
-        // Initialize following states
-        const states: Record<string, boolean> = {};
-        followed.forEach((topic: string) => {
-          states[topic] = true;
-        });
-        setFollowingStates(states);
+      } catch (error) {
+        console.error("Error fetching calibration data:", error);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     }
 
     fetchData();
-  }, [user, isLoaded]);
+  }, []);
+
+  useEffect(() => {
+    if (followedTopics.length >= CALIBRATION_THRESHOLD && !showConfetti) {
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 5000);
+    }
+  }, [followedTopics.length, showConfetti]);
 
   const handleFollow = async (topicName: string) => {
-    if (!user) {
-      return;
-    }
-
-    // Clear any previous error state
+    setLoadingStates((prev) => ({ ...prev, [topicName]: true }));
     setErrorStates((prev) => ({ ...prev, [topicName]: false }));
 
-    // Set loading state - DO NOT update UI optimistically
-    setLoadingStates((prev) => ({ ...prev, [topicName]: true }));
-
     try {
-      // Wait for database confirmation before updating UI
       const result = await toggleTopicFollow(topicName);
-
-      // Only update UI after database confirms success
+      
       if (result.success) {
-        setFollowingStates((prev) => ({ ...prev, [topicName]: result.following }));
-
         if (result.following) {
-          // Add to followed topics list and check threshold
-          setFollowedTopics((prev) => {
-            const updated = prev.includes(topicName) ? prev : [...prev, topicName];
-            
-            // Check if threshold is reached and trigger transition
-            if (updated.length >= CALIBRATION_THRESHOLD && !showConfetti) {
-              setShowConfetti(true);
-              // Trigger router refresh after confetti to show actual feed
-              setTimeout(() => {
-                router.refresh();
-              }, 1500);
-            }
-            
-            return updated;
-          });
-
-          // Trigger Emerald Aura on successful follow
+          setFollowedTopics((prev) => [...prev, topicName]);
           setSignalConfirmed((prev) => ({ ...prev, [topicName]: true }));
           setTimeout(() => {
             setSignalConfirmed((prev) => ({ ...prev, [topicName]: false }));
           }, 2000);
         } else {
-          // Remove from followed topics list
           setFollowedTopics((prev) => prev.filter((t) => t !== topicName));
         }
       }
     } catch (error) {
-      console.error("Error toggling topic follow:", error);
-      
-      // Show error state with Muted Amber shake animation
+      console.error("Error toggling follow:", error);
       setErrorStates((prev) => ({ ...prev, [topicName]: true }));
-      
-      // Clear error state after animation
       setTimeout(() => {
         setErrorStates((prev) => ({ ...prev, [topicName]: false }));
       }, 2000);
@@ -172,6 +87,12 @@ export default function FeedCalibration() {
   const progress = Math.min((followedTopics.length / CALIBRATION_THRESHOLD) * 100, 100);
   const remaining = Math.max(CALIBRATION_THRESHOLD - followedTopics.length, 0);
   const isUnlocked = followedTopics.length >= CALIBRATION_THRESHOLD;
+
+  // Create a map for faster lookup
+  const followingStates = followedTopics.reduce((acc, topic) => {
+    acc[topic] = true;
+    return acc;
+  }, {} as Record<string, boolean>);
 
   return (
     <div className="border border-translucent-emerald bg-muted-moss p-8">
@@ -342,6 +263,3 @@ export default function FeedCalibration() {
     </div>
   );
 }
-
-
-

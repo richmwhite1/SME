@@ -43,7 +43,18 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${playfair.variable} ${geistMono.variable} ${inter.className}`}>
       <body className="min-h-screen bg-forest-obsidian flex flex-col overflow-x-hidden">
-        <ClerkProvider>
+        <ClerkProvider
+          appearance={{
+            elements: {
+              rootBox: "w-full",
+              card: "bg-forest-obsidian border border-translucent-emerald",
+            },
+          }}
+          signInUrl="/"
+          signUpUrl="/"
+          afterSignInUrl="/"
+          afterSignUpUrl="/"
+        >
           <ToastProvider>
             <SignalProvider>
               <ReputationListener />

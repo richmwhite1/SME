@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { X, Check, XCircle, Flag } from "lucide-react";
 import { useToast } from "@/components/ui/ToastContainer";
+import { updateSubmissionStatus } from "@/app/actions/admin-actions";
 
 interface EvidenceSubmission {
   id: string;
-  protocol_id: string;
   lab_name: string | null;
   batch_number: string | null;
   document_url: string | null;
@@ -38,8 +38,6 @@ export default function VerificationModal({
   const handleAction = async (action: "approve" | "reject" | "flag") => {
     setIsProcessing(true);
     try {
-      const supabase = createClient();
-      
       let newStatus: string;
       switch (action) {
         case "approve":
@@ -55,15 +53,7 @@ export default function VerificationModal({
           return;
       }
 
-      const { error } = await supabase
-        .from("evidence_submissions")
-        // @ts-ignore - Supabase type system limitation
-        .update({ status: newStatus })
-        .eq("id", submission.id);
-
-      if (error) {
-        throw error;
-      }
+      await updateSubmissionStatus(submission.id, newStatus);
 
       showToast(
         action === "approve"
@@ -232,6 +222,3 @@ export default function VerificationModal({
     </div>
   );
 }
-
-
-

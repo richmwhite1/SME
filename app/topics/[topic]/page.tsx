@@ -9,7 +9,10 @@ import { getFollowedTopics } from "@/app/actions/topic-actions";
 import TopicBadge from "@/components/topics/TopicBadge";
 import AvatarLink from "@/components/profile/AvatarLink";
 import TopicContentList from "@/components/topics/TopicContentList";
+import { getDb } from "@/lib/db";
+
 export const dynamic = "force-dynamic";
+
 interface Discussion {
   id: string;
   title: string;
@@ -26,6 +29,7 @@ interface Discussion {
   } | null;
   tags: string[] | null;
 }
+
 interface Product {
   id: string;
   title: string;
@@ -34,6 +38,7 @@ interface Product {
   created_at: string;
   tags: string[] | null;
 }
+
 export default async function TopicViewPage({
   params,
 }: {
@@ -41,53 +46,77 @@ export default async function TopicViewPage({
 }) {
   const { topic } = await params;
   const user = await currentUser();
+  const sql = getDb();
+
   // Decode topic name from URL
   const topicName = decodeURIComponent(topic);
+
   // Get followed topics
   const followedTopics = await getFollowedTopics();
   const isTopicFollowed = followedTopics.includes(topicName);
-  // Fetch discussions with this topic
-  const { data: allDiscussions } = await supabase
-    .from("discussions")
-    .select(`
-      id,
-      title,
-      content,
-      slug,
-      created_at,
-      upvote_count,
-      tags,
-      profiles!discussions_author_id_fkey(
-        id,
-        full_name,
-        username,
-        avatar_url,
-        badge_type
-      )
-    `)
-    .eq("is_flagged", false)
-    .order("created_at", { ascending: false })
-    .limit(100);
-  // Filter discussions that have this topic in tags
-  const discussions = (allDiscussions || []).filter((d: any) => {
-    if (!d.tags || d.tags.length === 0) return false;
-    return d.tags.includes(topicName);
-  }) as Discussion[];
-  // Fetch products/protocols with this topic (if protocols have tags)
-  const { data: allProducts } = await supabase
-    .from("protocols")
-    .select("id, title, problem_solved, slug, created_at, tags")
-    .not("tags", "is", null)
-    .limit(100);
-  const products = (allProducts || []).filter((p: any) => {
-    if (!p.tags || p.tags.length === 0) return false;
-    return p.tags.includes(topicName);
-  }) as Product[];
+
+  let discussions: Discussion[] = [];
+  let products: Product[] = [];
+
+  try {
+    // Fetch discussions with this topic
+    const discussionsResult = await sql`
+      SELECT 
+        d.id, d.title, d.content, d.slug, d.created_at, d.upvote_count, d.tags,
+        p.id as author_id, p.full_name, p.username, p.avatar_url, p.badge_type
+      FROM discussions d
+      LEFT JOIN profiles p ON d.author_id = p.id
+      WHERE (d.is_flagged IS FALSE OR d.is_flagged IS NULL)
+      AND ${topicName} = ANY(d.tags)
+      ORDER BY d.created_at DESC
+      LIMIT 100
+    `;
+
+    discussions = discussionsResult.map((row: any) => ({
+      id: row.id,
+      title: row.title,
+      content: row.content,
+      slug: row.slug,
+      created_at: row.created_at,
+      upvote_count: row.upvote_count,
+      tags: row.tags,
+      profiles: row.author_id ? {
+        id: row.author_id,
+        full_name: row.full_name,
+        username: row.username,
+        avatar_url: row.avatar_url,
+        badge_type: row.badge_type
+      } : null
+    }));
+
+    // Fetch products/protocols with this topic
+    const productsResult = await sql`
+      SELECT id, title, problem_solved, slug, created_at, tags
+      FROM protocols
+      WHERE tags IS NOT NULL
+      AND ${topicName} = ANY(tags)
+      LIMIT 100
+    `;
+
+    products = productsResult.map((row: any) => ({
+      id: row.id,
+      title: row.title,
+      problem_solved: row.problem_solved,
+      slug: row.slug,
+      created_at: row.created_at,
+      tags: row.tags
+    }));
+
+  } catch (error) {
+    console.error("Error fetching topic content:", error);
+  }
+
   // Combine and sort by date
   const allContent = [
     ...discussions.map((d) => ({ ...d, type: "discussion" as const })),
     ...products.map((p) => ({ ...p, type: "product" as const })),
   ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
   return (
     <main className="min-h-screen bg-forest-obsidian px-6 py-12">
       <div className="mx-auto max-w-4xl">

@@ -15,7 +15,21 @@ const isPublicRoute = createRouteMatcher([
   "/api(.*)",
 ]);
 
+// Clerk internal routes that should always be allowed (handled by Clerk automatically)
+const isClerkRoute = createRouteMatcher([
+  "/api/auth(.*)",
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+  "/sso-callback(.*)",
+]);
+
 export default clerkMiddleware(async (auth, req) => {
+  // Always allow Clerk's internal routes (sign-in, sign-up, callbacks, webhooks)
+  // Clerk middleware handles these automatically
+  if (isClerkRoute(req)) {
+    return NextResponse.next();
+  }
+
   // Allow public routes without authentication
   if (!isPublicRoute(req)) {
     const { userId } = await auth();

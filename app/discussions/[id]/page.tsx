@@ -5,6 +5,9 @@ import DiscussionComments from '@/components/discussions/DiscussionComments';
 import AvatarLink from '@/components/profile/AvatarLink';
 import TopicBadge from '@/components/topics/TopicBadge';
 import { formatDistanceToNow } from 'date-fns';
+import { getDb } from '@/lib/db';
+import { getDiscussionComments } from '@/app/actions/discussion-actions';
+
 interface Discussion {
   id: string;
   title: string;
@@ -26,100 +29,65 @@ interface Discussion {
     badge_type: string | null;
   };
 }
-interface DiscussionComment {
-  id: string;
-  content: string;
-  created_at: string;
-  parent_id: string | null;
-  guest_name: string | null;
-  profiles: {
-    id: string;
-    full_name: string;
-    username: string;
-    avatar_url: string;
-    badge_type: string | null;
-    contributor_score: number;
-  } | null;
-}
-interface CommentReference {
-  resource_id: string;
-  resource_title: string;
-  resource_url: string;
-}
+
 export default async function DiscussionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await currentUser();
+  const sql = getDb();
   
-  // Fetch discussion with full profile data
-  const { data: discussion, error } = await supabase
-    .from('discussions')
-    .select(`
-      *,
-      profiles!discussions_author_id_fkey(
-        id,
-        full_name,
-        username,
-        avatar_url,
-        contributor_score,
-        badge_type
-      )
-    `)
-    .eq('id', id)
-    .single() as { data: Discussion | null, error: any };
-  if (error || !discussion) {
+  // Fetch discussion with full profile data using raw SQL
+  const discussionResult = await sql`
+    SELECT 
+      d.*,
+      p.id as author_id,
+      p.full_name,
+      p.username,
+      p.avatar_url,
+      p.contributor_score,
+      p.badge_type
+    FROM discussions d
+    LEFT JOIN profiles p ON d.author_id = p.id
+    WHERE d.id = ${id}
+    LIMIT 1
+  `;
+
+  const discussionData = discussionResult?.[0];
+
+  if (!discussionData) {
     return notFound();
   }
-  // Fetch initial comments with references
-  const { data: commentsData } = await supabase
-    .from('discussion_comments')
-    .select(`
-      id,
-      content,
-      created_at,
-      parent_id,
-      guest_name,
-      profiles!discussion_comments_author_id_fkey(
-        id,
-        full_name,
-        username,
-        avatar_url,
-        badge_type,
-        contributor_score
-      )
-    `)
-    .eq('discussion_id', id)
-    .or('is_flagged.eq.false,is_flagged.is.null')
-    .order('created_at', { ascending: true }) as { data: DiscussionComment[] | null };
-  // Fetch references for each comment with error handling
-  const commentsWithReferences = await Promise.all(
-    (commentsData || []).map(async (comment) => {
-      try {
-        const { data: refsData } = await supabase
-          .from('comment_references')
-          .select('resource_id, resource_title, resource_url')
-          .eq('comment_id', comment.id) as { data: CommentReference[] | null };
-        return {
-          ...comment,
-          references: (refsData || []).map((ref) => ({
-            resource_id: ref.resource_id,
-            resource_title: ref.resource_title,
-            resource_url: ref.resource_url,
-          })),
-        };
-      } catch (error) {
-        // Table doesn't exist or query failed - continue with empty references
-        console.warn('comment_references table query failed:', error);
-        return {
-          ...comment,
-          references: [],
-        };
-      }
-    })
-  );
+
+  // Transform to expected shape
+  const discussion: Discussion = {
+    id: discussionData.id,
+    title: discussionData.title,
+    content: discussionData.content,
+    created_at: discussionData.created_at,
+    author_id: discussionData.author_id,
+    is_bounty: discussionData.is_bounty,
+    solution_comment_id: discussionData.solution_comment_id,
+    bounty_status: discussionData.bounty_status,
+    upvote_count: discussionData.upvote_count,
+    tags: discussionData.tags || [],
+    slug: discussionData.slug,
+    profiles: {
+      id: discussionData.author_id,
+      full_name: discussionData.full_name,
+      username: discussionData.username,
+      avatar_url: discussionData.avatar_url,
+      contributor_score: discussionData.contributor_score,
+      badge_type: discussionData.badge_type
+    }
+  };
+
+  // Fetch comments using the server action (which now includes references)
+  const commentsWithReferences = await getDiscussionComments(id);
+
   const isAuthor = user?.id === discussion.author_id;
   const isBounty = discussion.is_bounty || false;
   const solutionCommentId = discussion.solution_comment_id || null;
   const bountyStatus = discussion.bounty_status || null;
+
   return (
     <main className="min-h-screen bg-forest-obsidian text-bone-white">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">

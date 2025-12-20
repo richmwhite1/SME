@@ -1,29 +1,46 @@
 import { MetadataRoute } from "next";
+import { getDb } from "@/lib/db";
+
 interface Product {
   id: string;
   slug: string;
   updated_at: string | null;
   created_at: string;
 }
+
 interface Discussion {
   slug: string;
   updated_at: string | null;
   created_at: string;
 }
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sme.example.com";
-  // Fetch all products (protocols)
-  const { data: products } = await supabase
-    .from("protocols")
-    .select("id, slug, updated_at, created_at")
-    .eq("is_flagged", false)
-    .or("is_flagged.is.null") as { data: Product[] | null };
-  // Fetch all discussions
-  const { data: discussions } = await supabase
-    .from("discussions")
-    .select("slug, updated_at, created_at")
-    .eq("is_flagged", false)
-    .or("is_flagged.is.null") as { data: Discussion[] | null };
+  const sql = getDb();
+
+  let products: Product[] = [];
+  let discussions: Discussion[] = [];
+
+  try {
+    // Fetch all products (protocols)
+    const productsResult = await sql`
+      SELECT id, slug, updated_at, created_at
+      FROM protocols
+      WHERE is_flagged IS FALSE OR is_flagged IS NULL
+    `;
+    products = productsResult as unknown as Product[];
+
+    // Fetch all discussions
+    const discussionsResult = await sql`
+      SELECT slug, updated_at, created_at
+      FROM discussions
+      WHERE is_flagged IS FALSE OR is_flagged IS NULL
+    `;
+    discussions = discussionsResult as unknown as Discussion[];
+  } catch (error) {
+    console.error("Error fetching sitemap data:", error);
+  }
+
   // Build sitemap entries
   const sitemapEntries: MetadataRoute.Sitemap = [
     // Static pages
@@ -64,6 +81,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     },
   ];
+
   // Add product pages (using ID for canonical URLs)
   if (products) {
     products.forEach((product) => {
@@ -79,6 +97,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       });
     });
   }
+
   // Add discussion pages
   if (discussions) {
     discussions.forEach((discussion) => {
@@ -94,5 +113,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       });
     });
   }
+
   return sitemapEntries;
 }

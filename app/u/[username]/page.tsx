@@ -1,14 +1,15 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
 import Image from "next/image";
-import Link from "next/link";
-import { Edit, Instagram, MessageCircle, Twitter } from "lucide-react";
+import { MessageCircle, Twitter, Instagram } from "lucide-react";
+import EditProfileButton from "@/components/profile/EditProfileButton";
 import ProfileFollowButton from "@/components/profile/ProfileFollowButton";
 import ProfileActivity from "@/components/profile/ProfileActivity";
-import EditProfileButton from "@/components/profile/EditProfileButton";
-import Button from "@/components/ui/Button";
 import TrustWeight from "@/components/ui/TrustWeight";
+import { getDb } from "@/lib/db";
+
 export const dynamic = "force-dynamic";
+
 interface Profile {
   id: string;
   full_name: string | null;
@@ -18,189 +19,122 @@ interface Profile {
   profession: string | null;
   website_url: string | null;
   avatar_url: string | null;
-  contributor_score: number;
+  contributor_score: number | null;
   email: string | null;
-  social_links: {
-    discord?: string | null;
-    telegram?: string | null;
-    x?: string | null;
-    instagram?: string | null;
-  } | null;
+  social_links: any | null;
+  badge_type: string | null;
 }
-export default async function PublicProfilePage({
+
+export default async function UserProfilePage({
   params,
 }: {
   params: Promise<{ username: string }>;
 }) {
   const { username } = await params;
-  
-  // Fetch current user from Clerk
   const clerkUser = await currentUser();
   const currentUserId = clerkUser?.id || null;
-  // Fetch profile by username from Supabase
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .select("id, full_name, username, bio, credentials, profession, website_url, avatar_url, contributor_score, email, social_links, badge_type")
-    .eq("username", username.toLowerCase())
-    .single();
-  // If viewing own profile, get social handles from Clerk publicMetadata
-  let clerkXHandle: string | null = null;
-  let clerkTelegramHandle: string | null = null;
-  let clerkDiscordHandle: string | null = null;
-  let clerkInstagramHandle: string | null = null;
-  const profileId = profile ? (profile as { id: string }).id : null;
-  if (profileId && clerkUser && profileId === clerkUser.id) {
-    clerkXHandle = (clerkUser.publicMetadata?.xHandle as string) || null;
-    clerkTelegramHandle = (clerkUser.publicMetadata?.telegramHandle as string) || null;
-    clerkDiscordHandle = (clerkUser.publicMetadata?.discordHandle as string) || null;
-    clerkInstagramHandle = (clerkUser.publicMetadata?.instagramHandle as string) || null;
-  }
-  
-  // Count verified citations for this user
+  const sql = getDb();
+
+  let profile: Profile | null = null;
+  let followerCount = 0;
+  let followingCount = 0;
+  let isFollowing = false;
+  let totalUpvotes = 0;
   let verifiedCitations = 0;
-  if (profile) {
-    // Get all comments by this user
-    const { data: userComments } = await supabase
-      .from("discussion_comments")
-      .select("id")
-      // @ts-ignore - Supabase type inference issue with .eq()
-      .eq("author_id", profile.id);
-    
-    if (userComments && Array.isArray(userComments) && userComments.length > 0) {
-      // Type assertion for Supabase query result
-      const typedComments = userComments as Array<{ id: string }>;
-      const commentIds = typedComments.map(c => c.id);
-      if (commentIds.length > 0) {
-        const { count: citationCount } = await supabase
-          .from("comment_references")
-          .select("*", { count: "exact", head: true })
-          .in("comment_id", commentIds);
-        verifiedCitations = citationCount || 0;
-      }
+
+  try {
+    // Fetch profile by username
+    const profileResult = await sql`
+      SELECT id, full_name, username, bio, credentials, profession, website_url, avatar_url, contributor_score, email, social_links, badge_type
+      FROM profiles
+      WHERE username = ${username}
+      LIMIT 1
+    `;
+
+    if (profileResult && profileResult.length > 0) {
+      profile = profileResult[0] as Profile;
+    } else {
+      notFound();
     }
+
+    const profileId = profile.id;
+
+    // Run parallel queries for stats
+    const [
+      followerResult,
+      followingResult,
+      followStatusResult,
+      upvotesResult,
+      citationsResult
+    ] = await Promise.all([
+      // Follower count
+      sql`SELECT count(*) as count FROM follows WHERE following_id = ${profileId}`,
+      
+      // Following count
+      sql`SELECT count(*) as count FROM follows WHERE follower_id = ${profileId}`,
+      
+      // Is following status (if logged in)
+      currentUserId ? sql`SELECT 1 FROM follows WHERE follower_id = ${currentUserId} AND following_id = ${profileId} LIMIT 1` : Promise.resolve([]),
+      
+      // Total upvotes received on discussions
+      sql`
+        SELECT count(*) as count 
+        FROM discussion_upvotes du
+        JOIN discussions d ON du.discussion_id = d.id
+        WHERE d.author_id = ${profileId}
+      `,
+      
+      // Verified citations (discussions with verified links/resources)
+      sql`SELECT count(*) as count FROM discussions WHERE author_id = ${profileId}`
+    ]);
+
+    followerCount = parseInt(followerResult[0]?.count || '0');
+    followingCount = parseInt(followingResult[0]?.count || '0');
+    isFollowing = followStatusResult.length > 0;
+    totalUpvotes = parseInt(upvotesResult[0]?.count || '0');
+    verifiedCitations = parseInt(citationsResult[0]?.count || '0');
+
+  } catch (error) {
+    console.error("Error fetching profile data:", error);
+    // If profile fetch failed, we should probably 404 or error
+    if (!profile) notFound();
   }
-  if (error || !profile) {
+
+  if (!profile) {
     notFound();
   }
-  // @ts-ignore - Profile type may not match exactly due to optional credentials
-  const typedProfile = profile as Profile;
-  
-  // Merge Clerk metadata with database social_links (Clerk takes precedence)
-  if (typedProfile.social_links) {
-    if (clerkXHandle) {
-      typedProfile.social_links.x = clerkXHandle;
-    }
-    if (clerkTelegramHandle) {
-      typedProfile.social_links.telegram = clerkTelegramHandle;
-    }
-    if (clerkDiscordHandle) {
-      typedProfile.social_links.discord = clerkDiscordHandle;
-    }
-    if (clerkInstagramHandle) {
-      typedProfile.social_links.instagram = clerkInstagramHandle;
-    }
-  } else {
-    typedProfile.social_links = {
-      x: clerkXHandle,
-      telegram: clerkTelegramHandle,
-      discord: clerkDiscordHandle,
-      instagram: clerkInstagramHandle,
-    };
-  }
-  
-  // Determine if current user is the profile owner
-  const isOwner = clerkUser?.id === typedProfile.id;
-  // Fetch follower/following counts
-  const { count: followerCount } = await supabase
-    .from("follows")
-    .select("*", { count: "exact", head: true })
-    .eq("following_id", typedProfile.id);
-  const { count: followingCount } = await supabase
-    .from("follows")
-    .select("*", { count: "exact", head: true })
-    .eq("follower_id", typedProfile.id);
-  // Check if current user is following this profile (only if not owner)
-  let isFollowing = false;
-  if (currentUserId && !isOwner) {
-    const { data: follow } = await supabase
-      .from("follows")
-      .select("id")
-      .eq("follower_id", currentUserId)
-      .eq("following_id", typedProfile.id)
-      .maybeSingle();
-    isFollowing = !!follow;
-  }
-  // Calculate total upvotes received (only if owner viewing their own profile)
-  let totalUpvotes = 0;
-  if (isOwner) {
-    // Get all review IDs authored by this user
-    const { data: reviews } = await supabase
-      .from("reviews")
-      .select("id")
-      .eq("user_id", typedProfile.id);
-    const reviewIds = (reviews || []).map((r: { id: string }) => r.id);
-    
-    // Count helpful votes on those reviews
-    if (reviewIds.length > 0) {
-      const { count: reviewVotesCount } = await supabase
-        .from("helpful_votes")
-        .select("id", { count: "exact", head: true })
-        .in("review_id", reviewIds);
-      
-      totalUpvotes += reviewVotesCount || 0;
-    }
-    // Get all discussion IDs authored by this user
-    const { data: discussions } = await supabase
-      .from("discussions")
-      .select("id")
-      .eq("author_id", typedProfile.id);
-    const discussionIds = (discussions || []).map((d: { id: string }) => d.id);
-    
-    // Count discussion votes on those discussions
-    if (discussionIds.length > 0) {
-      const { count: discussionVotesCount } = await supabase
-        .from("discussion_votes")
-        .select("id", { count: "exact", head: true })
-        .in("discussion_id", discussionIds);
-      
-      totalUpvotes += discussionVotesCount || 0;
-    }
-  }
+
+  const isOwner = currentUserId === profile.id;
+  const typedProfile = profile;
+
   return (
     <main className="min-h-screen bg-forest-obsidian px-6 py-12">
       <div className="mx-auto max-w-4xl">
-        {/* Profile Header */}
-        <div className="mb-8 border border-translucent-emerald bg-muted-moss p-8">
-          <div className="flex flex-col gap-6 md:flex-row md:items-start">
-            {/* Avatar */}
-            <div className="flex-shrink-0">
-              {typedProfile.avatar_url ? (
-                <Image
-                  src={typedProfile.avatar_url}
-                  alt={typedProfile.full_name || "User"}
-                  width={120}
-                  height={120}
-                  className="h-[120px] w-[120px] rounded-full object-cover border border-translucent-emerald"
-                />
-              ) : (
-                <div className="flex h-[120px] w-[120px] items-center justify-center rounded-full bg-forest-obsidian border border-translucent-emerald text-4xl font-semibold text-bone-white">
-                  {typedProfile.full_name?.charAt(0).toUpperCase() || "U"}
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+          {/* Left Column: Profile Info */}
+          <div className="md:col-span-1">
+            <div className="border border-translucent-emerald bg-muted-moss p-6 text-center">
+              <div className="mb-4 flex justify-center">
+                <div className="relative h-32 w-32 overflow-hidden rounded-full border-2 border-sme-gold">
+                  <Image
+                    src={typedProfile.avatar_url || "/placeholder-avatar.png"}
+                    alt={typedProfile.full_name || typedProfile.username || "User"}
+                    fill
+                    className="object-cover"
+                  />
                 </div>
-              )}
-            </div>
-            {/* Profile Info */}
-            <div className="flex-1">
-              <div className="mb-4">
-                <div className="mb-2 flex items-center gap-3">
-                  <h1 className="font-serif text-3xl font-bold text-bone-white">
-                    {typedProfile.full_name || "Anonymous User"}
-                  </h1>
-                  {typedProfile.credentials && (
-                    <span className="border border-sme-gold/30 bg-sme-gold/10 px-3 py-1 text-xs font-mono uppercase tracking-wider text-sme-gold">
-                      {typedProfile.credentials}
+              </div>
+              <h1 className="mb-1 font-serif text-2xl font-bold text-bone-white">
+                {typedProfile.full_name}
+              </h1>
+              <div className="mb-4 flex flex-col items-center gap-2">
+                <div className="flex items-center gap-2">
+                  {typedProfile.badge_type === "Trusted Voice" && (
+                    <span className="border border-sme-gold bg-sme-gold/10 px-3 py-1 text-xs font-mono uppercase tracking-wider text-sme-gold">
+                      Trusted Voice
                     </span>
                   )}
-                  {typedProfile.contributor_score > 10 && (
+                  {typedProfile.badge_type === "Trusted Contributor" && (
                     <span className="border border-heart-green/30 bg-heart-green/10 px-3 py-1 text-xs font-mono uppercase tracking-wider text-heart-green">
                       Trusted Contributor
                     </span>
@@ -221,12 +155,14 @@ export default async function PublicProfilePage({
                   )}
                 </div>
               </div>
+
               {/* Bio */}
               {typedProfile.bio && (
                 <p className="mb-4 leading-relaxed text-bone-white/80 font-mono">
                   {typedProfile.bio}
                 </p>
               )}
+
               {/* Website Link */}
               {typedProfile.website_url && (
                 <div className="mb-4">
@@ -240,9 +176,10 @@ export default async function PublicProfilePage({
                   </a>
                 </div>
               )}
+
               {/* Social Media Links */}
               {typedProfile.social_links && (
-                <div className="mb-4 flex flex-wrap gap-2">
+                <div className="mb-4 flex flex-wrap gap-2 justify-center">
                   {typedProfile.social_links.discord && (
                     <a
                       href={
@@ -297,8 +234,9 @@ export default async function PublicProfilePage({
                   )}
                 </div>
               )}
+
               {/* Stats */}
-              <div className="mb-4 flex gap-6 text-xs font-mono">
+              <div className="mb-4 flex gap-6 text-xs font-mono justify-center">
                 <div>
                   <span className="font-semibold text-bone-white">{followerCount || 0}</span>
                   <span className="ml-1 text-bone-white/60 uppercase tracking-wider">Followers</span>
@@ -314,9 +252,10 @@ export default async function PublicProfilePage({
                   <span className="ml-1 text-bone-white/60 uppercase tracking-wider">Contributor Score</span>
                 </div>
               </div>
+
               {/* Badge Progress - Only visible to profile owner */}
               {isOwner && (
-                <div className="mb-4 border border-translucent-emerald bg-forest-obsidian p-4">
+                <div className="mb-4 border border-translucent-emerald bg-forest-obsidian p-4 text-left">
                   <h3 className="mb-3 text-xs font-semibold text-bone-white font-mono uppercase tracking-wider">Badge Progress</h3>
                   <div className="space-y-2 text-xs font-mono">
                     <div className="flex items-center justify-between">
@@ -337,11 +276,12 @@ export default async function PublicProfilePage({
                   </div>
                 </div>
               )}
+
               {/* Action Button - Self-view vs Public view */}
               {isOwner ? (
                 // Owner: Show Private View indicator and Edit Profile button
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-xs text-bone-white/70 font-mono uppercase tracking-wider">
+                  <div className="flex items-center justify-center gap-2 text-xs text-bone-white/70 font-mono uppercase tracking-wider">
                     <span className="border border-translucent-emerald bg-forest-obsidian/50 px-2 py-1 text-bone-white/80">
                       Private View
                     </span>
@@ -357,9 +297,12 @@ export default async function PublicProfilePage({
               )}
             </div>
           </div>
+
+          {/* Right Column: Activity */}
+          <div className="md:col-span-2">
+            <ProfileActivity userId={typedProfile.id} />
+          </div>
         </div>
-        {/* Activity Section */}
-        <ProfileActivity userId={typedProfile.id} />
       </div>
     </main>
   );

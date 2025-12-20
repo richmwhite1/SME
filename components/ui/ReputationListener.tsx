@@ -1,55 +1,73 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useSignal } from "./SignalReceivedContainer";
 
 /**
  * Listens for reputation updates and shows Signal Received toasts
- * This component should be placed in the layout to monitor for real-time updates
+ * This component polls the reputation API to check for new notifications
  */
 export default function ReputationListener() {
   const { user, isLoaded } = useUser();
   const { showSignal } = useSignal();
+  const lastNotificationIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!isLoaded || !user) return;
 
-    const supabase = createClient();
+    const checkForNewNotifications = async () => {
+      try {
+        const response = await fetch('/api/notifications');
+        if (!response.ok) return;
 
-    // Subscribe to notifications for upvotes and citations
-    const channel = supabase
-      .channel("reputation-updates")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "notifications",
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          const notification = payload.new as any;
-          
-          // Show signal toast for upvotes
-          if (notification.type === "upvote") {
-            // Calculate points (e.g., 15 points per upvote)
-            const points = 15;
-            showSignal(points, "Comment upvoted");
-          }
-          
-          // Show signal toast for citations
-          if (notification.type === "citation") {
-            // Calculate points (e.g., 20 points per citation)
-            const points = 20;
-            showSignal(points, "Evidence cited");
-          }
+        const notifications = await response.json();
+        if (!notifications || notifications.length === 0) return;
+
+        // Get the most recent notification
+        const latestNotification = notifications[0];
+        
+        // Check if this is a new notification we haven't seen
+        if (lastNotificationIdRef.current === null) {
+          // First load - just store the ID
+          lastNotificationIdRef.current = latestNotification.id;
+          return;
         }
-      )
-      .subscribe();
+
+        // Check if there's a new notification
+        if (latestNotification.id !== lastNotificationIdRef.current) {
+          // Find all new notifications since last check
+          const newNotifications = notifications.filter(
+            (n: any) => n.id !== lastNotificationIdRef.current
+          );
+
+          // Show toasts for new upvotes and citations
+          newNotifications.forEach((notification: any) => {
+            if (notification.type === "upvote") {
+              const points = 15;
+              showSignal(points, "Comment upvoted");
+            } else if (notification.type === "citation") {
+              const points = 20;
+              showSignal(points, "Evidence cited");
+            }
+          });
+
+          // Update the last seen notification ID
+          lastNotificationIdRef.current = latestNotification.id;
+        }
+      } catch (error) {
+        console.error('Error checking for notifications:', error);
+      }
+    };
+
+    // Check immediately
+    checkForNewNotifications();
+
+    // Poll every 10 seconds for new notifications
+    const interval = setInterval(checkForNewNotifications, 10000);
 
     return () => {
-      supabase.removeChannel(channel);
+      clearInterval(interval);
     };
   }, [isLoaded, user, showSignal]);
 

@@ -97,7 +97,7 @@ export async function createDiscussion(
     `;
 
     const discussion = result[0];
-    
+
     if (!discussion || !discussion.id) {
       console.error("Discussion insert returned no data");
       throw new Error("Discussion was not created. Please try again.");
@@ -112,10 +112,10 @@ export async function createDiscussion(
     return { success: true, id: discussion.id };
   } catch (error: any) {
     console.error("Error creating discussion:", error);
-    
+
     // Return structured error instead of throwing
     let errorMessage = "Failed to create discussion";
-    
+
     if (error.message?.includes("does not exist") || error.code === "42P01") {
       errorMessage = "Discussions table not found. Please run the SQL migration.";
     } else if (error.message?.includes("foreign key") || error.code === "23503") {
@@ -125,7 +125,7 @@ export async function createDiscussion(
     } else {
       errorMessage = `Failed to create discussion: ${error.message || "Unknown error"}`;
     }
-    
+
     throw new Error(errorMessage);
   }
 }
@@ -241,7 +241,7 @@ export async function createDiscussionComment(
       }
     } catch (error: any) {
       console.error("Error creating comment:", error);
-      
+
       if (error.message?.includes("does not exist") || error.code === "42P01") {
         throw new Error(
           "Discussion comments table not found or schema mismatch. Please run the SQL migration."
@@ -339,7 +339,7 @@ export async function createGuestComment(
     return { success: true };
   } catch (error: any) {
     console.error("Error creating guest comment:", error);
-    
+
     if (error.message?.includes("does not exist") || error.code === "42P01") {
       throw new Error(
         "Discussion comments table not found or schema mismatch. Please run the SQL migration."
@@ -499,3 +499,56 @@ export async function flagComment(commentId: string) {
   }
 }
 
+
+/**
+ * Fetch comments for a discussion
+ * Replaces Supabase client-side query with raw SQL
+ */
+export async function getDiscussionComments(discussionId: string) {
+  const sql = getDb();
+
+  try {
+    const comments = await sql`
+      SELECT 
+        dc.id,
+        dc.content,
+        dc.created_at,
+        dc.parent_id,
+        dc.guest_name,
+        dc.is_flagged,
+        p.id as author_id,
+        p.full_name,
+        p.username,
+        p.avatar_url,
+        p.badge_type,
+        p.contributor_score
+      FROM discussion_comments dc
+      LEFT JOIN profiles p ON dc.author_id = p.id
+      WHERE dc.discussion_id = ${discussionId}
+        AND (dc.is_flagged IS FALSE OR dc.is_flagged IS NULL)
+      ORDER BY dc.created_at ASC
+    `;
+
+    // Transform flat result to nested structure expected by UI
+    return comments.map(c => ({
+      id: c.id,
+      content: c.content,
+      created_at: c.created_at,
+      parent_id: c.parent_id,
+      guest_name: c.guest_name,
+      is_flagged: c.is_flagged || false,
+      profiles: c.author_id ? {
+        id: c.author_id,
+        full_name: c.full_name,
+        username: c.username,
+        avatar_url: c.avatar_url,
+        badge_type: c.badge_type,
+        contributor_score: c.contributor_score
+      } : null
+    }));
+  } catch (error: any) {
+    console.error("Error fetching comments:", error);
+    // Return empty array on error to prevent UI crash, but log it
+    return [];
+  }
+}

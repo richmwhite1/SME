@@ -18,8 +18,6 @@ export default function AdminNavLink() {
       }
 
       try {
-        const supabase = createClient();
-        
         // Check Clerk publicMetadata first
         const clerkRole = (user.publicMetadata?.role as string) || null;
         if (clerkRole === "admin") {
@@ -28,15 +26,13 @@ export default function AdminNavLink() {
           return;
         }
 
-        // Check Supabase profile
-        const { data: profile, error } = await supabase
-          .from("profiles")
-          .select("is_admin")
-          .eq("id", user.id)
-          .single();
-
-        if (!error && profile) {
-          setIsAdmin((profile as { is_admin: boolean }).is_admin === true);
+        // Check profile via API
+        const response = await fetch('/api/profile');
+        if (response.ok) {
+          const profile = await response.json();
+          if (profile && profile.is_admin === true) {
+            setIsAdmin(true);
+          }
         }
       } catch (error) {
         console.error("Error checking admin status:", error);

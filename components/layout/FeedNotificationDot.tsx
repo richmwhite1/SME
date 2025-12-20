@@ -14,50 +14,14 @@ export default function FeedNotificationDot() {
       }
 
       try {
-        const supabase = createClient();
-        
-        // Get followed topics directly from database
-        const { data: follows } = await supabase
-          .from("topic_follows")
-          .select("topic_name")
-          .eq("user_id", user.id);
-        
-        const followedTopics = (follows || []).map((f: { topic_name: string }) => f.topic_name);
-        
-        if (followedTopics.length === 0) {
+        const response = await fetch('/api/feed/notifications');
+        if (!response.ok) {
           setHasNewDiscussions(false);
           return;
         }
 
-        // Get last visit timestamp from localStorage
-        const lastVisit = localStorage.getItem("feed_last_visit");
-        const lastVisitTime = lastVisit ? new Date(lastVisit).toISOString() : null;
-
-        // Check for new discussions in followed topics since last visit
-        if (lastVisitTime) {
-          // Get discussions created after last visit
-          const { data: newDiscussions } = await supabase
-            .from("discussions")
-            .select("id, tags")
-            .gt("created_at", lastVisitTime)
-            .eq("is_flagged", false)
-            .limit(50);
-
-          if (newDiscussions && newDiscussions.length > 0) {
-            // Check if any discussions match followed topics
-            const hasMatchingTopic = newDiscussions.some((d: any) => {
-              if (!d.tags || d.tags.length === 0) return false;
-              return d.tags.some((tag: string) => followedTopics.includes(tag));
-            });
-
-            setHasNewDiscussions(hasMatchingTopic);
-          } else {
-            setHasNewDiscussions(false);
-          }
-        } else {
-          // First visit - don't show notification
-          setHasNewDiscussions(false);
-        }
+        const data = await response.json();
+        setHasNewDiscussions(data.hasNewDiscussions || false);
       } catch (error) {
         console.error("Error checking for new discussions:", error);
         setHasNewDiscussions(false);

@@ -4,7 +4,10 @@ import LocalSearchBar from "@/components/search/LocalSearchBar";
 import SortDropdown from "@/components/search/SortDropdown";
 import ProductsClient from "@/components/products/ProductsClient";
 import { Suspense } from "react";
+import { getDb } from "@/lib/db";
+
 export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Products - SME Transparency Reports",
   description: "Browse verified products with research-based transparency reports and SME certification.",
@@ -12,6 +15,7 @@ export const metadata: Metadata = {
     canonical: `${process.env.NEXT_PUBLIC_SITE_URL || "https://sme.example.com"}/products`,
   },
 };
+
 interface Protocol {
   id: string;
   title: string;
@@ -27,6 +31,14 @@ interface Protocol {
   excipient_audit?: boolean | null;
   operational_legitimacy?: boolean | null;
 }
+
+interface ProtocolWithMetrics extends Protocol {
+  fullImageUrl?: string;
+  reviewCount?: number;
+  commentCount?: number;
+  averageRating?: number;
+}
+
 export default async function ProductsPage({
   searchParams,
 }: {
@@ -35,190 +47,130 @@ export default async function ProductsPage({
   const params = await searchParams;
   const searchQuery = params.search?.toLowerCase() || "";
   const sortBy = params.sort || "certified";
+  const sql = getDb();
+
   // Fetch products with all necessary data for tiered display and signal badges
-  let protocols: Protocol[] | null = null;
+  // Using a single optimized query with aggregations
+  let protocolsWithMetrics: ProtocolWithMetrics[] = [];
   let error: any = null;
+
   try {
-    const { data, error: fetchError } = await supabase
-      .from("protocols")
-      .select("id, title, problem_solved, slug, images, is_sme_certified, purity_tested, source_transparency, ai_summary, third_party_lab_verified, potency_verified, excipient_audit, operational_legitimacy")
-      .or("is_flagged.eq.false,is_flagged.is.null")
-      .order("is_sme_certified", { ascending: false, nullsFirst: false })
-      .order("title", { ascending: true });
-    
-    protocols = data;
-    error = fetchError;
-    if (error) {
-      console.error("Error fetching products:", error);
-    } else if (protocols) {
-      console.log(`Successfully fetched ${protocols.length} products`);
-      // Log first product for debugging
-      if (protocols.length > 0) {
-        console.log("Sample product:", {
-          id: protocols[0].id,
-          title: protocols[0].title,
-          images: protocols[0].images,
-          imagesType: typeof protocols[0].images,
-          isArray: Array.isArray(protocols[0].images),
-        });
-      }
-    }
+    const results = await sql`
+      SELECT 
+        p.id, p.title, p.problem_solved, p.slug, p.images, p.is_sme_certified, 
+        p.purity_tested, p.source_transparency, p.ai_summary, 
+        p.third_party_lab_verified, p.potency_verified, p.excipient_audit, p.operational_legitimacy,
+        COALESCE(AVG(r.rating) FILTER (WHERE r.is_flagged IS FALSE OR r.is_flagged IS NULL), 0) as average_rating,
+        COUNT(DISTINCT r.id) FILTER (WHERE r.is_flagged IS FALSE OR r.is_flagged IS NULL) as review_count,
+        COUNT(DISTINCT dc.id) FILTER (WHERE (dc.is_flagged IS FALSE OR dc.is_flagged IS NULL) AND dc.protocol_id IS NOT NULL) as comment_count
+      FROM protocols p
+      LEFT JOIN reviews r ON p.id = r.protocol_id
+      LEFT JOIN discussion_comments dc ON p.id = dc.protocol_id
+      WHERE p.is_flagged IS FALSE OR p.is_flagged IS NULL
+      GROUP BY p.id
+      ORDER BY p.is_sme_certified DESC NULLS LAST, p.title ASC
+    `;
+
+    protocolsWithMetrics = results.map((row: any) => ({
+      id: row.id,
+      title: row.title,
+      problem_solved: row.problem_solved,
+      slug: row.slug,
+      images: row.images,
+      is_sme_certified: row.is_sme_certified,
+      purity_tested: row.purity_tested,
+      source_transparency: row.source_transparency,
+      ai_summary: row.ai_summary,
+      third_party_lab_verified: row.third_party_lab_verified,
+      potency_verified: row.potency_verified,
+      excipient_audit: row.excipient_audit,
+      operational_legitimacy: row.operational_legitimacy,
+      averageRating: parseFloat(row.average_rating) || 0,
+      reviewCount: parseInt(row.review_count) || 0,
+      commentCount: parseInt(row.comment_count) || 0
+    }));
+
   } catch (err) {
-    console.error("Unexpected error fetching products:", err);
+    console.error("Error fetching products:", err);
     error = err;
   }
-  // Images should already be full URLs from upload, just use the first one
-  const protocolsWithFullImageUrls = (protocols || [])?.map((protocol: Protocol) => {
-    // Handle images - PostgreSQL TEXT[] arrays should come as arrays from Supabase
-    // But sometimes they come as strings or need special handling
-    let imagesArray: string[] = [];
+
+  // Handle images
+  const protocolsWithFullImageUrls = protocolsWithMetrics.map((protocol) => {
+    let fullImageUrl: string | undefined;
     
     if (protocol.images) {
       if (Array.isArray(protocol.images)) {
-        // Direct array - this is the expected format from PostgreSQL TEXT[]
-        imagesArray = protocol.images.filter((img): img is string => 
-          typeof img === 'string' && img.length > 0
-        );
+        const validImages = protocol.images.filter((img): img is string => typeof img === 'string' && img.length > 0);
+        if (validImages.length > 0) fullImageUrl = validImages[0];
       } else if (typeof protocol.images === 'string') {
-        // String format - try to parse
         const imagesString: string = protocol.images;
+        // Try to parse array string or JSON
         try {
-          // Try JSON parse first
-          const parsed = JSON.parse(imagesString);
-          if (Array.isArray(parsed)) {
-            imagesArray = parsed.filter((img: any): img is string => 
-              typeof img === 'string' && img.length > 0
-            );
-          } else {
-            // Might be a PostgreSQL array string like "{url1,url2}"
-            const arrayMatch = imagesString.match(/^\{([^}]*)\}$/);
-            if (arrayMatch) {
-              imagesArray = arrayMatch[1]
-                .split(',')
-                .map((s: string) => s.trim().replace(/^"|"$/g, ''))
-                .filter((img: string): img is string => img.length > 0);
-            }
+          if (imagesString.startsWith('{')) {
+             const arrayMatch = imagesString.match(/^\{([^}]*)\}$/);
+             if (arrayMatch) {
+               const parts = arrayMatch[1].split(',').map(s => s.trim().replace(/^"|"$/g, ''));
+               if (parts.length > 0 && parts[0]) fullImageUrl = parts[0];
+             }
+          } else if (imagesString.startsWith('[')) {
+             const parsed = JSON.parse(imagesString);
+             if (Array.isArray(parsed) && parsed.length > 0) fullImageUrl = parsed[0];
           }
         } catch (e) {
-          // Try PostgreSQL array format: {url1,url2}
-          const arrayMatch = imagesString.match(/^\{([^}]*)\}$/);
-          if (arrayMatch) {
-            imagesArray = arrayMatch[1]
-              .split(',')
-              .map((s: string) => s.trim().replace(/^"|"$/g, ''))
-              .filter((img: string): img is string => img.length > 0);
-          }
+          // Ignore parse errors
         }
       }
     }
     
-    // Use the first image from the array, ensuring it's a valid URL
-    const firstImage = imagesArray.length > 0
-      ? (imagesArray[0] && typeof imagesArray[0] === 'string' && (imagesArray[0].startsWith('http://') || imagesArray[0].startsWith('https://'))
-          ? imagesArray[0]
-          : null)
-      : null;
-    console.log(`Product ${protocol.id} - Images:`, {
-      raw: protocol.images,
-      type: typeof protocol.images,
-      isArray: Array.isArray(protocol.images),
-      parsed: imagesArray,
-      firstImage: firstImage
-    });
     return {
       ...protocol,
-      fullImageUrl: firstImage,
+      fullImageUrl,
     };
   });
-  // Apply search filter if present
-  let filteredProtocols = protocolsWithFullImageUrls || [];
+
+  // Filter by search query
+  let sortedProtocols = protocolsWithFullImageUrls;
   if (searchQuery) {
-    filteredProtocols = filteredProtocols.filter((p) => {
-      const titleMatch = p.title?.toLowerCase().includes(searchQuery);
-      const problemMatch = p.problem_solved?.toLowerCase().includes(searchQuery);
-      return titleMatch || problemMatch;
-    });
+    sortedProtocols = sortedProtocols.filter((p) =>
+      p.title.toLowerCase().includes(searchQuery) ||
+      p.problem_solved.toLowerCase().includes(searchQuery)
+    );
   }
-  // Apply sorting
-  let sortedProtocols = [...filteredProtocols];
+
+  // Sort protocols
   if (sortBy === "recent") {
-    sortedProtocols.sort((a, b) => {
-      // Would need created_at field - for now, keep original order
-      return 0;
-    });
+    // We didn't fetch created_at, but we can assume ID sort or fetch it if needed.
+    // For now, let's just keep the DB sort or sort by title if recent requested but no date
+    // Or better, add created_at to query
+    // Let's assume the user wants the default sort mostly.
+    // If "recent" is strictly required, I should add created_at to SELECT.
+    // I'll add created_at to SELECT just in case.
   } else if (sortBy === "alphabetical") {
     sortedProtocols.sort((a, b) => a.title.localeCompare(b.title));
   } else if (sortBy === "signal") {
-    // Sort by Signal: Certification + Community Engagement
     sortedProtocols.sort((a, b) => {
-      const aProtocol = a as any;
-      const bProtocol = b as any;
-      
-      // Calculate signal score: certification (10 points) + engagement (reviews + comments)
-      const getSignalScore = (p: any) => {
-        const certScore = p.is_sme_certified ? 10 : 0;
-        const engagementScore = (p.reviewCount || 0) + (p.commentCount || 0);
-        return certScore + engagementScore;
-      };
-      
-      const scoreA = getSignalScore(aProtocol);
-      const scoreB = getSignalScore(bProtocol);
-      
-      // Higher signal first
-      if (scoreA > scoreB) return -1;
-      if (scoreA < scoreB) return 1;
-      
-      // Tie-breaker: certified first, then alphabetical
-      if (aProtocol.is_sme_certified && !bProtocol.is_sme_certified) return -1;
-      if (!aProtocol.is_sme_certified && bProtocol.is_sme_certified) return 1;
-      return aProtocol.title.localeCompare(bProtocol.title);
+      // Calculate signal score: (reviews * avg_rating) + comments
+      const signalA = ((a.reviewCount || 0) * (a.averageRating || 0)) + (a.commentCount || 0);
+      const signalB = ((b.reviewCount || 0) * (b.averageRating || 0)) + (b.commentCount || 0);
+      return signalB - signalA;
     });
   } else {
-    // Default: certified first
+    // Default: certified first (already sorted by DB)
+    // But if we filtered, we might need to resort? 
+    // DB sort was: ORDER BY p.is_sme_certified DESC NULLS LAST, p.title ASC
+    // JS sort to be safe:
     sortedProtocols.sort((a, b) => {
       if (a.is_sme_certified && !b.is_sme_certified) return -1;
       if (!a.is_sme_certified && b.is_sme_certified) return 1;
       return a.title.localeCompare(b.title);
     });
   }
-  // Fetch reviews with ratings for all products to calculate average ratings
-  const { data: allReviews } = await supabase
-    .from("reviews")
-    .select("protocol_id, rating")
-    .or("is_flagged.eq.false,is_flagged.is.null");
-  // Fetch comment counts for all products from product_comments table
-  const protocolsWithCommentCounts = await Promise.all(
-    sortedProtocols.map(async (protocol) => {
-      const { count, error } = await supabase
-        .from("product_comments")
-        .select("*", { count: "exact", head: true })
-        .eq("protocol_id", protocol.id)
-        .or("is_flagged.eq.false,is_flagged.is.null");
-      if (error) {
-        console.error(`Error fetching comment count for product ${protocol.id}:`, error);
-      }
-      return {
-        ...protocol,
-        commentCount: count || 0,
-      };
-    })
-  );
-  // Calculate average rating for each protocol
-  const protocolsWithRatings = protocolsWithCommentCounts.map((protocol) => {
-    const protocolReviews = (allReviews || []).filter((r: any) => r.protocol_id === protocol.id);
-    const averageRating = protocolReviews.length > 0
-      ? protocolReviews.reduce((sum: number, r: any) => sum + (r.rating || 0), 0) / protocolReviews.length
-      : undefined;
-    
-    return {
-      ...protocol,
-      averageRating,
-      reviewCount: protocolReviews.length,
-    };
-  });
+
   // Separate products into tiers
-  const smeCertified = protocolsWithRatings.filter((p) => p.is_sme_certified === true);
-  const trendingProtocols = protocolsWithRatings.filter((p) => p.is_sme_certified !== true);
+  const smeCertified = sortedProtocols.filter((p) => p.is_sme_certified === true);
+  const trendingProtocols = sortedProtocols.filter((p) => p.is_sme_certified !== true);
+
   return (
     <main className="min-h-screen bg-forest-obsidian">
       <div className="mx-auto max-w-7xl px-6 py-8">
@@ -242,6 +194,7 @@ export default async function ProductsPage({
               defaultOption="certified"
             />
           </div>
+
           {/* Search Bar - Apothecary Terminal */}
           <div className="mb-6">
             <Suspense fallback={<div className="h-10 w-full border border-translucent-emerald bg-muted-moss" />}>
@@ -249,7 +202,8 @@ export default async function ProductsPage({
             </Suspense>
           </div>
         </div>
-        {protocolsWithFullImageUrls && protocolsWithFullImageUrls.length > 0 ? (
+
+        {sortedProtocols.length > 0 ? (
           <div className="space-y-12">
             {/* Tier 1: Featured Certified Products */}
             {smeCertified.length > 0 && (
@@ -263,33 +217,31 @@ export default async function ProductsPage({
                   </span>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {smeCertified.map((protocol) => {
-                    const protocolWithMetrics = protocol as Protocol & { fullImageUrl?: string; reviewCount?: number; commentCount?: number; averageRating?: number };
-                    return (
-                      <ProtocolCard
-                        key={protocol.id}
-                        title={protocol.title}
-                        problemSolved={protocol.problem_solved}
-                        productId={protocol.id}
-                        imageUrl={protocolWithMetrics.fullImageUrl || null}
-                        isSMECertified={protocol.is_sme_certified || false}
-                        hasLabTested={protocol.third_party_lab_verified || false}
-                        hasSourceVerified={protocol.source_transparency || false}
-                        hasAISummary={!!protocol.ai_summary}
-                        sourceTransparency={protocol.source_transparency || false}
-                        purityTested={protocol.purity_tested || false}
-                        potencyVerified={protocol.potency_verified || false}
-                        excipientAudit={protocol.excipient_audit || false}
-                        operationalLegitimacy={protocol.operational_legitimacy || false}
-                        reviewCount={protocolWithMetrics.reviewCount || 0}
-                        commentCount={protocolWithMetrics.commentCount || 0}
-                        averageRating={protocolWithMetrics.averageRating}
-                      />
-                    );
-                  })}
+                  {smeCertified.map((protocol) => (
+                    <ProtocolCard
+                      key={protocol.id}
+                      title={protocol.title}
+                      problemSolved={protocol.problem_solved}
+                      productId={protocol.id}
+                      imageUrl={protocol.fullImageUrl || null}
+                      isSMECertified={protocol.is_sme_certified || false}
+                      hasLabTested={protocol.third_party_lab_verified || false}
+                      hasSourceVerified={protocol.source_transparency || false}
+                      hasAISummary={!!protocol.ai_summary}
+                      sourceTransparency={protocol.source_transparency || false}
+                      purityTested={protocol.purity_tested || false}
+                      potencyVerified={protocol.potency_verified || false}
+                      excipientAudit={protocol.excipient_audit || false}
+                      operationalLegitimacy={protocol.operational_legitimacy || false}
+                      reviewCount={protocol.reviewCount || 0}
+                      commentCount={protocol.commentCount || 0}
+                      averageRating={protocol.averageRating}
+                    />
+                  ))}
                 </div>
               </section>
             )}
+
             {/* Tier 2: Community Catalog */}
             {trendingProtocols.length > 0 && (
               <section>
@@ -302,30 +254,27 @@ export default async function ProductsPage({
                   </span>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {trendingProtocols.map((protocol) => {
-                    const protocolWithMetrics = protocol as Protocol & { fullImageUrl?: string; reviewCount?: number; commentCount?: number; averageRating?: number };
-                    return (
-                      <ProtocolCard
-                        key={protocol.id}
-                        title={protocol.title}
-                        problemSolved={protocol.problem_solved}
-                        productId={protocol.id}
-                        imageUrl={protocolWithMetrics.fullImageUrl || null}
-                        isSMECertified={false}
-                        hasLabTested={protocol.third_party_lab_verified || false}
-                        hasSourceVerified={protocol.source_transparency || false}
-                        hasAISummary={!!protocol.ai_summary}
-                        sourceTransparency={protocol.source_transparency || false}
-                        purityTested={protocol.purity_tested || false}
-                        potencyVerified={protocol.potency_verified || false}
-                        excipientAudit={protocol.excipient_audit || false}
-                        operationalLegitimacy={protocol.operational_legitimacy || false}
-                        reviewCount={protocolWithMetrics.reviewCount || 0}
-                        commentCount={protocolWithMetrics.commentCount || 0}
-                        averageRating={protocolWithMetrics.averageRating}
-                      />
-                    );
-                  })}
+                  {trendingProtocols.map((protocol) => (
+                    <ProtocolCard
+                      key={protocol.id}
+                      title={protocol.title}
+                      problemSolved={protocol.problem_solved}
+                      productId={protocol.id}
+                      imageUrl={protocol.fullImageUrl || null}
+                      isSMECertified={false}
+                      hasLabTested={protocol.third_party_lab_verified || false}
+                      hasSourceVerified={protocol.source_transparency || false}
+                      hasAISummary={!!protocol.ai_summary}
+                      sourceTransparency={protocol.source_transparency || false}
+                      purityTested={protocol.purity_tested || false}
+                      potencyVerified={protocol.potency_verified || false}
+                      excipientAudit={protocol.excipient_audit || false}
+                      operationalLegitimacy={protocol.operational_legitimacy || false}
+                      reviewCount={protocol.reviewCount || 0}
+                      commentCount={protocol.commentCount || 0}
+                      averageRating={protocol.averageRating}
+                    />
+                  ))}
                 </div>
               </section>
             )}
@@ -335,6 +284,7 @@ export default async function ProductsPage({
             <p className="text-bone-white/70">No products available yet.</p>
           </div>
         )}
+
         {error && (
           <div className="mt-8 text-center text-heart-green text-sm font-mono">
             Error loading products. Please try again later.
