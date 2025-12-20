@@ -12,6 +12,12 @@ interface ResourceData {
   origin_type: string;
 }
 
+interface IntelligenceData {
+  title: string;
+  ai_summary: string;
+  reference_url: string;
+}
+
 interface IntelligencePopoverProps {
   resourceId: string;
   children: React.ReactNode;
@@ -52,13 +58,18 @@ export default function IntelligencePopover({
             .single();
 
           if (protocolData) {
-            setResourceData({
-              title: protocolData.title,
-              ai_summary: protocolData.ai_summary,
-              reference_url: protocolData.reference_url,
-              integrity_level: "Product Reference",
-              origin_type: "Product",
-            });
+            // Cast the data explicitly so TypeScript stops calling it 'never'
+            const typedProtocolData = protocolData as unknown as IntelligenceData;
+            
+            if (typedProtocolData && typedProtocolData.title) {
+              setResourceData({
+                title: typedProtocolData.title,
+                ai_summary: typedProtocolData.ai_summary,
+                reference_url: typedProtocolData.reference_url,
+                integrity_level: "Product Reference",
+                origin_type: "Product",
+              });
+            }
             setLoading(false);
             return;
           }
