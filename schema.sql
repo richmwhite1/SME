@@ -120,10 +120,12 @@ CREATE TABLE IF NOT EXISTS discussions (
   upvote_count INTEGER DEFAULT 0,
   flag_count INTEGER DEFAULT 0,
   is_flagged BOOLEAN DEFAULT false,
-  is_pinned BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Add is_pinned column if it doesn't exist
+ALTER TABLE discussions ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT false;
 
 -- Create indexes
 CREATE INDEX IF NOT EXISTS idx_discussions_author ON discussions(author_id);
