@@ -499,7 +499,7 @@ function CommentThread({
     setFlagging(true);
 
     try {
-      const result = await flagComment(comment.id, discussionSlug);
+      const result = await flagComment(comment.id);
       
       if (result.success) {
         showToast("Signal reported. Thank you for maintaining laboratory quality.", "success");
