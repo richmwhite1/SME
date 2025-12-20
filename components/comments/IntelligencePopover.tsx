@@ -31,6 +31,12 @@ interface ResourceLibraryData {
   id?: string;
 }
 
+interface ProtocolData {
+  ai_summary: string | null;
+  third_party_lab_verified: boolean;
+  purity_verified: boolean;
+}
+
 interface IntelligencePopoverProps {
   resourceId: string;
   children: React.ReactNode;
@@ -116,11 +122,13 @@ export default function IntelligencePopover({
           let integrityLevel = "Reference";
 
           if (resourceData.origin_type === "Product") {
-            const { data: protocolData } = await supabase
+            const result = await supabase
               .from("protocols")
               .select("ai_summary, third_party_lab_verified, purity_verified")
               .eq("id", resourceId)
               .single();
+
+            const protocolData = result.data as unknown as ProtocolData | null;
 
             if (protocolData) {
               aiSummary = protocolData.ai_summary;
