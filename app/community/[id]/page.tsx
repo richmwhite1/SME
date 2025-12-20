@@ -11,27 +11,20 @@ export default async function CommunityDiscussionPage({
   const { id } = await params;
   const supabase = createClient();
 
-  // Fetch discussion by id to get the slug
+  // 1. Fetch the data
   const { data: discussion } = await supabase
-    .from("discussions")
-    .select("slug")
-    .eq("id", id)
-    .eq("is_flagged", false)
+    .from('discussions')
+    .select('slug')
+    .eq('id', id)
     .single();
 
-  // Strict null check - discussion must exist and have a slug
-  if (!discussion) {
-    // Discussion not found or is flagged
+  // 2. Add this strict guard clause
+  if (!discussion || !discussion.slug) {
     return notFound();
   }
 
-  if (discussion.slug) {
-    // Redirect to the discussion page using the slug
-    redirect(`/discussions/${discussion.slug}`);
-  } else {
-    // If slug is missing (edge case), redirect with ID as fallback
-    redirect(`/discussions/${id}`);
-  }
+  // 3. TypeScript now knows 'discussion' MUST have a slug
+  return redirect(`/discussions/${discussion.slug}`);
 }
 
 
