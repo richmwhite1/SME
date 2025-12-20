@@ -800,7 +800,10 @@ function CommentThread({
               }
             }}
             onRemoveReference={(resourceId) => {
-              setReplyReferences((prev: ResourceReference[]) => prev.filter((ref) => ref.resource_id !== resourceId));
+              // 1. Calculate the new array outside the setter
+              const filteredReferences = replyReferences.filter((ref) => ref.resource_id !== resourceId);
+              // 2. Pass the fresh array directly
+              setReplyReferences(filteredReferences);
             }}
             references={replyReferences}
             maxReferences={5}
