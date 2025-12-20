@@ -23,6 +23,14 @@ interface DiscussionData {
   reference_url: string | null;
 }
 
+interface ResourceLibraryData {
+  title: string;
+  reference_url: string | null;
+  origin_type: string;
+  origin_id: string;
+  id?: string;
+}
+
 interface IntelligencePopoverProps {
   resourceId: string;
   children: React.ReactNode;
@@ -48,11 +56,14 @@ export default function IntelligencePopover({
         const supabase = createClient();
         
         // Try to get from resource_library view first
-        const { data: resourceData, error } = await supabase
+        const { data: rawResourceData, error } = await supabase
           .from("resource_library")
           .select("title, reference_url, origin_type, origin_id")
           .eq("origin_id", resourceId)
           .single();
+
+        // Cast the data explicitly
+        const resourceData = rawResourceData as unknown as ResourceLibraryData;
 
         if (error || !resourceData) {
           // If not in resource_library, try to get from protocols or discussions
