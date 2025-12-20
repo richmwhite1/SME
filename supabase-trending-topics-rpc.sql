@@ -75,3 +75,7 @@ COMMENT ON FUNCTION get_trending_topics IS 'Returns top trending topics based on
 -- the trending topics RPC function.
 -- =====================================================
 
+
+
+
+

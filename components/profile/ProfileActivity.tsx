@@ -112,7 +112,7 @@ export default async function ProfileActivity({ userId }: ProfileActivityProps) 
                 {discussions.map((discussion: any) => (
                   <Link
                     key={discussion.id}
-                    href={`/discussions/${discussion.slug}`}
+                    href={`/discussions/${discussion.id}`}
                     className="block rounded-lg border border-soft-clay/20 bg-white/50 p-4 transition-all duration-300 hover:shadow-md"
                   >
                     <h4 className="mb-2 font-semibold text-deep-stone">{discussion.title}</h4>

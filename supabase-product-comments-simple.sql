@@ -37,3 +37,7 @@ COMMENT ON COLUMN product_comments.is_flagged IS 'Whether this comment is hidden
 -- The application code will handle referential integrity.
 -- =====================================================
 
+
+
+
+

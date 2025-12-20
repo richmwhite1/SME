@@ -29,31 +29,13 @@ export default function TopicLeaderboard() {
   const [followingStates, setFollowingStates] = useState<Record<string, boolean>>({});
   const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
   const [showMasterTopics, setShowMasterTopics] = useState(false);
+  const [signalConfirmed, setSignalConfirmed] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     async function fetchData() {
       const supabase = createClient();
 
-      // Fetch trending topics
-      const { data: trendingData, error } = await supabase.rpc("get_trending_topics", {
-        limit_count: 5,
-      } as any);
-
-      if (error) {
-        console.error("Error fetching trending topics:", error);
-        // If RPC fails, fetch master topics as fallback
-        setShowMasterTopics(true);
-      } else {
-        const trendingTopics = (trendingData || []) as TrendingTopic[];
-        setTopics(trendingTopics);
-        
-        // If no trending topics, show master topics instead
-        if (trendingTopics.length === 0) {
-          setShowMasterTopics(true);
-        }
-      }
-
-      // Fetch master topics (always fetch in case we need them)
+      // Fetch master topics first (for Discover Topics sidebar)
       const { data: masterData, error: masterError } = await supabase
         .from("master_topics")
         .select("name, description")
@@ -62,6 +44,31 @@ export default function TopicLeaderboard() {
 
       if (!masterError && masterData) {
         setMasterTopics(masterData as MasterTopic[]);
+      }
+
+      // Try to fetch trending topics with error handling
+      try {
+        const { data: trendingData, error } = await supabase.rpc("get_trending_topics", {
+          limit_count: 5,
+        } as any);
+
+        if (error) {
+          console.error("Error fetching trending topics:", error);
+          // If RPC fails, show master topics as "Discover Topics"
+          setShowMasterTopics(true);
+        } else {
+          const trendingTopics = (trendingData || []) as TrendingTopic[];
+          if (trendingTopics.length > 0) {
+            setTopics(trendingTopics);
+          } else {
+            // If no trending topics, show master topics as "Discover Topics"
+            setShowMasterTopics(true);
+          }
+        }
+      } catch (err) {
+        console.error("Error in get_trending_topics RPC call:", err);
+        // If database is busy or RPC fails, show master topics as fallback
+        setShowMasterTopics(true);
       }
 
       // Fetch followed topics if user is logged in
@@ -94,14 +101,45 @@ export default function TopicLeaderboard() {
       return;
     }
 
+    // Optimistic update: immediately update UI
+    const currentFollowing = followingStates[topicName] || false;
+    const newFollowingState = !currentFollowing;
+    
+    // Immediately update state for instant UI feedback
     setLoadingStates((prev) => ({ ...prev, [topicName]: true }));
+    setFollowingStates((prev) => ({ ...prev, [topicName]: newFollowingState }));
+    
+    if (newFollowingState) {
+      setFollowedTopics((prev) => [...prev, topicName]);
+      // Trigger Emerald Aura immediately on follow
+      setSignalConfirmed((prev) => ({ ...prev, [topicName]: true }));
+      setTimeout(() => {
+        setSignalConfirmed((prev) => ({ ...prev, [topicName]: false }));
+      }, 2000); // Longer pulse for better visibility
+    } else {
+      setFollowedTopics((prev) => prev.filter((t) => t !== topicName));
+    }
 
     try {
       const result = await toggleTopicFollow(topicName);
+      // Update with actual result (in case of error, revert)
       setFollowingStates((prev) => ({ ...prev, [topicName]: result.following }));
 
       if (result.following) {
-        setFollowedTopics((prev) => [...prev, topicName]);
+        setFollowedTopics((prev) => {
+          if (!prev.includes(topicName)) {
+            return [...prev, topicName];
+          }
+          return prev;
+        });
+        
+        // Keep the animation if it was already set optimistically
+        if (!signalConfirmed[topicName]) {
+          setSignalConfirmed((prev) => ({ ...prev, [topicName]: true }));
+          setTimeout(() => {
+            setSignalConfirmed((prev) => ({ ...prev, [topicName]: false }));
+          }, 2000);
+        }
       } else {
         setFollowedTopics((prev) => prev.filter((t) => t !== topicName));
       }
@@ -111,6 +149,18 @@ export default function TopicLeaderboard() {
       // Also trigger a path revalidation (this will be handled by the server action)
     } catch (error) {
       console.error("Error toggling topic follow:", error);
+      // Revert optimistic update on error
+      setFollowingStates((prev) => ({ ...prev, [topicName]: currentFollowing }));
+      if (currentFollowing) {
+        setFollowedTopics((prev) => {
+          if (!prev.includes(topicName)) {
+            return [...prev, topicName];
+          }
+          return prev;
+        });
+      } else {
+        setFollowedTopics((prev) => prev.filter((t) => t !== topicName));
+      }
     } finally {
       setLoadingStates((prev) => ({ ...prev, [topicName]: false }));
     }
@@ -185,22 +235,42 @@ export default function TopicLeaderboard() {
                       handleFollow(topic.name);
                     }}
                     disabled={isLoading}
-                    className={`ml-2 flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200 ${
+                    className={`relative flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition-all duration-200 active:scale-95 ${
                       isFollowing
-                        ? "bg-earth-green/20 text-earth-green hover:bg-earth-green/30"
-                        : "bg-soft-clay/30 text-deep-stone/60 hover:bg-earth-green/20 hover:text-earth-green"
-                    } ${isLoading ? "opacity-50" : ""}`}
-                    title={isFollowing ? "Unfollow" : "Follow"}
+                        ? "border-heart-green bg-heart-green/20 text-heart-green hover:bg-heart-green/30"
+                        : "border-translucent-emerald bg-forest-obsidian text-bone-white/70 hover:border-heart-green hover:text-bone-white"
+                    } ${isLoading ? "opacity-50" : ""} ${
+                      signalConfirmed[topic.name] ? "ring-2 ring-heart-green ring-opacity-40" : ""
+                    }`}
+                    style={{
+                      boxShadow: signalConfirmed[topic.name] 
+                        ? "0 0 16px rgba(16, 185, 129, 0.4), 0 0 24px rgba(16, 185, 129, 0.2)" 
+                        : "none",
+                      transition: "all 0.3s ease-in-out",
+                      animation: signalConfirmed[topic.name] ? "pulse 2s ease-in-out" : "none",
+                    }}
+                    title={isFollowing ? "Following" : "Follow"}
                   >
                     {isLoading ? (
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    ) : isFollowing ? (
+                      <>
+                        <span className="text-xs font-mono opacity-0 animate-[fadeIn_0.2s_ease-in-out_forwards]">
+                          Following
+                        </span>
+                        <span 
+                          className="relative flex h-1.5 w-1.5"
+                          style={{
+                            boxShadow: "0 0 8px rgba(16, 185, 129, 0.3)",
+                          }}
+                        >
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-heart-green opacity-75"></span>
+                          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-heart-green"></span>
+                        </span>
+                      </>
                     ) : (
-                      <Plus
-                        size={16}
-                        className={isFollowing ? "rotate-45" : ""}
-                        style={{ transition: "transform 0.2s" }}
-                      />
-                    )}
+                    <Plus size={14} style={{ transition: "transform 0.2s" }} />
+                  )}
                   </button>
                 )}
               </div>
@@ -269,21 +339,41 @@ export default function TopicLeaderboard() {
                     handleFollow(topic.topic_name);
                   }}
                   disabled={isLoading}
-                  className={`ml-2 flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200 ${
+                  className={`relative flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition-all duration-200 ${
                     isFollowing
-                      ? "bg-earth-green/20 text-earth-green hover:bg-earth-green/30"
+                      ? "border-heart-green bg-heart-green/20 text-heart-green hover:bg-heart-green/30"
                       : "bg-soft-clay/30 text-deep-stone/60 hover:bg-earth-green/20 hover:text-earth-green"
-                  } ${isLoading ? "opacity-50" : ""}`}
-                  title={isFollowing ? "Unfollow" : "Follow"}
+                  } ${isLoading ? "opacity-50" : ""} ${
+                    signalConfirmed[topic.topic_name] ? "ring-2 ring-heart-green ring-opacity-40" : ""
+                  }`}
+                  style={{
+                    boxShadow: signalConfirmed[topic.topic_name] 
+                      ? "0 0 16px rgba(16, 185, 129, 0.4), 0 0 24px rgba(16, 185, 129, 0.2)" 
+                      : "none",
+                    transition: "all 0.3s ease-in-out",
+                    animation: signalConfirmed[topic.topic_name] ? "pulse 2s ease-in-out" : "none",
+                  }}
+                  title={isFollowing ? "Following" : "Follow"}
                 >
                   {isLoading ? (
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                  ) : (
-                    <Plus
-                      size={16}
-                      className={isFollowing ? "rotate-45" : ""}
-                      style={{ transition: "transform 0.2s" }}
-                    />
+                    ) : isFollowing ? (
+                      <>
+                        <span className="text-xs font-mono opacity-0 animate-[fadeIn_0.2s_ease-in-out_forwards]">
+                          Following
+                        </span>
+                        <span 
+                          className="relative flex h-1.5 w-1.5"
+                          style={{
+                            boxShadow: "0 0 8px rgba(16, 185, 129, 0.3)",
+                          }}
+                        >
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-heart-green opacity-75"></span>
+                          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-heart-green"></span>
+                        </span>
+                      </>
+                    ) : (
+                    <Plus size={14} style={{ transition: "transform 0.2s" }} />
                   )}
                 </button>
               )}

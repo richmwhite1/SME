@@ -2,11 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { Hash } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
+import { createClient } from "@/lib/supabase/client";
 import { toggleTopicFollow } from "@/app/actions/topic-actions";
 import Button from "@/components/ui/Button";
-import { createClient } from "@/lib/supabase/client";
 
 interface TopicBadgeProps {
   topic: string;
@@ -15,57 +14,84 @@ interface TopicBadgeProps {
   showFollowButton?: boolean;
 }
 
+const MASTER_TOPICS = [
+  "Biohacking",
+  "Longevity",
+  "Research",
+  "Supplements",
+  "Nutrition",
+  "Fitness",
+  "Mental Health",
+  "Sleep",
+  "Recovery",
+  "Wellness",
+  "Science",
+  "Health",
+];
+
 export default function TopicBadge({
   topic,
   isFollowed = false,
   clickable = true,
   showFollowButton = false,
 }: TopicBadgeProps) {
+  const { user } = useUser();
   const router = useRouter();
   const [following, setFollowing] = useState(isFollowed);
   const [loading, setLoading] = useState(false);
-  const [isMasterTopic, setIsMasterTopic] = useState(false);
-  const [followerCount, setFollowerCount] = useState<number | null>(null);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [followerCount, setFollowerCount] = useState<number | null>(null);
 
-  useEffect(() => {
-    async function checkMasterTopic() {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("master_topics")
-        .select("name")
-        .eq("name", topic)
-        .maybeSingle();
-      setIsMasterTopic(!!data);
-    }
-    checkMasterTopic();
-  }, [topic]);
+  const isMasterTopic = MASTER_TOPICS.some(
+    (mt) => mt.toLowerCase() === topic.toLowerCase()
+  );
 
+  // Fetch follower count
   useEffect(() => {
     async function fetchFollowerCount() {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("topic_stats")
-        .select("follower_count")
-        .eq("topic_name", topic)
-        .maybeSingle();
-      setFollowerCount(data?.follower_count || 0);
-    }
-    fetchFollowerCount();
-  }, [topic]);
+      try {
+        const supabase = createClient();
+        const { count } = await supabase
+          .from("topic_follows")
+          .select("*", { count: "exact", head: true })
+          .eq("topic_name", topic);
 
-  // No need for handleClick - we'll use Link instead
+        setFollowerCount(count || 0);
+      } catch (error) {
+        console.error("Error fetching follower count:", error);
+      }
+    }
+
+    if (clickable) {
+      fetchFollowerCount();
+    }
+  }, [topic, clickable]);
 
   const handleFollow = async (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
+
+    if (!user) {
+      alert("Please sign in to follow topics");
+      return;
+    }
+
     setLoading(true);
 
     try {
       const result = await toggleTopicFollow(topic);
       setFollowing(result.following);
+
+      // Update follower count
+      if (followerCount !== null) {
+        setFollowerCount(result.following ? followerCount + 1 : followerCount - 1);
+      }
+
+      // Refresh feed to show updated content
       router.refresh();
-    } catch (error) {
-      console.error("Error toggling topic follow:", error);
+    } catch (error: any) {
+      console.error("Error toggling follow:", error);
+      alert(`Failed to ${following ? "unfollow" : "follow"} topic: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -73,51 +99,51 @@ export default function TopicBadge({
 
   const badgeContent = (
     <>
+      <span>#{topic}</span>
       {isMasterTopic && (
-        <span className="mr-0.5 text-xs" title="Core Topic">⭐</span>
-      )}
-      <Hash size={14} />
-      {topic}
-      {isMasterTopic && (
-        <span className="ml-1 rounded-full bg-white/40 px-1 text-[10px] font-semibold uppercase">
+        <span className="ml-1 text-[10px] font-mono uppercase tracking-wider text-slate-500">
           Core
         </span>
       )}
     </>
   );
 
+  const handleBadgeClick = (e: React.MouseEvent) => {
+    if (clickable) {
+      e.preventDefault();
+      e.stopPropagation();
+      router.push(`/topic/${encodeURIComponent(topic)}`);
+    }
+  };
+
   return (
     <div className="relative inline-flex items-center gap-2">
       {clickable ? (
-        <Link
-          href={`/topic/${encodeURIComponent(topic)}`}
+        <div
+          onClick={handleBadgeClick}
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
-          className={`relative inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-medium transition-all duration-200 hover:scale-105 ${
-            isMasterTopic
-              ? "bg-earth-green/30 text-earth-green hover:bg-earth-green/40 cursor-pointer border border-earth-green/40"
-              : "bg-earth-green/20 text-earth-green hover:bg-earth-green/30 cursor-pointer"
+          className={`relative inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-mono uppercase tracking-wider text-slate-700 transition-colors hover:bg-slate-200 hover:border-slate-300 cursor-pointer ${
+            isMasterTopic ? "border-slate-300" : ""
           }`}
         >
           {badgeContent}
-        </Link>
+        </div>
       ) : (
         <span
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
-          className={`relative inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-medium ${
-            isMasterTopic
-              ? "bg-earth-green/30 text-earth-green cursor-default border border-earth-green/40"
-              : "bg-earth-green/20 text-earth-green cursor-default"
+          className={`relative inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-mono uppercase tracking-wider text-slate-700 ${
+            isMasterTopic ? "border-slate-300" : ""
           }`}
         >
           {badgeContent}
         </span>
       )}
       {showTooltip && followerCount !== null && (
-        <div className="absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 rounded-lg bg-deep-stone px-3 py-2 text-xs text-sand-beige shadow-lg">
+        <div className="absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 shadow-lg font-mono">
           {followerCount} {followerCount === 1 ? "follower" : "followers"}
-          <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-deep-stone" />
+          <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-white" />
         </div>
       )}
       {showFollowButton && (
@@ -125,12 +151,15 @@ export default function TopicBadge({
           variant="outline"
           onClick={handleFollow}
           disabled={loading}
-          className="text-xs px-2 py-1 h-auto"
+          className={`text-xs px-2 py-1 h-auto border transition-all ${
+            following
+              ? "border-sme-gold bg-muted-moss/50 text-sme-gold hover:bg-muted-moss"
+              : "border-translucent-emerald bg-forest-obsidian text-bone-white/70 hover:border-heart-green hover:text-bone-white"
+          }`}
         >
-          {loading ? "..." : following ? "Unfollow" : "Follow"}
+          {loading ? "..." : following ? "Following" : "Follow"}
         </Button>
       )}
     </div>
   );
 }
-

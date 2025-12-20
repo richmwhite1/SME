@@ -6,6 +6,8 @@ import { ArrowLeft, Hash, Home } from "lucide-react";
 import TopicFilter from "@/components/topics/TopicFilter";
 import { getFollowedTopics } from "@/app/actions/topic-actions";
 import TopicContentList from "@/components/topics/TopicContentList";
+import NewsletterSlideIn from "@/components/newsletter/NewsletterSlideIn";
+import MostHelpfulSidebar from "@/components/topics/MostHelpfulSidebar";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +18,7 @@ interface Discussion {
   slug: string;
   created_at: string;
   upvote_count: number;
+  is_pinned?: boolean;
   profiles: {
     full_name: string | null;
     username: string | null;
@@ -61,6 +64,7 @@ export default async function TopicPage({
       created_at,
       upvote_count,
       tags,
+      is_pinned,
       profiles!discussions_author_id_fkey(
         full_name,
         username,
@@ -73,10 +77,17 @@ export default async function TopicPage({
     .limit(100);
 
   // Filter discussions that have this topic in tags
-  const discussions = (allDiscussions || []).filter((d: any) => {
+  const allFilteredDiscussions = (allDiscussions || []).filter((d: any) => {
     if (!d.tags || d.tags.length === 0) return false;
     return d.tags.includes(topicName);
-  }) as Discussion[];
+  }) as (Discussion & { is_pinned?: boolean })[];
+
+  // Separate pinned (intro) discussions from regular ones
+  const pinnedDiscussions = allFilteredDiscussions.filter((d) => d.is_pinned === true);
+  const regularDiscussions = allFilteredDiscussions.filter((d) => !d.is_pinned);
+
+  // Sort: pinned first, then by date
+  const discussions = [...pinnedDiscussions, ...regularDiscussions];
 
   // Fetch products/protocols with this topic (if protocols have tags)
   const { data: allProducts } = await supabase
@@ -97,13 +108,15 @@ export default async function TopicPage({
   ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   return (
-    <main className="min-h-screen bg-sand-beige px-6 py-12">
-      <div className="mx-auto max-w-4xl">
+    <main className="min-h-screen bg-forest-obsidian px-6 py-12">
+      <div className="mx-auto max-w-7xl">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
+          <div className="lg:col-span-3">
         {/* Breadcrumbs */}
-        <nav className="mb-6 flex items-center gap-2 text-sm text-deep-stone/60">
+        <nav className="mb-6 flex items-center gap-2 text-sm text-bone-white/70 font-mono">
           <Link
             href="/feed"
-            className="flex items-center gap-1 text-earth-green hover:text-earth-green/80 hover:underline"
+            className="flex items-center gap-1 text-heart-green hover:text-heart-green/80 hover:underline"
           >
             <Home size={14} />
             Feed
@@ -111,18 +124,18 @@ export default async function TopicPage({
           <span>/</span>
           <Link
             href="/discussions"
-            className="text-earth-green hover:text-earth-green/80 hover:underline"
+            className="text-heart-green hover:text-heart-green/80 hover:underline"
           >
             Discussions
           </Link>
           <span>/</span>
-          <span className="text-deep-stone">#{topicName}</span>
+          <span className="text-bone-white">#{topicName}</span>
         </nav>
 
         {/* Back Button */}
         <Link
           href="/feed"
-          className="mb-4 inline-flex items-center gap-2 text-earth-green hover:underline"
+          className="mb-4 inline-flex items-center gap-2 text-bone-white/70 hover:text-bone-white font-mono transition-colors"
         >
           <ArrowLeft size={16} />
           Back to Feed
@@ -131,16 +144,40 @@ export default async function TopicPage({
         <div className="mb-8">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Hash className="h-8 w-8 text-earth-green" />
-              <h1 className="text-4xl font-bold text-deep-stone">Showing posts for #{topicName}</h1>
+              <Hash className="h-8 w-8 text-heart-green" />
+              <h1 className="font-serif text-4xl font-bold text-bone-white">#{topicName}</h1>
             </div>
             {user && (
               <TopicFilter topic={topicName} isFollowed={isTopicFollowed} />
             )}
           </div>
+
+          {/* State of the Science Summary */}
+          {pinnedDiscussions.length > 0 && pinnedDiscussions[0] && (
+            <div className="mb-6 border border-translucent-emerald bg-muted-moss p-6">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="border border-heart-green bg-heart-green/20 px-2 py-0.5 text-xs font-medium text-heart-green font-mono uppercase tracking-wider">
+                  Topic Hub
+                </span>
+              </div>
+              <h2 className="mb-2 font-serif text-xl font-bold text-bone-white">
+                {pinnedDiscussions[0].title}
+              </h2>
+              <div className="prose prose-sm max-w-none text-bone-white/80">
+                <p className="line-clamp-3">{pinnedDiscussions[0].content}</p>
+              </div>
+              <Link
+                href={`/discussions/${pinnedDiscussions[0].slug}`}
+                className="mt-3 inline-block text-sm font-medium text-heart-green hover:underline font-mono"
+              >
+                Read full introduction →
+              </Link>
+            </div>
+          )}
+
           {!user && (
-            <div className="rounded-lg border border-earth-green/30 bg-earth-green/10 p-4">
-              <p className="text-sm text-deep-stone/80">
+            <div className="border border-translucent-emerald bg-muted-moss p-4">
+              <p className="text-sm text-bone-white/70 font-mono">
                 Sign in to follow this topic and see personalized content in your feed.
               </p>
             </div>
@@ -149,7 +186,17 @@ export default async function TopicPage({
 
         {/* Content List with Search */}
         <TopicContentList allContent={allContent} topicName={topicName} />
+          </div>
+          
+          {/* Sidebar */}
+          <aside className="lg:col-span-1 space-y-6">
+            <MostHelpfulSidebar topicName={topicName} />
+          </aside>
+        </div>
       </div>
+      
+      {/* Newsletter Slide-in */}
+      <NewsletterSlideIn />
     </main>
   );
 }

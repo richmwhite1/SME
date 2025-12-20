@@ -2,20 +2,30 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 import { submitReview } from "@/app/actions/review-actions";
 import StarRating from "@/components/ui/StarRating";
 import Button from "@/components/ui/Button";
+import { useToast } from "@/components/ui/ToastContainer";
 
 interface ReviewFormProps {
   protocolId: string;
   protocolSlug: string;
+  onReviewAdded?: (review: any) => void;
+  onReviewError?: () => void;
+  onReviewSuccess?: () => void;
 }
 
 export default function ReviewForm({
   protocolId,
   protocolSlug,
+  onReviewAdded,
+  onReviewError,
+  onReviewSuccess,
 }: ReviewFormProps) {
   const router = useRouter();
+  const { showToast } = useToast();
+  const { user } = useUser();
   const [rating, setRating] = useState(0);
   const [content, setContent] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -37,18 +47,58 @@ export default function ReviewForm({
       return;
     }
 
+    // Optimistic update: Create temporary review immediately
+    const tempId = `temp-${Date.now()}`;
+    const optimisticReview = {
+      id: tempId,
+      rating,
+      content: content.trim(),
+      created_at: new Date().toISOString(),
+      profiles: user ? {
+        id: user.id,
+        full_name: user.firstName && user.lastName 
+          ? `${user.firstName} ${user.lastName}` 
+          : user.firstName || user.emailAddresses[0]?.emailAddress || "User",
+        username: null,
+        avatar_url: user.imageUrl,
+        healer_score: 0,
+      } : null,
+    };
+
+    // Add optimistic review immediately
+    if (onReviewAdded) {
+      onReviewAdded(optimisticReview);
+    }
+
     startTransition(async () => {
       try {
         await submitReview(protocolId, rating, content, protocolSlug);
         setSuccess(true);
         setRating(0);
         setContent("");
-        // Force refresh to show the new review
+        
+        // Call success callback to fetch fresh reviews
+        if (onReviewSuccess) {
+          onReviewSuccess();
+        }
+        
+        // Also trigger router refresh
         router.refresh();
-        // Reset success message after 3 seconds
-        setTimeout(() => setSuccess(false), 3000);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to submit review");
+        const errorMessage = err instanceof Error ? err.message : "Failed to submit review";
+        setError(errorMessage);
+        
+        // Remove optimistic review on error
+        if (onReviewError) {
+          onReviewError();
+        }
+        
+        // Show toast notification
+        if (errorMessage.toLowerCase().includes("policy") || errorMessage.toLowerCase().includes("permission")) {
+          showToast("Security Check: Please sign in to contribute to the Lab.", "error");
+        } else {
+          showToast(errorMessage, "error");
+        }
       }
     });
   };
@@ -56,14 +106,14 @@ export default function ReviewForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="mb-12 rounded-xl bg-white/50 p-8 backdrop-blur-sm"
+      className="mb-12 border border-translucent-emerald bg-muted-moss p-8"
     >
-      <h3 className="mb-6 text-xl font-semibold text-deep-stone">
+      <h3 className="mb-6 font-serif text-xl font-semibold text-bone-white">
         Share Your Experience
       </h3>
 
       <div className="mb-6">
-        <label className="mb-2 block text-sm font-medium text-deep-stone">
+        <label className="mb-2 block text-sm font-medium text-slate-100 font-mono">
           Rating
         </label>
         <StarRating value={rating} onChange={setRating} disabled={isPending} />
@@ -72,7 +122,7 @@ export default function ReviewForm({
       <div className="mb-6">
         <label
           htmlFor="review-content"
-          className="mb-2 block text-sm font-medium text-deep-stone"
+          className="mb-2 block text-sm font-medium text-slate-100 font-mono"
         >
           Your Review
         </label>
@@ -82,25 +132,30 @@ export default function ReviewForm({
           onChange={(e) => setContent(e.target.value)}
           disabled={isPending}
           rows={4}
-          className="w-full rounded-xl border border-soft-clay/30 bg-white/50 px-4 py-3 text-deep-stone placeholder-deep-stone/40 focus:border-earth-green focus:outline-none focus:ring-2 focus:ring-earth-green/20 transition-all duration-300"
-          placeholder="Share your experience with this protocol..."
+          className="w-full border border-translucent-emerald bg-forest-obsidian px-4 py-3 text-slate-100 placeholder-slate-100/50 focus:border-heart-green focus:outline-none transition-all font-mono"
+          placeholder="Share your experience with this product..."
         />
       </div>
 
       {error && (
-        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+        <div className="mb-4 border border-heart-green bg-heart-green/10 p-3 text-sm text-heart-green font-mono">
           {error}
         </div>
       )}
 
       {success && (
-        <div className="mb-4 rounded-lg bg-earth-green/10 p-3 text-sm text-earth-green">
+        <div className="mb-4 border border-heart-green bg-heart-green/10 p-3 text-sm text-heart-green font-mono">
           Review submitted successfully!
         </div>
       )}
 
-      <Button type="submit" variant="primary" disabled={isPending}>
-        {isPending ? "Submitting..." : "Submit Review"}
+      <Button 
+        type="submit" 
+        variant="primary" 
+        disabled={isPending}
+        className="border border-sme-gold bg-sme-gold text-forest-obsidian hover:bg-[#9A7209] hover:border-[#9A7209] font-mono uppercase tracking-wider"
+      >
+        {isPending ? "Processing..." : "Submit Review"}
       </Button>
     </form>
   );

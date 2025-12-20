@@ -1,53 +1,156 @@
 "use client";
 
-import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
+import { useState } from "react";
+import { SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
 import Link from "next/link";
-import { Library } from "lucide-react";
+import { Library, Menu, X } from "lucide-react";
+import AdminNavLink from "./AdminNavLink";
+import SearchBar from "@/components/search/SearchBar";
+import NotificationCenter from "@/components/notifications/NotificationCenter";
+import FeedNotificationDot from "./FeedNotificationDot";
+import SMEUserButton from "./SMEUserButton";
+import PrefetchLink from "./PrefetchLink";
 
 export default function Navbar() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-soft-clay/20 bg-sand-beige/80 backdrop-blur-md">
-      <div className="container mx-auto flex h-16 items-center justify-between px-6">
+    <nav className="sticky top-0 z-50 w-full border-b border-translucent-emerald bg-muted-moss/80 backdrop-blur-md overflow-x-hidden">
+      <div className="container mx-auto flex h-14 items-center justify-between gap-4 px-4 sm:px-6">
         <Link
           href="/"
-          className="text-xl font-semibold text-earth-green transition-all duration-300 hover:scale-[1.02]"
+          className="flex flex-col flex-shrink-0 hover:text-sme-gold transition-colors"
         >
-          SME
+          <span className="font-serif text-lg font-bold text-bone-white">
+            Health SME
+          </span>
+          <span className="hidden sm:block text-xs text-bone-white/70 font-mono uppercase tracking-wider">
+            Health through biological intelligence
+          </span>
         </Link>
 
-        <div className="flex items-center gap-6">
-          <Link
+        {/* Search Bar - Centered, Command-Line Style - Hidden on mobile */}
+        <div className="hidden md:flex flex-1 max-w-2xl mx-4 lg:mx-8">
+          <SearchBar />
+        </div>
+
+        {/* Desktop Navigation */}
+        <div className="hidden lg:flex items-center gap-5 flex-shrink-0 text-sm">
+          <PrefetchLink
             href="/products"
-            className="text-deep-stone transition-colors duration-300 hover:text-earth-green"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-bone-white/70 hover:text-bone-white transition-colors font-mono text-xs uppercase tracking-wider active:scale-95"
           >
             Products
-          </Link>
-          <Link
+          </PrefetchLink>
+          <PrefetchLink
             href="/discussions"
-            className="text-deep-stone transition-colors duration-300 hover:text-earth-green"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-bone-white/70 hover:text-bone-white transition-colors font-mono text-xs uppercase tracking-wider active:scale-95"
           >
-            Community
-          </Link>
-          <Link
+            Discussions
+          </PrefetchLink>
+          <PrefetchLink
+            href="/feed"
+            className="relative min-h-[44px] min-w-[44px] flex items-center justify-center text-bone-white hover:text-bone-white transition-colors font-mono text-xs uppercase tracking-wider active:scale-95"
+          >
+            My Feed
+            <FeedNotificationDot />
+          </PrefetchLink>
+          <PrefetchLink
             href="/resources"
-            className="flex items-center gap-1 text-deep-stone transition-colors duration-300 hover:text-earth-green"
+            className="flex items-center gap-1.5 min-h-[44px] min-w-[44px] justify-center text-bone-white/70 hover:text-bone-white transition-colors font-mono text-xs uppercase tracking-wider relative active:scale-95"
           >
-            <Library size={16} />
-            Evidence Vault
-          </Link>
+            <Library size={12} />
+            <span>SME Citations</span>
+          </PrefetchLink>
+
+          <AdminNavLink />
 
           <SignedIn>
-            <UserButton afterSignOutUrl="/" />
+            <NotificationCenter />
+            <SMEUserButton />
           </SignedIn>
           <SignedOut>
             <SignInButton mode="modal">
-              <button className="rounded-xl px-4 py-2 text-sm font-medium text-earth-green transition-all duration-300 hover:scale-[1.02] active:scale-95 hover:bg-earth-green/10">
+              <button className="min-h-[44px] min-w-[44px] px-3 py-1.5 text-xs text-bone-white hover:text-bone-white border border-translucent-emerald transition-all duration-200 hover:bg-forest-obsidian font-mono uppercase active:scale-95">
                 Sign In
               </button>
             </SignInButton>
           </SignedOut>
         </div>
+
+        {/* Mobile Menu Button */}
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="lg:hidden flex items-center justify-center w-10 h-10 text-bone-white hover:text-heart-green transition-colors active:scale-95"
+          aria-label="Toggle menu"
+        >
+          {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
       </div>
+
+      {/* Mobile Menu - Dropdown */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden border-t border-translucent-emerald bg-muted-moss">
+          <div className="container mx-auto px-4 py-4 space-y-3">
+            {/* Mobile Search */}
+            <div className="mb-4">
+              <SearchBar />
+            </div>
+
+            {/* Mobile Navigation Links */}
+            <PrefetchLink
+              href="/products"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block text-bone-white/70 hover:text-bone-white transition-colors font-mono text-xs uppercase tracking-wider py-2 active:scale-95"
+            >
+              Products
+            </PrefetchLink>
+            <PrefetchLink
+              href="/discussions"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block text-bone-white/70 hover:text-bone-white transition-colors font-mono text-xs uppercase tracking-wider py-2 active:scale-95"
+            >
+              Discussions
+            </PrefetchLink>
+            <PrefetchLink
+              href="/feed"
+              onClick={() => setMobileMenuOpen(false)}
+              className="relative block text-bone-white hover:text-bone-white transition-colors font-mono text-xs uppercase tracking-wider py-2 active:scale-95"
+            >
+              My Feed
+              <FeedNotificationDot />
+            </PrefetchLink>
+            <PrefetchLink
+              href="/resources"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-1.5 text-bone-white/70 hover:text-bone-white transition-colors font-mono text-xs uppercase tracking-wider py-2 active:scale-95"
+            >
+              <Library size={12} />
+              <span>SME Citations</span>
+            </PrefetchLink>
+
+            <div className="pt-2 border-t border-translucent-emerald">
+              <AdminNavLink />
+              <SignedIn>
+                <div className="mt-2 flex items-center gap-2">
+                  <NotificationCenter />
+                  <SMEUserButton />
+                </div>
+              </SignedIn>
+              <SignedOut>
+                <SignInButton mode="modal">
+                  <button 
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="mt-2 w-full px-3 py-1.5 text-xs text-bone-white hover:text-bone-white border border-translucent-emerald transition-colors hover:bg-forest-obsidian font-mono uppercase active:scale-95"
+                  >
+                    Sign In
+                  </button>
+                </SignInButton>
+              </SignedOut>
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }

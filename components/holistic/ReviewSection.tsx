@@ -1,29 +1,31 @@
 import { createClient } from "@/lib/supabase/server";
 import { currentUser } from "@clerk/nextjs/server";
-import ReviewForm from "./ReviewForm";
-import ReviewCard from "./ReviewCard";
-import ReviewFormPrompt from "./ReviewFormPrompt";
+import ReviewSectionClient from "./ReviewSectionClient";
 
 interface Review {
   id: string;
   rating: number;
   content: string;
   created_at: string;
-  profiles: {
-    full_name: string;
-    avatar_url: string | null;
-    healer_score: number;
-  } | null;
+    profiles: {
+      id: string;
+      full_name: string;
+      username: string | null;
+      avatar_url: string | null;
+      healer_score: number;
+    } | null;
 }
 
 interface ReviewSectionProps {
   protocolId: string;
   protocolSlug: string;
+  productTitle?: string;
 }
 
 export default async function ReviewSection({
   protocolId,
   protocolSlug,
+  productTitle,
 }: ReviewSectionProps) {
   const supabase = createClient();
   const user = await currentUser();
@@ -33,7 +35,7 @@ export default async function ReviewSection({
   // Handle null is_flagged values (reviews created before flagging was added)
   const { data: reviews, error } = await supabase
     .from("reviews")
-    .select("id, rating, content, created_at, profiles(full_name, avatar_url, healer_score)")
+    .select("id, rating, content, created_at, profiles(id, full_name, username, avatar_url, contributor_score, is_verified_expert)")
     .eq("protocol_id", protocolId)
     .or("is_flagged.eq.false,is_flagged.is.null")
     .order("created_at", { ascending: false });
@@ -42,36 +44,41 @@ export default async function ReviewSection({
     console.error("Error fetching reviews:", error);
   }
 
-  const typedReviews = (reviews || []) as Review[];
+  // Serialize reviews data - convert Date objects to ISO strings
+  const serializedReviews = (reviews || []).map((review: any) => ({
+    ...review,
+    created_at: review.created_at instanceof Date 
+      ? review.created_at.toISOString() 
+      : typeof review.created_at === 'string' 
+        ? review.created_at 
+        : new Date(review.created_at).toISOString(),
+    profiles: review.profiles ? {
+      ...review.profiles,
+      id: String(review.profiles.id),
+      contributor_score: review.profiles.contributor_score ?? 0,
+      is_verified_expert: review.profiles.is_verified_expert ?? false,
+    } : null,
+  })) as Review[];
+
+  // Serialize user object - only pass serializable data
+  const serializedUser = user ? {
+    id: user.id,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    emailAddresses: user.emailAddresses?.map((email: any) => ({
+      emailAddress: email.emailAddress,
+    })) || [],
+    imageUrl: user.imageUrl,
+  } : null;
 
   return (
-    <div className="mt-16 border-t border-soft-clay/20 pt-12">
-      <h2 className="mb-8 text-3xl font-semibold text-deep-stone">
-        Community Reviews
-      </h2>
-
-      {/* Review Form */}
-      {user ? (
-        <ReviewForm protocolId={protocolId} protocolSlug={protocolSlug} />
-      ) : (
-        <ReviewFormPrompt />
-      )}
-
-      {/* Reviews List */}
-      <div className="mt-12 space-y-6">
-        {typedReviews.length === 0 ? (
-          <div className="rounded-xl bg-white/50 p-8 text-center backdrop-blur-sm">
-            <p className="text-deep-stone/70">
-              No reviews yet. Be the first to share your experience!
-            </p>
-          </div>
-        ) : (
-          typedReviews.map((review) => (
-            <ReviewCard key={review.id} review={review} />
-          ))
-        )}
-      </div>
-    </div>
+    <ReviewSectionClient 
+      protocolId={protocolId}
+      protocolSlug={protocolSlug}
+      productTitle={productTitle}
+      initialReviews={serializedReviews}
+      user={serializedUser}
+    />
   );
 }
 

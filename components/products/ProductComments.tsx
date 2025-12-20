@@ -2,23 +2,150 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
-import { SignInButton } from "@clerk/nextjs";
-import { createProductComment } from "@/app/actions/product-actions";
-import Button from "@/components/ui/Button";
-import { Send, Loader2 } from "lucide-react";
+import CommentForm from "@/components/comments/CommentForm";
+import CitationText from "@/components/comments/CitationText";
+import { UserCircle } from "lucide-react";
+import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import Image from "next/image";
+import AvatarLink from "@/components/profile/AvatarLink";
+import TrustWeight from "@/components/ui/TrustWeight";
+import { createClient } from "@/lib/supabase/client";
+import UserBadge from "@/components/UserBadge";
+
+// Recursive comment thread component with Binary Indent Firewall
+function CommentThread({ comment, depth = 0, parentUsername }: { comment: Comment; depth?: number; parentUsername?: string | null }) {
+  // HARD FIREWALL: Binary Indentation - className + inline style backup
+  // Rule: depth === 0 ? 'ml-0' : 'ml-5 border-l border-white/10'
+  // No reply can ever indent more than 20px (ml-5 = 1.25rem = 20px)
+  const isGuest = !comment.profiles && comment.guest_name;
+  const marginLeft = depth === 0 ? '0px' : '20px';
+  
+  return (
+    <div 
+      className={depth === 0 ? 'ml-0' : 'ml-5 border-l border-white/10'} 
+      style={{ marginLeft }}
+      data-comment-depth={depth}
+    >
+      {/* SIGNAL BRIDGE: Context for flattened threads - show for ANY nested comment */}
+      {depth > 0 && parentUsername && (
+        <span 
+          className="text-[10px] text-sme-gold/60 font-mono mb-1 pl-4 block"
+          style={{ fontFamily: 'var(--font-geist-mono)' }}
+        >
+          Replying to @{parentUsername}
+        </span>
+      )}
+
+      <div className="border border-translucent-emerald bg-muted-moss p-4">
+        <div className="mb-3 flex items-start gap-3">
+          {isGuest ? (
+            <div className="flex-shrink-0">
+              <UserCircle size={32} className="text-bone-white/40" />
+            </div>
+          ) : comment.profiles ? (
+            <Link
+              href={comment.profiles.username 
+                ? `/u/${comment.profiles.username}` 
+                : `/profile/${comment.profiles.id}`}
+              onClick={(e) => e.stopPropagation()}
+              className="flex-shrink-0 hover:opacity-80 transition-opacity"
+            >
+              <AvatarLink
+                userId={comment.profiles.id}
+                username={comment.profiles.username}
+                avatarUrl={comment.profiles.avatar_url}
+                fullName={comment.profiles.full_name}
+                size={32}
+              />
+            </Link>
+          ) : null}
+          <div className="flex-1">
+            <div className="mb-1 flex items-center gap-2 flex-wrap">
+              {isGuest ? (
+                <>
+                  <span className="font-semibold text-bone-white">
+                    {comment.guest_name}
+                  </span>
+                  <span className="border border-bone-white/20 bg-bone-white/5 px-2 py-0.5 text-xs font-medium text-bone-white/50 font-mono uppercase">
+                    GUEST
+                  </span>
+                </>
+              ) : comment.profiles ? (
+                <>
+                  <Link
+                    href={comment.profiles.username 
+                      ? `/u/${comment.profiles.username}` 
+                      : `/profile/${comment.profiles.id}`}
+                    className="font-semibold text-bone-white hover:text-heart-green transition-colors"
+                  >
+                    {comment.profiles.full_name || "Anonymous"}
+                  </Link>
+                  <UserBadge profile={comment.profiles} />
+                  {comment.profiles.username && (
+                    <Link
+                      href={`/u/${comment.profiles.username}`}
+                      className="text-xs text-bone-white/70 hover:text-bone-white transition-colors"
+                    >
+                      @{comment.profiles.username}
+                    </Link>
+                  )}
+                  {comment.profiles.contributor_score && comment.profiles.contributor_score > 0 && comment.profiles.contributor_score <= 100 && (
+                    <TrustWeight
+                      value={comment.profiles.contributor_score}
+                      className="ml-1"
+                    />
+                  )}
+                  {comment.profiles.badge_type === "Trusted Voice" && (
+                    <span className="border border-heart-green bg-heart-green/20 px-2 py-0.5 text-xs font-medium text-heart-green font-mono uppercase">
+                      Trusted Voice
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span className="font-semibold text-bone-white">Anonymous</span>
+              )}
+              <span className="text-xs text-bone-white/50 font-mono">
+                {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+              </span>
+            </div>
+            <div className="whitespace-pre-wrap text-bone-white/90 leading-relaxed font-mono">
+              <CitationText content={comment.content} />
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* Recursive children - Binary depth: always 1 for nested, never increment */}
+      {/* Binary Indent Firewall: All nested comments use depth=1, enforcing 20px max indent */}
+      {comment.children && comment.children.length > 0 && (
+        <div className="mt-2 space-y-2" data-comment-list>
+          {comment.children.map((child) => (
+            <CommentThread 
+              key={child.id} 
+              comment={child} 
+              depth={1} 
+              parentUsername={comment.profiles?.username || comment.profiles?.full_name || comment.guest_name || null}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface Comment {
   id: string;
   content: string;
   created_at: string;
+  parent_id?: string | null;
+  children?: Comment[];
+  guest_name?: string | null;
   profiles: {
+    id: string;
     full_name: string | null;
     username: string | null;
     avatar_url: string | null;
     badge_type: string | null;
+    contributor_score: number | null;
   } | null;
 }
 
@@ -33,131 +160,93 @@ export default function ProductComments({
   protocolSlug,
   initialComments,
 }: ProductCommentsProps) {
-  const { isSignedIn } = useUser();
   const router = useRouter();
-  const [content, setContent] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [comments, setComments] = useState<Comment[]>(initialComments);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!content.trim() || loading) return;
+  // Build threaded comment tree
+  const buildCommentTree = (comments: Comment[]): Comment[] => {
+    const commentMap = new Map<string, Comment>();
+    const rootComments: Comment[] = [];
 
-    setLoading(true);
-    setError(null);
+    // First pass: create map and initialize children
+    comments.forEach((comment) => {
+      commentMap.set(comment.id, { ...comment, children: [] });
+    });
 
-    try {
-      await createProductComment(protocolId, content, protocolSlug);
-      setContent("");
-      // Refresh the page to show new comment
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to post comment");
-    } finally {
-      setLoading(false);
-    }
+    // Second pass: build tree
+    comments.forEach((comment) => {
+      const commentNode = commentMap.get(comment.id)!;
+      if (comment.parent_id) {
+        const parent = commentMap.get(comment.parent_id);
+        if (parent) {
+          parent.children = parent.children || [];
+          parent.children.push(commentNode);
+        } else {
+          // Orphaned comment (parent deleted), treat as root
+          rootComments.push(commentNode);
+        }
+      } else {
+        rootComments.push(commentNode);
+      }
+    });
+
+    return rootComments;
   };
 
+  const threadedComments = buildCommentTree(comments);
+
   return (
-    <div className="mt-16 space-y-6 border-t border-soft-clay/20 pt-12">
-      <h2 className="text-3xl font-semibold text-deep-stone">Comments</h2>
+    <div className="mt-16 space-y-6 border-t border-translucent-emerald pt-12">
+      <h2 className="font-serif text-3xl font-semibold text-bone-white">Comments</h2>
 
       {/* Comment Form */}
-      {isSignedIn ? (
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Share your thoughts about this product..."
-            rows={4}
-            className="w-full rounded-lg border border-soft-clay/30 bg-white/70 px-4 py-2 text-deep-stone focus:border-earth-green focus:outline-none"
-            required
-            minLength={3}
-            maxLength={2000}
-          />
-          {error && (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
-          )}
-          <Button
-            type="submit"
-            variant="primary"
-            disabled={loading || !content.trim()}
-            className="flex items-center gap-2"
-          >
-            {loading ? (
-              <>
-                <Loader2 size={16} className="animate-spin" />
-                Posting...
-              </>
-            ) : (
-              <>
-                <Send size={16} />
-                Post Comment
-              </>
-            )}
-          </Button>
-        </form>
-      ) : (
-        <div className="rounded-lg border border-soft-clay/30 bg-white/50 p-4">
-          <p className="mb-3 text-sm text-deep-stone/70">
-            Sign in to join the conversation
-          </p>
-          <SignInButton mode="modal">
-            <Button variant="outline" className="text-sm px-4 py-2">
-              Sign In
-            </Button>
-          </SignInButton>
-        </div>
-      )}
+      <CommentForm
+        type="product"
+        protocolId={protocolId}
+        protocolSlug={protocolSlug}
+        onSuccess={async () => {
+          // Refresh comments after successful submission
+          await new Promise(resolve => setTimeout(resolve, 200));
+          const supabase = createClient();
+          const { data: freshComments } = await supabase
+            .from("product_comments")
+            .select(`
+              id,
+              content,
+              created_at,
+              parent_id,
+              guest_name,
+              profiles(
+                id,
+                full_name,
+                username,
+                avatar_url,
+                badge_type,
+                contributor_score,
+                is_verified_expert
+              )
+            `)
+            .eq("protocol_id", protocolId)
+            .or("is_flagged.eq.false,is_flagged.is.null")
+            .order("created_at", { ascending: false });
+          
+          if (freshComments) {
+            setComments(freshComments as Comment[]);
+          }
+          router.refresh();
+        }}
+      />
 
       {/* Comments List */}
-      <div className="space-y-4">
-        {comments.length === 0 ? (
-          <p className="text-center text-deep-stone/70">No comments yet. Be the first to comment!</p>
+      <div 
+        data-comment-list
+        className="space-y-4 transition-all duration-300"
+      >
+        {threadedComments.length === 0 ? (
+          <p className="text-center text-bone-white font-mono">Signal Pending: Be the first auditor to share your intuition.</p>
         ) : (
-          comments.map((comment) => (
-            <div
-              key={comment.id}
-              className="rounded-lg border border-soft-clay/20 bg-white/50 p-4"
-            >
-              <div className="mb-3 flex items-start gap-3">
-                {comment.profiles?.avatar_url ? (
-                  <Image
-                    src={comment.profiles.avatar_url}
-                    alt={comment.profiles.full_name || "User"}
-                    width={32}
-                    height={32}
-                    className="h-8 w-8 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-soft-clay text-xs font-semibold text-deep-stone">
-                    {comment.profiles?.full_name?.charAt(0).toUpperCase() || "U"}
-                  </div>
-                )}
-                <div className="flex-1">
-                  <div className="mb-1 flex items-center gap-2">
-                    <span className="font-semibold text-deep-stone">
-                      {comment.profiles?.full_name || "Anonymous"}
-                    </span>
-                    {comment.profiles?.username && (
-                      <span className="text-xs text-deep-stone/60">
-                        @{comment.profiles.username}
-                      </span>
-                    )}
-                    {comment.profiles?.badge_type === "Trusted Voice" && (
-                      <span className="rounded-full bg-earth-green/20 px-2 py-0.5 text-xs font-medium text-earth-green">
-                        Trusted Voice
-                      </span>
-                    )}
-                    <span className="text-xs text-deep-stone/60">
-                      {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
-                    </span>
-                  </div>
-                  <p className="whitespace-pre-wrap text-deep-stone/80">{comment.content}</p>
-                </div>
-              </div>
-            </div>
+          threadedComments.map((comment) => (
+            <CommentThread key={comment.id} comment={comment} depth={0} parentUsername={null} />
           ))
         )}
       </div>

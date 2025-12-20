@@ -32,7 +32,7 @@ export default function TrustedVoicesToggle() {
   return (
     <button
       onClick={handleToggle}
-      className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-all duration-300 ${
+      className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-all duration-300 active:scale-95 ${
         isTrustedOnly
           ? "border-earth-green bg-earth-green/20 text-earth-green"
           : "border-soft-clay/30 bg-white/70 text-deep-stone hover:border-earth-green/50"
@@ -43,4 +43,8 @@ export default function TrustedVoicesToggle() {
     </button>
   );
 }
+
+
+
+
 

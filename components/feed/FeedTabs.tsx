@@ -34,7 +34,7 @@ export default function FeedTabs({ activeTab }: FeedTabsProps) {
           <button
             key={tab.id}
             onClick={() => handleTabChange(tab.id)}
-            className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors ${
+            className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-all duration-200 active:scale-95 ${
               isActive
                 ? "border-earth-green text-earth-green"
                 : "border-transparent text-deep-stone/60 hover:text-deep-stone hover:border-soft-clay/40"
@@ -48,4 +48,8 @@ export default function FeedTabs({ activeTab }: FeedTabsProps) {
     </div>
   );
 }
+
+
+
+
 

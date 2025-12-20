@@ -14,11 +14,15 @@ export default function CitationButton({ url, label = "Source" }: CitationButton
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center gap-2 rounded-lg border border-earth-green/30 bg-earth-green/10 px-4 py-2 text-sm font-medium text-earth-green transition-all duration-300 hover:bg-earth-green/20 hover:border-earth-green/50"
+      className="inline-flex items-center gap-2 border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-1.5 text-sm text-deep-stone hover:border-deep-stone/20 transition-colors rounded"
     >
-      <span>{label}</span>
-      <ExternalLink size={14} />
+      <span className="font-mono text-xs">{label}</span>
+      <ExternalLink size={12} className="text-deep-stone/60" />
     </Link>
   );
 }
+
+
+
+
 

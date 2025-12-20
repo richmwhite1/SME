@@ -11,6 +11,7 @@ interface ProfileSettingsFormProps {
     username: string | null;
     bio: string | null;
     credentials: string | null;
+    profession: string | null;
     website_url: string | null;
     social_links: {
       discord?: string | null;
@@ -26,6 +27,7 @@ export default function ProfileSettingsForm({ initialProfile }: ProfileSettingsF
   const [username, setUsername] = useState(initialProfile.username || "");
   const [bio, setBio] = useState(initialProfile.bio || "");
   const [credentials, setCredentials] = useState(initialProfile.credentials || "");
+  const [profession, setProfession] = useState(initialProfile.profession || "");
   const [websiteUrl, setWebsiteUrl] = useState(initialProfile.website_url || "");
   const [discord, setDiscord] = useState(initialProfile.social_links?.discord || "");
   const [telegram, setTelegram] = useState(initialProfile.social_links?.telegram || "");
@@ -48,6 +50,7 @@ export default function ProfileSettingsForm({ initialProfile }: ProfileSettingsF
         username,
         bio,
         credentials,
+        profession,
         websiteUrl,
         {
           discord: discord || undefined,
@@ -135,6 +138,20 @@ export default function ProfileSettingsForm({ initialProfile }: ProfileSettingsF
           </div>
 
           <div>
+            <label htmlFor="profession" className="mb-2 block text-sm font-medium text-deep-stone">
+              Profession
+            </label>
+            <input
+              type="text"
+              id="profession"
+              value={profession}
+              onChange={(e) => setProfession(e.target.value)}
+              placeholder="e.g., Neuroscientist, Nutritionist, Researcher"
+              className="w-full rounded-lg border border-soft-clay/30 bg-white/70 px-4 py-2 text-deep-stone focus:border-earth-green focus:outline-none"
+            />
+          </div>
+
+          <div>
             <label htmlFor="websiteUrl" className="mb-2 block text-sm font-medium text-deep-stone">
               Website URL
             </label>
@@ -163,9 +180,12 @@ export default function ProfileSettingsForm({ initialProfile }: ProfileSettingsF
               id="discord"
               value={discord}
               onChange={(e) => setDiscord(e.target.value)}
-              placeholder="username#1234"
+              placeholder="https://discord.gg/invitecode or username#1234"
               className="w-full rounded-lg border border-soft-clay/30 bg-white/70 px-4 py-2 text-deep-stone focus:border-earth-green focus:outline-none"
             />
+            <p className="mt-1 text-xs text-deep-stone/60">
+              Enter a Discord server invite link (https://discord.gg/...) for a clickable link, or your username for display
+            </p>
           </div>
 
           <div>
@@ -240,4 +260,8 @@ export default function ProfileSettingsForm({ initialProfile }: ProfileSettingsF
     </form>
   );
 }
+
+
+
+
 

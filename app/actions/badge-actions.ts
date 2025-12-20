@@ -1,7 +1,7 @@
 "use server";
 
 import { currentUser } from "@clerk/nextjs/server";
-import { createClient } from "@/lib/supabase/server";
+import { getDb } from "@/lib/db";
 import { isAdmin } from "@/lib/admin";
 import { revalidatePath } from "next/cache";
 
@@ -22,16 +22,14 @@ export async function updateBadgeManually() {
     throw new Error("Only admins can manually update badges");
   }
 
-  const supabase = createClient();
+  const sql = getDb();
 
-  // Call the RPC function to update badge
-  const { error } = await supabase.rpc("update_user_badge", {
-    user_id_param: user.id,
-  } as any);
-
-  if (error) {
+  try {
+    // Call the stored procedure to update badge
+    await sql`SELECT update_user_badge(${user.id})`;
+  } catch (error) {
     console.error("Error updating badge:", error);
-    throw new Error(`Failed to update badge: ${error.message}`);
+    throw new Error(`Failed to update badge: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 
   // Revalidate profile pages
@@ -40,5 +38,3 @@ export async function updateBadgeManually() {
 
   return { success: true };
 }
-
-

@@ -21,3 +21,7 @@ COMMENT ON VIEW topic_stats IS 'Statistics for topics including follower counts'
 -- the topic stats view.
 -- =====================================================
 
+
+
+
+

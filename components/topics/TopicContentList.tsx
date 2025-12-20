@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
 import TopicSearch from "./TopicSearch";
 import TopicBadge from "./TopicBadge";
+import AvatarLink from "@/components/profile/AvatarLink";
 
 interface Discussion {
   id: string;
@@ -14,7 +16,9 @@ interface Discussion {
   slug: string;
   created_at: string;
   upvote_count: number;
+  is_pinned?: boolean;
   profiles: {
+    id: string;
     full_name: string | null;
     username: string | null;
     avatar_url: string | null;
@@ -44,6 +48,7 @@ export default function TopicContentList({
   allContent,
   topicName,
 }: TopicContentListProps) {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredContent = useMemo(() => {
@@ -76,7 +81,7 @@ export default function TopicContentList({
           {searchQuery ? (
             <>
               <p className="mb-2 text-lg font-medium text-deep-stone">
-                No specific matches for "{searchQuery}" in #{topicName}
+                No specific matches for &quot;{searchQuery}&quot; in #{topicName}
               </p>
               <p className="text-deep-stone/70">
                 Try a broader search or{" "}
@@ -97,25 +102,43 @@ export default function TopicContentList({
         </div>
       ) : (
         <div className="space-y-6">
-          {filteredContent.map((item) => (
-            <Link
-              key={`${item.type}-${item.id}`}
-              href={
-                item.type === "discussion"
-                  ? `/discussions/${item.slug}`
-                  : `/products/${item.slug}`
-              }
-              className="block rounded-xl bg-white/50 p-6 backdrop-blur-sm transition-all duration-300 hover:shadow-lg"
-            >
-              <div className="mb-3">
-                <div className="mb-2 flex items-center gap-2">
-                  <span className="rounded-full bg-earth-green/20 px-2 py-0.5 text-xs font-medium text-earth-green">
-                    {item.type === "discussion" ? "Discussion" : "Product"}
-                  </span>
-                  <span className="text-sm text-deep-stone/60">
-                    {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
-                  </span>
-                </div>
+          {filteredContent.map((item) => {
+            const isPinned = item.type === "discussion" && (item as Discussion).is_pinned;
+            const handleCardClick = () => {
+              const href = item.type === "discussion"
+                ? `/discussions/${item.id}`
+                : `/products/${item.slug}`;
+              router.push(href);
+            };
+            return (
+              <div
+                key={`${item.type}-${item.id}`}
+                onClick={handleCardClick}
+                className={`cursor-pointer select-none block rounded-xl p-6 backdrop-blur-sm transition-all duration-300 hover:shadow-lg active:scale-95 ${
+                  isPinned 
+                    ? "border-2 border-earth-green/50 bg-earth-green/5" 
+                    : "bg-white/50"
+                }`}
+                style={{ userSelect: 'none' }}
+              >
+                <div className="mb-3">
+                  <div className="mb-2 flex items-center gap-2">
+                    {isPinned && (
+                      <span className="rounded-full bg-earth-green px-2 py-0.5 text-xs font-medium text-white font-mono uppercase tracking-wider">
+                        Pinned
+                      </span>
+                    )}
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                      item.type === "discussion" 
+                        ? "bg-earth-green/20 text-earth-green" 
+                        : "bg-blue-100 text-blue-800"
+                    }`}>
+                      {item.type === "discussion" ? "Discussion" : "Product"}
+                    </span>
+                    <span className="text-sm text-deep-stone/60">
+                      {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
+                    </span>
+                  </div>
                 <h2 className="mb-2 text-xl font-semibold text-deep-stone">
                   {item.title}
                 </h2>
@@ -130,28 +153,25 @@ export default function TopicContentList({
                 )}
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
                 {item.type === "discussion" && (item as Discussion).profiles && (
                   <div className="flex items-center gap-3">
-                    {(item as Discussion).profiles?.avatar_url ? (
-                      <Image
-                        src={(item as Discussion).profiles!.avatar_url!}
-                        alt={(item as Discussion).profiles!.full_name || "User"}
-                        width={32}
-                        height={32}
-                        className="h-8 w-8 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-soft-clay text-xs font-semibold text-deep-stone">
-                        {(item as Discussion).profiles?.full_name?.charAt(0).toUpperCase() ||
-                          "U"}
-                      </div>
-                    )}
+                    <AvatarLink
+                      userId={(item as Discussion).profiles!.id}
+                      username={(item as Discussion).profiles!.username}
+                      avatarUrl={(item as Discussion).profiles!.avatar_url}
+                      fullName={(item as Discussion).profiles!.full_name}
+                      size={32}
+                    />
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-deep-stone">
+                        <Link
+                          href={(item as Discussion).profiles!.username ? `/u/${(item as Discussion).profiles!.username}` : `/profile/${(item as Discussion).profiles!.id}`}
+                          className="text-sm font-medium text-deep-stone hover:text-earth-green transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           {(item as Discussion).profiles?.full_name || "Anonymous"}
-                        </span>
+                        </Link>
                         {(item as Discussion).profiles?.badge_type === "Trusted Voice" && (
                           <span className="rounded-full bg-earth-green/20 px-2 py-0.5 text-xs font-medium text-earth-green">
                             Trusted Voice
@@ -163,7 +183,7 @@ export default function TopicContentList({
                 )}
 
                 {item.tags && item.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
                     {item.tags
                       .filter((tag) => tag !== topicName)
                       .slice(0, 3)
@@ -173,10 +193,12 @@ export default function TopicContentList({
                   </div>
                 )}
               </div>
-            </Link>
-          ))}
+            </div>
+            );
+          })}
         </div>
       )}
     </>
   );
 }
+

@@ -3,559 +3,608 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import Image from "next/image";
-import { Star, MessageSquare, ArrowRight } from "lucide-react";
+import { MessageSquare, BookOpen, TrendingUp, Award, ArrowRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import TrustedVoicesToggle from "@/components/feed/TrustedVoicesToggle";
-import FeedTabs from "@/components/feed/FeedTabs";
-import TopicFilter from "@/components/topics/TopicFilter";
 import TopicBadge from "@/components/topics/TopicBadge";
 import TopicLeaderboard from "@/components/topics/TopicLeaderboard";
 import MyTopics from "@/components/topics/MyTopics";
+import LatestIntelligence from "@/components/social/LatestIntelligence";
+import FeedCalibration from "@/components/feed/FeedCalibration";
+import FeedVisitTracker from "@/components/feed/FeedVisitTracker";
+import FeedClient from "@/components/feed/FeedClient";
+import FeedRefresher from "@/components/feed/FeedRefresher";
+import FeedItemCard from "@/components/feed/FeedItemCard";
 import { getFollowedTopics } from "@/app/actions/topic-actions";
 
 export const dynamic = "force-dynamic";
 
-interface FeedItem {
-  activity_type: "review" | "discussion";
-  activity_id: string;
-  created_at: string;
-  author_id: string;
-  author_name: string;
-  author_avatar: string | null;
+interface ActiveThread {
+  discussion_id: string;
+  discussion_slug: string;
+  discussion_title: string;
+  last_reply_at: string;
+  reply_count: number;
+  author_name: string | null;
+  author_username: string | null;
+  tags: string[] | null;
+}
+
+interface FollowedSignalItem {
+  id: string;
+  type: "product" | "discussion" | "evidence";
   title: string;
   content: string;
+  created_at: string;
+  author_id?: string | null;
+  author_name: string | null;
+  author_username: string | null;
+  slug: string | null;
   tags: string[] | null;
-  related_id: string | null;
-  related_type: string | null;
-  protocol_slug?: string | null;
-  protocol_title?: string | null;
+  is_sme_certified?: boolean;
 }
 
-interface RecommendedContributor {
+interface TrustTrendItem {
   id: string;
-  full_name: string | null;
-  username: string | null;
-  avatar_url: string | null;
-  contributor_score: number;
-  bio: string | null;
+  type: "product" | "discussion";
+  title: string;
+  content: string;
+  created_at: string;
+  author_id?: string | null;
+  author_name: string | null;
+  author_username: string | null;
+  slug: string;
+  tags: string[] | null;
+  topic: string;
+  signal_score: number;
 }
 
-export default async function FeedPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ trusted?: string; tab?: string; topic?: string }>;
-}) {
+export default async function FeedPage() {
   const user = await currentUser();
 
   if (!user) {
     redirect("/");
   }
 
-  const params = await searchParams;
-  const isTrustedOnly = params.trusted === "true";
-  const activeTab = (params.tab || "tribe") as "tribe" | "pulse" | "interests";
-  const topicFilter = params.topic;
-
   const supabase = createClient();
-
-  // Check if user is following anyone
-  const { data: following, error: followingError } = await supabase
-    .from("follows")
-    .select("following_id")
-    .eq("follower_id", user.id);
-
-  const isFollowingAnyone = following && following.length > 0;
-
-  // Get followed topics for My Interests tab
   const followedTopics = await getFollowedTopics();
 
-  let feedItems: FeedItem[] = [];
-  let recommendedContributors: RecommendedContributor[] = [];
+  // Get tracked SMEs (users being followed)
+  const { data: trackedSMEs } = await supabase
+    .from("follows")
+    .select("following_id")
+    .eq("follower_id", user.id)
+    .eq("target_type", "user");
 
-  // Handle different tabs
-  if (activeTab === "tribe" && isFollowingAnyone && following) {
-    // My Tribe: Follower feed
-    const followingIds = following.map((f: { following_id: string }) => f.following_id);
+  const trackedSMEIds = (trackedSMEs || []).map((f: any) => f.following_id);
+
+  // 1. Active Threads: Discussions user commented on with new replies
+  const activeThreads: ActiveThread[] = [];
+  
+  // Get discussions user has commented on
+  const { data: userComments } = await supabase
+    .from("discussion_comments")
+    .select("discussion_id")
+    .eq("author_id", user.id)
+    .not("discussion_id", "is", null);
+
+  if (userComments && userComments.length > 0) {
+    const discussionIds = [...new Set(userComments.map((c: any) => c.discussion_id))];
     
-    // If trusted only, get users with Trusted Voice badge first
-    let userIdsToFetch = followingIds;
-    if (isTrustedOnly) {
-      const { data: trustedUsers } = await supabase
-        .from("profiles")
-        .select("id")
-        .in("id", followingIds)
-        .eq("badge_type", "Trusted Voice");
-      
-      userIdsToFetch = trustedUsers?.map((u: { id: string }) => u.id) || [];
+    // Get discussions with new replies (replies after user's last comment)
+    for (const discussionId of discussionIds) {
+      // Get user's last comment time
+      const { data: userLastComment } = await supabase
+        .from("discussion_comments")
+        .select("created_at")
+        .eq("discussion_id", discussionId)
+        .eq("author_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (userLastComment) {
+        // Get replies after user's last comment
+        const { data: newReplies } = await supabase
+          .from("discussion_comments")
+          .select("id, created_at")
+          .eq("discussion_id", discussionId)
+          .gt("created_at", userLastComment.created_at)
+          .neq("author_id", user.id);
+
+        if (newReplies && newReplies.length > 0) {
+          // Get discussion details
+          const { data: discussion } = await supabase
+            .from("discussions")
+            .select("id, title, slug, tags, profiles!discussions_author_id_fkey(id, full_name, username)")
+            .eq("id", discussionId)
+            .single();
+
+          if (discussion) {
+            activeThreads.push({
+              discussion_id: discussion.id,
+              discussion_slug: discussion.slug,
+              discussion_title: discussion.title,
+              last_reply_at: newReplies[0].created_at,
+              reply_count: newReplies.length,
+              author_name: discussion.profiles?.full_name || null,
+              author_username: discussion.profiles?.username || null,
+              tags: discussion.tags,
+            } as ActiveThread);
+          }
+        }
+      }
     }
-    
-    // Fetch reviews from followed users (filtered by trusted if needed)
-    const { data: reviews, error: reviewsError } = await supabase
-      .from("reviews")
-      .select(`
-        id,
-        created_at,
-        user_id,
-        content,
-        protocol_id,
-        profiles!reviews_user_id_fkey(full_name, avatar_url, badge_type),
-        protocols!reviews_protocol_id_fkey(slug, title)
-      `)
-      .in("user_id", userIdsToFetch)
-      .eq("is_flagged", false)
-      .order("created_at", { ascending: false })
-      .limit(30);
+  }
 
-    // Fetch discussions from followed users (filtered by trusted if needed)
-    const { data: discussions, error: discussionsError } = await supabase
-      .from("discussions")
-      .select(`
-        id,
-        created_at,
-        author_id,
-        title,
-        content,
-        tags,
-        profiles!discussions_author_id_fkey(full_name, avatar_url, badge_type)
-      `)
-      .in("author_id", userIdsToFetch)
-      .eq("is_flagged", false)
-      .order("created_at", { ascending: false })
-      .limit(30);
+  // Sort by last reply time
+  activeThreads.sort(
+    (a, b) => new Date(b.last_reply_at).getTime() - new Date(a.last_reply_at).getTime()
+  );
 
-    // Combine and sort by date
-    const allItems: FeedItem[] = [];
+  // 2. Followed Signal: New products/research in 12 Master Topics user follows
+  const followedSignalItems: FollowedSignalItem[] = [];
 
-    if (reviews && !reviewsError) {
-      reviews.forEach((review: any) => {
-        allItems.push({
-          activity_type: "review",
-          activity_id: review.id,
-          created_at: review.created_at,
-          author_id: review.user_id,
-          author_name: review.profiles?.full_name || "Anonymous",
-          author_avatar: review.profiles?.avatar_url || null,
-          title: review.content.substring(0, 100),
-          content: review.content,
-          tags: null,
-          related_id: review.protocol_id,
-          related_type: "protocol",
-          protocol_slug: review.protocols?.slug || null,
-          protocol_title: review.protocols?.title || null,
-        });
-      });
-    }
+  if (followedTopics.length > 0) {
+    // Get master topics (12 core topics)
+    const { data: masterTopics } = await supabase
+      .from("master_topics")
+      .select("name")
+      .order("display_order", { ascending: true })
+      .limit(12);
 
-    if (discussions && !discussionsError) {
-      discussions.forEach((discussion: any) => {
-        allItems.push({
-          activity_type: "discussion",
-          activity_id: discussion.id,
-          created_at: discussion.created_at,
-          author_id: discussion.author_id,
-          author_name: discussion.profiles?.full_name || "Anonymous",
-          author_avatar: discussion.profiles?.avatar_url || null,
-          title: discussion.title,
-          content: discussion.content,
-          tags: discussion.tags,
-          related_id: null,
-          related_type: null,
-        });
-      });
-    }
+    const masterTopicNames = (masterTopics || []).map((t: any) => t.name);
+    const followedMasterTopics = followedTopics.filter((t) =>
+      masterTopicNames.includes(t)
+    );
 
-    // Sort by date and limit
-    feedItems = allItems
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 50);
-  } else if (activeTab === "interests") {
-    // My Interests: Fetch content where tags contain any followed topic
-    if (followedTopics.length > 0) {
+    if (followedMasterTopics.length > 0) {
       // Fetch discussions with matching tags
-      let discussionsQuery = supabase
+      const { data: discussions } = await supabase
         .from("discussions")
-        .select(`
+          .select(`
           id,
-          created_at,
-          author_id,
           title,
           content,
+          slug,
           tags,
-          slug,
-          profiles!discussions_author_id_fkey(full_name, avatar_url, badge_type)
-        `)
-        .eq("is_flagged", false);
-
-      // Filter by tags containing any followed topic
-      // Supabase doesn't support array overlap directly, so we'll filter in code
-      const { data: allDiscussions } = await discussionsQuery
-        .order("created_at", { ascending: false })
-        .limit(100);
-
-      // Filter discussions that have tags matching followed topics
-      const matchingDiscussions = (allDiscussions || []).filter((d: any) => {
-        if (!d.tags || d.tags.length === 0) return false;
-        return d.tags.some((tag: string) => followedTopics.includes(tag));
-      });
-
-      matchingDiscussions.forEach((discussion: any) => {
-        feedItems.push({
-          activity_type: "discussion",
-          activity_id: discussion.id,
-          created_at: discussion.created_at,
-          author_id: discussion.author_id,
-          author_name: discussion.profiles?.full_name || "Anonymous",
-          author_avatar: discussion.profiles?.avatar_url || null,
-          title: discussion.title,
-          content: discussion.content,
-          tags: discussion.tags,
-          related_id: null,
-          related_type: null,
-          protocol_slug: discussion.slug,
-        });
-      });
-
-      // Fetch protocols with matching tags (if protocols have tags)
-      // Note: Protocols may not have tags column, adjust as needed
-      const { data: protocols } = await supabase
-        .from("protocols")
-        .select(`
-          id,
           created_at,
-          title,
-          problem_solved,
-          slug,
-          tags
+          profiles!discussions_author_id_fkey(id, full_name, username)
         `)
-        .not("tags", "is", null)
-        .limit(100);
+        .eq("is_flagged", false)
+        .order("created_at", { ascending: false })
+        .limit(50);
 
-      if (protocols) {
-        const matchingProtocols = protocols.filter((p: any) => {
-          if (!p.tags || p.tags.length === 0) return false;
-          return p.tags.some((tag: string) => followedTopics.includes(tag));
+      if (discussions) {
+        const matchingDiscussions = discussions.filter((d: any) => {
+          if (!d.tags || d.tags.length === 0) return false;
+          return d.tags.some((tag: string) => followedMasterTopics.includes(tag));
         });
 
-        matchingProtocols.forEach((protocol: any) => {
-          feedItems.push({
-            activity_type: "review", // Using review type for products
-            activity_id: protocol.id,
-            created_at: protocol.created_at,
-            author_id: "",
-            author_name: "Product",
-            author_avatar: null,
-            title: protocol.title,
-            content: protocol.problem_solved,
-            tags: protocol.tags,
-            related_id: protocol.id,
-            related_type: "protocol",
-            protocol_slug: protocol.slug,
-            protocol_title: protocol.title,
+        matchingDiscussions.forEach((d: any) => {
+          followedSignalItems.push({
+            id: d.id,
+            type: "discussion",
+            title: d.title,
+            content: d.content,
+            created_at: d.created_at,
+            author_id: d.profiles?.id || null,
+            author_name: d.profiles?.full_name || null,
+            author_username: d.profiles?.username || null,
+            slug: d.slug,
+            tags: d.tags,
           });
         });
       }
 
-      // Sort by date
-      feedItems = feedItems.sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
+      // Fetch products with matching tags
+      const { data: products } = await supabase
+        .from("protocols")
+          .select(`
+          id,
+          title,
+          problem_solved,
+          slug,
+          tags,
+          created_at,
+          is_sme_certified,
+          profiles!protocols_created_by_fkey(id, full_name, username)
+        `)
+        .eq("is_flagged", false)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (products) {
+        const matchingProducts = products.filter((p: any) => {
+          if (!p.tags || p.tags.length === 0) return false;
+          return p.tags.some((tag: string) => followedMasterTopics.includes(tag));
+        });
+
+        matchingProducts.forEach((p: any) => {
+          followedSignalItems.push({
+            id: p.id,
+            type: "product",
+            title: p.title,
+            content: p.problem_solved || "",
+            created_at: p.created_at,
+            author_id: p.profiles?.id || null,
+            author_name: p.profiles?.full_name || null,
+            author_username: p.profiles?.username || null,
+            slug: p.slug,
+            tags: p.tags,
+            is_sme_certified: p.is_sme_certified || false,
+          });
+        });
+      }
+
+      // Fetch evidence from resource_library
+      const { data: evidence } = await supabase
+        .from("resource_library")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(30);
+
+      if (evidence) {
+        // Filter evidence by matching topics (need to check origin items)
+        for (const ev of evidence) {
+          let hasMatchingTopic = false;
+          
+          if (ev.origin_type === "Discussion") {
+            const { data: discussion } = await supabase
+              .from("discussions")
+              .select("tags")
+              .eq("id", ev.origin_id)
+              .single();
+            
+            if (discussion?.tags) {
+              hasMatchingTopic = discussion.tags.some((tag: string) =>
+                followedMasterTopics.includes(tag)
+              );
+            }
+          } else if (ev.origin_type === "Product") {
+            const { data: product } = await supabase
+              .from("protocols")
+              .select("tags")
+              .eq("id", ev.origin_id)
+              .single();
+            
+            if (product?.tags) {
+              hasMatchingTopic = product.tags.some((tag: string) =>
+                followedMasterTopics.includes(tag)
+              );
+            }
+          }
+
+          if (hasMatchingTopic) {
+            followedSignalItems.push({
+              id: ev.origin_id,
+              type: "evidence",
+              title: ev.title,
+              content: ev.reference_url || "",
+              created_at: ev.created_at,
+              author_name: ev.author_name,
+              author_username: ev.author_username,
+              slug: null,
+              tags: null,
+            });
+          }
+        }
+      }
     }
-  } else if (activeTab === "pulse") {
-    // Community Pulse: Global feed
-    const { data: globalFeed } = await supabase
-      .from("global_feed")
-      .select("*")
+  }
+
+  // Sort by creation date
+  followedSignalItems.sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+
+  // 2.5. Tracked SME Intelligence: New discussions and SME Citations contributions from tracked SMEs
+  const trackedSMEItems: FollowedSignalItem[] = [];
+
+  if (trackedSMEIds.length > 0) {
+    // Fetch new discussions from tracked SMEs
+    const { data: smeDiscussions } = await supabase
+      .from("discussions")
+          .select(`
+          id,
+          title,
+          content,
+          slug,
+          tags,
+          created_at,
+          profiles!discussions_author_id_fkey(id, full_name, username, badge_type)
+        `)
+      .in("author_id", trackedSMEIds)
+      .eq("is_flagged", false)
       .order("created_at", { ascending: false })
-      .limit(50);
+      .limit(20);
 
-    if (globalFeed) {
-      feedItems = globalFeed.map((item: any) => ({
-        activity_type: item.activity_type === "review" ? "review" : "discussion",
-        activity_id: item.activity_id,
-        created_at: item.created_at,
-        author_id: item.author_id,
-        author_name: item.author_name,
-        author_avatar: item.author_avatar,
-        title: item.title,
-        content: item.content,
-        tags: item.tags,
-        related_id: item.related_id,
-        related_type: item.related_type,
-        protocol_slug: item.protocol_slug,
-        protocol_title: item.protocol_title,
-      }));
+    if (smeDiscussions) {
+      smeDiscussions.forEach((d: any) => {
+        trackedSMEItems.push({
+          id: d.id,
+          type: "discussion",
+          title: d.title,
+          content: d.content,
+          created_at: d.created_at,
+          author_name: d.profiles?.full_name || null,
+          author_username: d.profiles?.username || null,
+          slug: d.slug,
+          tags: d.tags,
+        });
+      });
+    }
+
+    // Fetch new SME Citations contributions from tracked SMEs
+    const { data: smeEvidence } = await supabase
+      .from("resource_library")
+      .select("*")
+      .in("author_id", trackedSMEIds)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    if (smeEvidence) {
+      smeEvidence.forEach((ev: any) => {
+        trackedSMEItems.push({
+          id: ev.origin_id,
+          type: "evidence",
+          title: ev.title,
+          content: ev.reference_url || "",
+          created_at: ev.created_at,
+          author_id: ev.author_id || null,
+          author_name: ev.author_name,
+          author_username: ev.author_username,
+          slug: null,
+          tags: null,
+        });
+      });
     }
   }
 
-  // Get recommended contributors if on Tribe tab and not following anyone
-  if (activeTab === "tribe" && !isFollowingAnyone) {
-    // Show recommended contributors based on highest contributor scores
-    const { data: recommended, error: recommendedError } = await supabase
-      .from("profiles")
-      .select("id, full_name, username, avatar_url, contributor_score, bio")
-      .not("username", "is", null)
-      .neq("id", user.id)
-      .order("contributor_score", { ascending: false })
-      .limit(10);
+  // Sort by creation date
+  trackedSMEItems.sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
 
-    if (recommendedError) {
-      console.error("Error fetching recommended contributors:", recommendedError);
-    } else {
-      recommendedContributors = (recommended || []) as RecommendedContributor[];
+  // 3. Trust Trends: One 'High Signal' post from unfollowed topic
+  let trustTrendItem: TrustTrendItem | null = null;
+
+  if (followedTopics.length > 0) {
+    // Get all topics from discussions and products
+    const { data: allDiscussions } = await supabase
+      .from("discussions")
+      .select("id, title, content, slug, tags, created_at, profiles!discussions_author_id_fkey(id, full_name, username, badge_type)")
+      .eq("is_flagged", false)
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    if (allDiscussions) {
+      // Find discussions from Trusted Voices in unfollowed topics
+      const unfollowedDiscussions = allDiscussions.filter((d: any) => {
+        if (!d.tags || d.tags.length === 0) return false;
+        if (d.profiles?.badge_type !== "Trusted Voice") return false;
+        
+        // Check if all tags are unfollowed
+        return d.tags.every((tag: string) => !followedTopics.includes(tag));
+      });
+
+      if (unfollowedDiscussions.length > 0) {
+        // Pick the most recent one
+        const selected = unfollowedDiscussions[0];
+        const firstUnfollowedTopic = selected.tags.find(
+          (tag: string) => !followedTopics.includes(tag)
+        );
+
+        trustTrendItem = {
+          id: selected.id,
+          type: "discussion",
+          title: selected.title,
+          content: selected.content,
+          created_at: selected.created_at,
+          author_id: selected.profiles?.id || null,
+          author_name: selected.profiles?.full_name || null,
+          author_username: selected.profiles?.username || null,
+          slug: selected.slug,
+          tags: selected.tags,
+          topic: firstUnfollowedTopic || "",
+          signal_score: 5, // High signal from Trusted Voice
+        };
+      }
     }
   }
-
-  // Apply topic filter if present
-  if (topicFilter) {
-    feedItems = feedItems.filter((item) => {
-      if (!item.tags || item.tags.length === 0) return false;
-      return item.tags.includes(topicFilter);
-    });
-  }
-
-  // Get followed status for topic filter
-  const isTopicFollowed = topicFilter ? followedTopics.includes(topicFilter) : false;
 
   return (
-    <main className="min-h-screen bg-sand-beige px-6 py-12">
+    <main className="min-h-screen bg-forest-obsidian px-6 py-12">
+      <FeedVisitTracker />
       <div className="mx-auto max-w-7xl">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
           <div className="lg:col-span-3">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="mb-2 text-4xl font-bold text-deep-stone">My Feed</h1>
-            <p className="text-lg text-deep-stone/70">
-              {activeTab === "tribe"
-                ? isFollowingAnyone
-                  ? "Activity from contributors you follow"
-                  : "Discover top contributors to get started"
-                : activeTab === "pulse"
-                  ? "All community activity"
-                  : "Content from topics you follow"}
-            </p>
-          </div>
-          {activeTab !== "interests" && <TrustedVoicesToggle />}
-        </div>
-
-        <FeedTabs activeTab={activeTab} />
-
-        {topicFilter && (
-          <TopicFilter topic={topicFilter} isFollowed={isTopicFollowed} />
-        )}
-
-        {activeTab === "tribe" && isFollowingAnyone ? (
-          // Follower Feed
-          <div className="space-y-6">
-            {feedItems.length === 0 ? (
-              <div className="rounded-xl bg-white/50 p-12 text-center backdrop-blur-sm">
-                <p className="mb-4 text-deep-stone/70">
-                  No activity from people you follow yet.
-                </p>
-                <Link
-                  href="/products"
-                  className="text-earth-green hover:underline"
-                >
-                  Explore products →
-                </Link>
-              </div>
-            ) : (
-              feedItems.map((item) => (
-                <FeedItemCard key={`${item.activity_type}-${item.activity_id}`} item={item} />
-              ))
-            )}
-          </div>
-        ) : activeTab === "tribe" ? (
-          // Recommended Contributors
-          <div>
-            <div className="mb-6 rounded-xl bg-white/50 p-6 backdrop-blur-sm">
-              <h2 className="mb-2 text-2xl font-semibold text-deep-stone">
-                Recommended Contributors
-              </h2>
-              <p className="text-deep-stone/70">
-                Follow top contributors to see their activity in your feed
+            <div className="mb-8">
+              <h1 className="mb-2 font-serif text-3xl font-bold text-bone-white">My Feed</h1>
+              <p className="text-xs text-bone-white/70 font-mono uppercase tracking-wider">
+                Personalized research intelligence
               </p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              {recommendedContributors.map((contributor) => (
-                <RecommendedContributorCard
-                  key={contributor.id}
-                  contributor={contributor}
-                />
-              ))}
-            </div>
+            {/* Feed Client handles Calibration/Feed transition */}
+            <FeedClient initialFollowedTopics={followedTopics}>
+              {/* Feed Refresher - Shows when new signals are detected */}
+              <FeedRefresher 
+                initialItemCount={
+                  activeThreads.length + 
+                  trackedSMEItems.length + 
+                  followedSignalItems.length + 
+                  (trustTrendItem ? 1 : 0)
+                }
+                initialTimestamp={new Date().toISOString()}
+                followedTopics={followedTopics}
+              />
+              
+              {/* Active Threads */}
+            {activeThreads.length > 0 && (
+              <section className="mb-8 border border-translucent-emerald bg-muted-moss p-6">
+                <div className="mb-4 flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-third-eye-indigo" />
+                  <h2 className="font-serif text-xl font-semibold text-bone-white">Active Threads</h2>
+                </div>
+                <p className="mb-4 text-xs text-bone-white/70 font-mono">
+                  Discussions you&apos;ve commented on with new replies
+                </p>
+                <div className="space-y-3">
+                  {activeThreads.slice(0, 5).map((thread) => (
+                    <Link
+                      key={thread.discussion_id}
+                      href={`/discussions/${thread.discussion_id}`}
+                      className="block border border-translucent-emerald bg-forest-obsidian p-4 transition-all duration-300 hover:border-heart-green active:scale-95"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="mb-1 font-serif text-base font-semibold text-bone-white truncate">
+                            {thread.discussion_title}
+                          </h3>
+                          <div className="mb-2 flex items-center gap-2 text-xs text-bone-white/70 font-mono">
+                            <span>
+                              {thread.reply_count} new {thread.reply_count === 1 ? "reply" : "replies"}
+                            </span>
+                            <span>•</span>
+                            <span>
+                              {formatDistanceToNow(new Date(thread.last_reply_at), { addSuffix: true })}
+                            </span>
+                          </div>
+                          {thread.tags && thread.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {thread.tags.slice(0, 3).map((tag) => (
+                                <TopicBadge key={tag} topic={tag} clickable={true} />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <ArrowRight className="h-4 w-4 text-bone-white/50 flex-shrink-0" />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
 
-            {recommendedContributors.length === 0 && (
-              <div className="rounded-xl bg-white/50 p-12 text-center backdrop-blur-sm">
-                <p className="text-deep-stone/70">
-                  No recommended contributors found.
+            {/* Tracked SME Intelligence */}
+            {trackedSMEItems.length > 0 && (
+              <section className="mb-8 border border-sme-gold/30 bg-muted-moss p-6">
+                <div className="mb-4 flex items-center gap-2">
+                  <Award className="h-5 w-5 text-sme-gold" />
+                  <h2 className="font-serif text-xl font-semibold text-bone-white">Tracked Intelligence</h2>
+                </div>
+                <p className="mb-4 text-xs text-bone-white/70 font-mono">
+                  New discussions and SME Citations contributions from tracked SMEs
                 </p>
-              </div>
+                <div className="space-y-3">
+                  {trackedSMEItems.slice(0, 10).map((item) => (
+                    <FeedItemCard key={`sme-${item.type}-${item.id}`} item={item} />
+                  ))}
+                </div>
+              </section>
             )}
-          </div>
-        ) : (
-          // Community Pulse or My Interests
-          <div className="space-y-6">
-            {feedItems.length === 0 ? (
-              <div className="rounded-xl bg-white/50 p-12 text-center backdrop-blur-sm">
-                <p className="mb-4 text-deep-stone/70">
-                  {activeTab === "interests"
-                    ? followedTopics.length === 0
-                      ? "Follow topics to see content here. Click on any tag to follow it!"
-                      : "No content found for your followed topics yet."
-                    : "No activity found."}
+
+            {/* Followed Signal */}
+            {followedSignalItems.length > 0 && (
+              <section className="mb-8 border border-translucent-emerald bg-muted-moss p-6">
+                <div className="mb-4 flex items-center gap-2">
+                  <BookOpen className="h-5 w-5 text-heart-green" />
+                  <h2 className="font-serif text-xl font-semibold text-bone-white">Followed Signal</h2>
+                </div>
+                <p className="mb-4 text-xs text-bone-white/70 font-mono">
+                  New products and research in your followed Master Topics
                 </p>
-                {activeTab === "interests" && followedTopics.length === 0 && (
+                <div className="space-y-3">
+                  {followedSignalItems.slice(0, 10).map((item) => (
+                    <FeedItemCard key={`${item.type}-${item.id}`} item={item} />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Trust Trends */}
+            {trustTrendItem && (
+              <section className="mb-8 border border-sme-gold/30 bg-muted-moss p-6">
+                <div className="mb-4 flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-sme-gold" />
+                  <h2 className="font-serif text-xl font-semibold text-bone-white">Trust Trends</h2>
+                  <span className="border border-sme-gold/30 bg-sme-gold/10 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-sme-gold">
+                    High Signal
+                  </span>
+                </div>
+                <p className="mb-4 text-xs text-bone-white/70 font-mono">
+                  Discovery from an unfollowed topic
+                </p>
+                <div className="border border-translucent-emerald bg-forest-obsidian p-4">
+                  <div className="mb-2 flex items-center gap-2">
+                    <TopicBadge topic={trustTrendItem.topic} clickable={true} />
+                    <span className="text-[10px] text-bone-white/50 font-mono">
+                      {formatDistanceToNow(new Date(trustTrendItem.created_at), { addSuffix: true })}
+                    </span>
+                  </div>
                   <Link
-                    href="/discussions"
-                    className="text-earth-green hover:underline"
+                    href={`/discussions/${trustTrendItem.id}`}
+                    className="block transition-colors hover:text-heart-green"
                   >
-                    Explore discussions →
+                    <h3 className="mb-2 font-serif text-lg font-semibold text-bone-white">
+                      {trustTrendItem.title}
+                    </h3>
+                    <p className="mb-3 text-sm text-bone-white/80 font-mono leading-relaxed line-clamp-2">
+                      {trustTrendItem.content}
+                    </p>
+                    {trustTrendItem.author_name && (
+                      <div className="flex items-center gap-2 text-xs text-bone-white/70 font-mono">
+                        <Award size={12} className="text-sme-gold" />
+                        <span>Trusted Voice: </span>
+                        {trustTrendItem.author_username ? (
+                          <Link
+                            href={`/u/${trustTrendItem.author_username}`}
+                            className="hover:text-bone-white transition-colors"
+                          >
+                            {trustTrendItem.author_name}
+                          </Link>
+                        ) : (
+                          <span>{trustTrendItem.author_name}</span>
+                        )}
+                      </div>
+                    )}
                   </Link>
-                )}
-              </div>
-            ) : (
-              feedItems.map((item) => (
-                <FeedItemCard key={`${item.activity_type}-${item.activity_id}`} item={item} />
-              ))
+                </div>
+              </section>
             )}
+
+            {/* Empty States */}
+            {activeThreads.length === 0 && trackedSMEItems.length === 0 && followedSignalItems.length === 0 && !trustTrendItem && (
+              <div className="border border-translucent-emerald bg-muted-moss p-12 text-center">
+                <p className="mb-4 text-sm text-bone-white/70 font-mono">
+                  Your feed is empty. Start following topics to see personalized content!
+                </p>
+                <Link
+                  href="/discussions"
+                  className="inline-block text-xs font-medium text-heart-green hover:underline font-mono uppercase tracking-wider"
+                >
+                  Explore Discussions →
+                </Link>
+              </div>
+            )}
+
+            {/* Tagline - Anchored below feed content */}
+            <div className="mt-12 mb-8 text-center border-t border-translucent-emerald pt-8">
+              <p className="text-lg text-bone-white/80 font-mono">
+                Community-driven products for the gut, heart, and mind.
+              </p>
+            </div>
+            </FeedClient>
           </div>
-        )}
-          </div>
+
           <aside className="lg:col-span-1 space-y-6">
+            <LatestIntelligence />
             <MyTopics />
             <TopicLeaderboard />
           </aside>
         </div>
       </div>
     </main>
-  );
-}
-
-function FeedItemCard({ item }: { item: FeedItem }) {
-  return (
-    <div className="rounded-xl bg-white/50 p-6 backdrop-blur-sm transition-all duration-300 hover:shadow-lg">
-      <div className="mb-4 flex items-start gap-4">
-        {/* Author Avatar */}
-        <div className="flex-shrink-0">
-          {item.author_avatar ? (
-            <Image
-              src={item.author_avatar}
-              alt={item.author_name}
-              width={48}
-              height={48}
-              className="h-12 w-12 rounded-full object-cover"
-            />
-          ) : (
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-soft-clay text-lg font-semibold text-deep-stone">
-              {item.author_name.charAt(0).toUpperCase()}
-            </div>
-          )}
-        </div>
-
-        <div className="flex-1">
-          <div className="mb-2 flex items-center gap-2">
-            <span className="font-semibold text-deep-stone">{item.author_name}</span>
-            <span className="text-sm text-deep-stone/60">
-              {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
-            </span>
-          </div>
-
-          {item.activity_type === "review" ? (
-            <div>
-              <div className="mb-2 flex items-center gap-2 text-sm text-deep-stone/60">
-                <Star className="h-4 w-4 fill-earth-green text-earth-green" />
-                <span>Review</span>
-                {item.protocol_slug && item.protocol_title && (
-                  <Link
-                    href={`/products/${item.protocol_slug}`}
-                    className="text-earth-green hover:underline"
-                  >
-                    on {item.protocol_title}
-                  </Link>
-                )}
-              </div>
-              <p className="leading-relaxed text-deep-stone/80">{item.content}</p>
-            </div>
-          ) : (
-            <div>
-              <div className="mb-2 flex items-center gap-2 text-sm text-deep-stone/60">
-                <MessageSquare className="h-4 w-4 text-earth-green" />
-                <span>Discussion</span>
-              </div>
-              <h3 className="mb-2 text-lg font-semibold text-deep-stone">{item.title}</h3>
-              <p className="leading-relaxed text-deep-stone/80">{item.content}</p>
-              {item.tags && item.tags.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {item.tags.map((tag) => (
-                    <TopicBadge key={tag} topic={tag} clickable={true} />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function RecommendedContributorCard({
-  contributor,
-}: {
-  contributor: RecommendedContributor;
-}) {
-  return (
-    <div className="rounded-xl bg-white/50 p-6 backdrop-blur-sm transition-all duration-300 hover:shadow-lg">
-      <div className="mb-4 flex items-start gap-4">
-        {contributor.avatar_url ? (
-          <Image
-            src={contributor.avatar_url}
-            alt={contributor.full_name || "User"}
-            width={64}
-            height={64}
-            className="h-16 w-16 rounded-full object-cover"
-          />
-        ) : (
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-soft-clay text-2xl font-semibold text-deep-stone">
-            {contributor.full_name?.charAt(0).toUpperCase() || "U"}
-          </div>
-        )}
-
-        <div className="flex-1">
-          <h3 className="mb-1 text-lg font-semibold text-deep-stone">
-            {contributor.full_name || "Anonymous"}
-          </h3>
-          {contributor.username && (
-            <Link
-              href={`/u/${contributor.username}`}
-              className="text-sm text-earth-green hover:underline"
-            >
-              @{contributor.username}
-            </Link>
-          )}
-          {contributor.bio && (
-            <p className="mt-2 text-sm leading-relaxed text-deep-stone/70 line-clamp-2">
-              {contributor.bio}
-            </p>
-          )}
-          <div className="mt-3 flex items-center justify-between">
-            <div className="text-sm text-earth-green">
-              <span className="font-semibold">{contributor.contributor_score || 0}</span>{" "}
-              Contributor Score
-            </div>
-            {contributor.username && (
-              <Link
-                href={`/u/${contributor.username}`}
-                className="flex items-center gap-1 text-sm text-earth-green hover:underline"
-              >
-                View Profile <ArrowRight className="h-3 w-3" />
-              </Link>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }
 

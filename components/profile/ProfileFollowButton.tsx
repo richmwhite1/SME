@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { SignInButton, useUser } from "@clerk/nextjs";
 import { toggleFollow } from "@/app/actions/profile-actions";
 import Button from "@/components/ui/Button";
-import { UserPlus, UserMinus, Loader2 } from "lucide-react";
+import { UserPlus, UserMinus, Loader2, Brain } from "lucide-react";
 
 interface ProfileFollowButtonProps {
   targetUserId: string;
@@ -43,8 +43,8 @@ export default function ProfileFollowButton({
     return (
       <SignInButton mode="modal">
         <Button variant="outline" className="flex items-center gap-2">
-          <UserPlus size={16} />
-          Sign in to Follow
+          <Brain size={16} />
+          Sign in to Track Intelligence
         </Button>
       </SignInButton>
     );
@@ -60,20 +60,24 @@ export default function ProfileFollowButton({
       {loading ? (
         <>
           <Loader2 size={16} className="animate-spin" />
-          {isFollowing ? "Unfollowing..." : "Following..."}
+          {isFollowing ? "Untracking..." : "Tracking..."}
         </>
       ) : isFollowing ? (
         <>
           <UserMinus size={16} />
-          Unfollow
+          Stop Tracking
         </>
       ) : (
         <>
-          <UserPlus size={16} />
-          Follow
+          <Brain size={16} />
+          Track Intelligence
         </>
       )}
     </Button>
   );
 }
+
+
+
+
 

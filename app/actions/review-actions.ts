@@ -1,8 +1,9 @@
 "use server";
 
 import { currentUser } from "@clerk/nextjs/server";
-import { createClient } from "@/lib/supabase/server";
+import { getDb } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { checkUserBanned, checkKeywordBlacklist } from "@/lib/trust-safety";
 
 export async function submitReview(
   protocolId: string,
@@ -17,17 +18,16 @@ export async function submitReview(
     throw new Error("You must be logged in to submit a review");
   }
 
-  const supabase = createClient();
+  // Check if user is banned
+  const isBanned = await checkUserBanned(user.id);
+  if (isBanned) {
+    throw new Error("Your laboratory access has been restricted");
+  }
 
-  // Just-in-Time Sync: Check if user exists in profiles table
-  const { data: existingProfile, error: checkError } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("id", user.id)
-    .maybeSingle();
+  const sql = getDb();
 
-  // If user doesn't exist, create them using upsert (safer - handles race conditions)
-  if (!existingProfile && !checkError) {
+  // Just-in-Time Sync: Ensure user exists in profiles table using UPSERT
+  try {
     const profileData = {
       id: user.id,
       email: user.emailAddresses[0]?.emailAddress || "",
@@ -35,79 +35,70 @@ export async function submitReview(
         ? `${user.firstName} ${user.lastName}`
         : user.firstName || user.emailAddresses[0]?.emailAddress || "User",
       avatar_url: user.imageUrl || null,
-      healer_score: 0, // Start with 0, will be calculated based on helpful votes
     };
 
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .upsert(profileData as any, {
-        onConflict: "id",
-      });
-
-    if (profileError) {
-      console.error("Error creating/updating profile:", profileError);
-      console.error("Profile data attempted:", profileData);
-      throw new Error(
-        `Failed to create user profile: ${profileError.message || "Unknown error"}`
-      );
-    }
-  } else if (checkError) {
-    // If there's an error checking, log it but try to continue (might be a permissions issue)
-    console.warn("Error checking for existing profile:", checkError);
-    // Try to upsert anyway - upsert is idempotent
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .upsert(
-        {
-          id: user.id,
-          email: user.emailAddresses[0]?.emailAddress || "",
-          full_name: user.firstName && user.lastName
-            ? `${user.firstName} ${user.lastName}`
-            : user.firstName || user.emailAddresses[0]?.emailAddress || "User",
-          avatar_url: user.imageUrl || null,
-          healer_score: 0,
-        } as any,
-        {
-          onConflict: "id",
-        }
-      );
-
-    if (profileError) {
-      console.error("Error upserting profile:", profileError);
-      throw new Error(
-        `Failed to create user profile: ${profileError.message || "Unknown error"}`
-      );
-    }
+    await sql`
+      INSERT INTO profiles (id, email, full_name, avatar_url, healer_score)
+      VALUES (
+        ${profileData.id},
+        ${profileData.email},
+        ${profileData.full_name},
+        ${profileData.avatar_url},
+        0
+      )
+      ON CONFLICT (id) DO UPDATE SET
+        email = EXCLUDED.email,
+        full_name = EXCLUDED.full_name,
+        avatar_url = EXCLUDED.avatar_url
+    `;
+  } catch (error) {
+    console.error("Error upserting profile:", error);
+    throw new Error(`Failed to create user profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
+
+  // Check keyword blacklist (Revenue Guard)
+  const trimmedContent = content.trim();
+  const blacklistMatches = await checkKeywordBlacklist(trimmedContent);
+  const shouldAutoFlag = blacklistMatches.length > 0;
 
   // Insert the review
-  const { error: reviewError } = await supabase
-    .from("reviews")
-    .insert({
-      protocol_id: protocolId,
-      user_id: user.id,
-      rating: rating,
-      content: content.trim(),
-      flag_count: 0,
-      is_flagged: false,
-      helpful_count: 0,
-    } as any);
+  try {
+    const insertedReviews = await sql`
+      INSERT INTO reviews (
+        protocol_id, user_id, rating, content, flag_count, is_flagged, helpful_count
+      )
+      VALUES (
+        ${protocolId},
+        ${user.id},
+        ${rating},
+        ${trimmedContent},
+        ${shouldAutoFlag ? 1 : 0},
+        ${shouldAutoFlag},
+        0
+      )
+      RETURNING id
+    `;
 
-  if (reviewError) {
-    console.error("Error inserting review:", reviewError);
-    throw new Error(
-      `Failed to submit review: ${reviewError.message || "Unknown error"}`
-    );
+    if (!insertedReviews || insertedReviews.length === 0) {
+      console.error("Review insert returned no data");
+      throw new Error("Review was not created. Please try again.");
+    }
+
+    // If blacklisted keyword found, auto-flag and move to moderation queue
+    if (shouldAutoFlag && blacklistMatches.length > 0) {
+      console.log("Review auto-flagged due to blacklisted keyword:", blacklistMatches[0].keyword);
+    }
+
+  } catch (error) {
+    console.error("Error inserting review:", error);
+    throw new Error(`Failed to submit review: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 
-  // Revalidate the product page
+  // Revalidate the product page (using ID for routing)
   if (protocolSlug) {
     revalidatePath(`/products/${protocolSlug}`, "page");
-    // Also revalidate by ID pattern in case it's accessed that way
-    revalidatePath(`/products/[slug]`, "page");
-  } else {
-    // Fallback: revalidate all product pages
-    revalidatePath("/products", "page");
+    revalidatePath(`/products/[id]`, "page");
   }
+  // Always revalidate products list
+  revalidatePath("/products", "page");
 }
-

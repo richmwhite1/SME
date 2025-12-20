@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
 
 // Define public routes that don't require authentication
 const isPublicRoute = createRouteMatcher([
@@ -7,6 +8,7 @@ const isPublicRoute = createRouteMatcher([
   "/discussions(.*)",
   "/feed(.*)",
   "/resources(.*)",
+  "/search(.*)", // Added for Global Search
   "/topics(.*)",
   "/topic(.*)",
   "/u(.*)",
@@ -16,7 +18,13 @@ const isPublicRoute = createRouteMatcher([
 export default clerkMiddleware(async (auth, req) => {
   // Allow public routes without authentication
   if (!isPublicRoute(req)) {
-    await auth.protect();
+    const { userId } = await auth();
+    
+    // If user is not authenticated, redirect to home
+    if (!userId) {
+      const signInUrl = new URL("/", req.url);
+      return NextResponse.redirect(signInUrl);
+    }
   }
 });
 
