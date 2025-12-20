@@ -448,6 +448,7 @@ export async function resolveBounty(
  * Flag a discussion comment
  * Inserts a record into discussion_flags table
  * The database trigger handles auto-archival to moderation_queue
+ * Returns isHidden: true if comment reaches 3+ flags
  */
 export async function flagComment(commentId: string) {
   const user = await currentUser();
@@ -477,11 +478,21 @@ export async function flagComment(commentId: string) {
       VALUES (${commentId}, ${user.id})
     `;
 
+    // Get updated flag count to determine if comment is hidden
+    const flagCountResult = await sql`
+      SELECT COUNT(*) as count
+      FROM discussion_flags
+      WHERE comment_id = ${commentId}
+    `;
+
+    const count = flagCountResult[0]?.count || 0;
+    const isHidden = count >= 3;
+
     // Revalidate paths
     revalidatePath("/discussions", "page");
     revalidatePath("/admin", "page");
 
-    return { success: true };
+    return { success: true, isHidden };
   } catch (error: any) {
     console.error("Error flagging comment:", error);
     throw new Error(error.message || "Failed to flag comment");
