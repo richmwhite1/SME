@@ -18,6 +18,11 @@ interface IntelligenceData {
   reference_url: string;
 }
 
+interface DiscussionData {
+  title: string;
+  reference_url: string | null;
+}
+
 interface IntelligencePopoverProps {
   resourceId: string;
   children: React.ReactNode;
@@ -74,13 +79,16 @@ export default function IntelligencePopover({
             return;
           }
 
-          const { data: discussionData } = await supabase
+          const { data: rawDiscussionData } = await supabase
             .from("discussions")
             .select("title, reference_url")
             .eq("id", resourceId)
             .single();
 
-          if (discussionData) {
+          // Cast the data explicitly
+          const discussionData = rawDiscussionData as unknown as DiscussionData;
+
+          if (discussionData && discussionData.title) {
             setResourceData({
               title: discussionData.title,
               ai_summary: null,
