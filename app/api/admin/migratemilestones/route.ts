@@ -23,7 +23,11 @@ export async function GET() {
           );
         `);
 
-        // 2. Create indexes
+        // 2. Ensure columns exist (for schema evolution)
+        await sql.unsafe(`ALTER TABLE community_milestones ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;`);
+        await sql.unsafe(`ALTER TABLE community_milestones ADD COLUMN IF NOT EXISTS milestone_type TEXT;`);
+
+        // 3. Create indexes
         await sql.unsafe(`CREATE INDEX IF NOT EXISTS idx_milestones_is_displayed ON community_milestones(is_displayed) WHERE is_displayed = true;`);
         await sql.unsafe(`CREATE INDEX IF NOT EXISTS idx_milestones_achieved_at ON community_milestones(achieved_at DESC);`);
         await sql.unsafe(`CREATE INDEX IF NOT EXISTS idx_milestones_type ON community_milestones(milestone_type);`);
