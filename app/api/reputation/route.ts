@@ -3,7 +3,7 @@ import { getDb } from '@/lib/db';
 import { auth } from '@clerk/nextjs/server';
 
 export async function GET() {
-  const { userId } = auth();
+  const { userId } = await auth();
   if (!userId) return NextResponse.json({ score: 0 });
 
   const sql = getDb();
@@ -17,5 +17,4 @@ export async function GET() {
     console.error('Database Error:', error);
     return NextResponse.json({ error: 'Failed to fetch reputation' }, { status: 500 });
   }
-}
 }
