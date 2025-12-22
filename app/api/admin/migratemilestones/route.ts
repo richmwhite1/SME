@@ -45,6 +45,7 @@ export async function GET() {
 
         return NextResponse.json({
             success: true,
+            version: "v2-fix-metadata",
             message: "Successfully created community_milestones table and indexes.",
         });
     } catch (error: any) {
