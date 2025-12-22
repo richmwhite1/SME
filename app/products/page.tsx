@@ -2,6 +2,8 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { getDb } from '@/lib/db';
 
+import ProductsClient from '@/components/products/ProductsClient';
+
 import {
   ShieldCheck,
   Search,
@@ -51,11 +53,12 @@ const parseImages = (images: string[] | string | null): string[] => {
   return [];
 };
 
-async function getProducts() {
+async function getProducts(searchParams: { search?: string; category?: string; certified?: string }) {
   const sql = getDb();
+  const { search, category, certified } = searchParams;
 
   try {
-    // Fetch products
+    // Build the query with filters
     const productsResult = await sql`
       SELECT 
         id, 
@@ -67,21 +70,22 @@ async function getProducts() {
         is_sme_certified, 
         created_at
       FROM products
-      WHERE is_flagged = false OR is_flagged IS NULL
+      WHERE 1=1
+      ${search ? sql`AND (title ILIKE ${'%' + search + '%'} OR problem_solved ILIKE ${'%' + search + '%'})` : sql``}
+      ${category ? sql`AND ${category} = ANY(tags)` : sql``}
+      ${certified === 'true' ? sql`AND is_sme_certified = true` : sql``}
       ORDER BY created_at DESC
     `;
 
-    // Fetch metrics (simpler aggregations for list view)
+    // Fetch metrics
     const metricsResult = await sql`
       SELECT 
         product_id,
         COUNT(*) as count
       FROM reviews
-      WHERE is_flagged = false OR is_flagged IS NULL
       GROUP BY product_id
     `;
 
-    // Map metrics to products
     const metricsMap = new Map(metricsResult.map((m: any) => [m.product_id, parseInt(m.count)]));
 
     const products: ProductWithMetrics[] = productsResult.map((p: any) => ({
@@ -94,7 +98,7 @@ async function getProducts() {
       is_sme_certified: p.is_sme_certified,
       created_at: p.created_at,
       reviewCount: metricsMap.get(p.id) || 0,
-      activityScore: (metricsMap.get(p.id) || 0) * 10 // Simplified score
+      activityScore: (metricsMap.get(p.id) || 0) * 10
     }));
 
     return products;
@@ -104,11 +108,18 @@ async function getProducts() {
   }
 }
 
-export default async function ProductsPage() {
-  const products = await getProducts();
+export default async function ProductsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ search?: string; category?: string; certified?: string }>;
+}) {
+  const params = await searchParams;
+  const products = await getProducts(params);
   const trendingProducts = products
     .sort((a, b) => b.activityScore - a.activityScore)
     .slice(0, 3);
+
+  const categories = ['Gut Health', 'Sleep', 'Cognition', 'Longevity', 'Immunity', 'Fitness'];
 
   return (
     <div className="min-h-screen bg-forest-obsidian font-sans">
@@ -126,16 +137,11 @@ export default async function ProductsPage() {
               for safety, purity, and efficacy.
             </p>
 
-            {/* Search Bar */}
+            {/* Search Bar - Client Action Needed */}
             <div className="relative max-w-lg">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-bone-white/40" />
-              </div>
-              <input
-                type="text"
-                placeholder="Search products by name, problem, or ingredient..."
-                className="w-full h-10 px-3 pl-10 rounded-md bg-white/5 border border-white/10 text-bone-white placeholder:text-bone-white/40 focus:outline-none focus:border-sme-gold/50 transition-all font-mono"
-              />
+              <Suspense>
+                <ProductsClient searchQuery={params.search || ""} />
+              </Suspense>
             </div>
           </div>
         </div>
@@ -159,15 +165,21 @@ export default async function ProductsPage() {
                     Certifications
                   </label>
                   <div className="space-y-2">
-                    <label className="flex items-center gap-2 text-bone-white/80 hover:text-bone-white cursor-pointer group">
-                      <div className="w-4 h-4 rounded border border-white/20 group-hover:border-sme-gold/50 flex items-center justify-center transition-colors">
-                        {/* Checkbox state logic would go here */}
+                    <Link
+                      href={{
+                        pathname: '/products',
+                        query: { ...params, certified: params.certified === 'true' ? undefined : 'true' }
+                      }}
+                      className="flex items-center gap-2 text-bone-white/80 hover:text-bone-white cursor-pointer group"
+                    >
+                      <div className={`w-4 h-4 rounded border ${params.certified === 'true' ? 'bg-sme-gold border-sme-gold' : 'border-white/20'} group-hover:border-sme-gold/50 flex items-center justify-center transition-colors`}>
+                        {params.certified === 'true' && <div className="w-1.5 h-1.5 bg-forest-black rounded-full" />}
                       </div>
                       <span className="flex items-center gap-2">
                         <ShieldCheck className="w-4 h-4 text-sme-gold" />
                         SME Verified
                       </span>
-                    </label>
+                    </Link>
                   </div>
                 </div>
 
@@ -176,22 +188,41 @@ export default async function ProductsPage() {
                     Categories
                   </label>
                   <div className="space-y-2">
-                    {['Gut Health', 'Sleep', 'Cognition', 'Longevity', 'Immunity'].map((cat) => (
-                      <label key={cat} className="flex items-center gap-2 text-bone-white/80 hover:text-bone-white cursor-pointer group">
-                        <div className="w-4 h-4 rounded border border-white/20 group-hover:border-sme-gold/50 transition-colors" />
+                    {categories.map((cat) => (
+                      <Link
+                        key={cat}
+                        href={{
+                          pathname: '/products',
+                          query: { ...params, category: params.category === cat ? undefined : cat }
+                        }}
+                        className="flex items-center gap-2 text-bone-white/80 hover:text-bone-white cursor-pointer group"
+                      >
+                        <div className={`w-4 h-4 rounded border ${params.category === cat ? 'bg-sme-gold border-sme-gold' : 'border-white/20'} group-hover:border-sme-gold/50 transition-colors flex items-center justify-center`}>
+                          {params.category === cat && <div className="w-1.5 h-1.5 bg-forest-black rounded-full" />}
+                        </div>
                         {cat}
-                      </label>
+                      </Link>
                     ))}
                   </div>
                 </div>
+
+                {/* Clear Filters */}
+                {(params.search || params.category || params.certified) && (
+                  <Link
+                    href="/products"
+                    className="block text-center text-xs font-mono text-sme-gold/60 hover:text-sme-gold transition-colors pt-4 border-t border-white/10"
+                  >
+                    CLEAR ALL FILTERS
+                  </Link>
+                )}
               </div>
             </div>
           </div>
 
           {/* Product Grid */}
           <div className="lg:col-span-3">
-            {/* Trending Section */}
-            {trendingProducts.length > 0 && (
+            {/* Trending Section - Only show when no active search/filter */}
+            {trendingProducts.length > 0 && !params.search && !params.category && !params.certified && (
               <div className="mb-12">
                 <div className="flex items-center gap-2 mb-6">
                   <TrendingUp className="w-5 h-5 text-sme-gold" />
@@ -239,60 +270,80 @@ export default async function ProductsPage() {
 
             {/* All Products */}
             <div className="flex items-center justify-between mb-6">
-              <h2 className="font-serif text-2xl text-bone-white">All Products</h2>
+              <h2 className="font-serif text-2xl text-bone-white">
+                {params.search ? `Results for "${params.search}"` : params.category ? `${params.category} Products` : 'All Products'}
+              </h2>
               <div className="text-sm font-mono text-bone-white/50">
                 Showing {products.length} results
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {products.map((product) => (
-                <Link key={product.id} href={`/products/${product.slug}`} className="group">
-                  <div className="h-full flex flex-col p-6 rounded-xl bg-white/5 border border-translucent-emerald hover:border-sme-gold/30 hover:bg-white/10 transition-all duration-300">
-                    <div className="flex items-start justify-between gap-4 mb-4">
-                      <div className="w-16 h-16 rounded-lg bg-black/20 overflow-hidden flex-shrink-0">
-                        {parseImages(product.images)[0] ? (
-                          <img
-                            src={parseImages(product.images)[0]}
-                            alt={product.title}
-                            className="object-contain w-full h-full"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-bone-white/20 text-xs">
-                            N/A
-                          </div>
-                        )}
+            {products.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {products.map((product) => (
+                  <Link key={product.id} href={`/products/${product.slug}`} className="group">
+                    <div className="h-full flex flex-col p-6 rounded-xl bg-white/5 border border-translucent-emerald hover:border-sme-gold/30 hover:bg-white/10 transition-all duration-300">
+                      <div className="flex items-start justify-between gap-4 mb-4">
+                        <div className="w-16 h-16 rounded-lg bg-black/20 overflow-hidden flex-shrink-0">
+                          {parseImages(product.images)[0] ? (
+                            <img
+                              src={parseImages(product.images)[0]}
+                              alt={product.title}
+                              className="object-contain w-full h-full"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-bone-white/20 text-xs">
+                              N/A
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-serif text-lg text-bone-white group-hover:text-sme-gold transition-colors truncate">
+                            {product.title}
+                          </h3>
+                          {product.tags && product.tags.length > 0 && (
+                            <div className="text-xs font-mono text-sme-gold/80 mt-1">
+                              {product.tags[0].replace(/-/g, ' ')}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-serif text-lg text-bone-white group-hover:text-sme-gold transition-colors truncate">
-                          {product.title}
-                        </h3>
-                        {product.tags && product.tags.length > 0 && (
-                          <div className="text-xs font-mono text-sme-gold/80 mt-1">
-                            {product.tags[0].replace(/-/g, ' ')}
-                          </div>
-                        )}
+
+                      <p className="text-sm text-bone-white/70 line-clamp-2 mb-6 flex-grow">
+                        {product.problem_solved}
+                      </p>
+
+                      <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                        <div className="flex items-center gap-3">
+                          {product.is_sme_certified && (
+                            <ShieldCheck className="w-4 h-4 text-sme-gold" />
+                          )}
+                        </div>
+                        <span className="text-sm font-mono text-sme-gold group-hover:translate-x-1 transition-transform flex items-center gap-1">
+                          View <ArrowRight className="w-3 h-3" />
+                        </span>
                       </div>
                     </div>
-
-                    <p className="text-sm text-bone-white/70 line-clamp-2 mb-6 flex-grow">
-                      {product.problem_solved}
-                    </p>
-
-                    <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                      <div className="flex items-center gap-3">
-                        {product.is_sme_certified && (
-                          <ShieldCheck className="w-4 h-4 text-sme-gold" />
-                        )}
-                      </div>
-                      <span className="text-sm font-mono text-sme-gold group-hover:translate-x-1 transition-transform flex items-center gap-1">
-                        View <ArrowRight className="w-3 h-3" />
-                      </span>
-                    </div>
-                  </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-24 bg-white/5 border border-white/10 rounded-2xl">
+                <div className="text-bone-white/20 mb-4 flex justify-center">
+                  <Search className="w-12 h-12" />
+                </div>
+                <h3 className="font-serif text-xl text-bone-white mb-2">No products found</h3>
+                <p className="text-bone-white/60 font-mono text-sm max-w-md mx-auto">
+                  Try adjusting your search terms or filters to find what you&apos;re looking for.
+                </p>
+                <Link
+                  href="/products"
+                  className="inline-block mt-8 px-6 py-2 bg-white/10 border border-white/20 rounded-lg text-bone-white hover:bg-white/20 transition-all font-mono text-sm"
+                >
+                  Clear all filters
                 </Link>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS products (
   buy_url TEXT,
   reference_url TEXT,
   images TEXT[],
+  tags TEXT[] DEFAULT '{}',
   is_sme_certified BOOLEAN DEFAULT false,
   third_party_lab_verified BOOLEAN DEFAULT false,
   purity_tested BOOLEAN DEFAULT false,
@@ -92,6 +93,8 @@ CREATE TABLE IF NOT EXISTS reviews (
   guest_author_name TEXT,
   rating INTEGER CHECK (rating >= 1 AND rating <= 5),
   content TEXT NOT NULL,
+  flag_count INTEGER DEFAULT 0,
+  is_flagged BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -169,7 +172,32 @@ ALTER TABLE discussion_comments DISABLE ROW LEVEL SECURITY;
 COMMENT ON TABLE discussion_comments IS 'Comments on discussions';
 
 -- =====================================================
--- 6. DISCUSSION_VOTES TABLE (Upvote system)
+-- 6. PRODUCT_COMMENTS TABLE
+-- =====================================================
+CREATE TABLE IF NOT EXISTS product_comments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  flag_count INTEGER DEFAULT 0,
+  is_flagged BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS idx_product_comments_product_id ON product_comments(product_id);
+CREATE INDEX IF NOT EXISTS idx_product_comments_user_id ON product_comments(user_id);
+CREATE INDEX IF NOT EXISTS idx_product_comments_created_at ON product_comments(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_product_comments_is_flagged ON product_comments(is_flagged) WHERE is_flagged = true;
+
+-- Disable RLS
+ALTER TABLE product_comments DISABLE ROW LEVEL SECURITY;
+
+COMMENT ON TABLE product_comments IS 'Comments on products';
+
+-- =====================================================
+-- 7. DISCUSSION_VOTES TABLE (Upvote system)
 -- =====================================================
 CREATE TABLE IF NOT EXISTS discussion_votes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

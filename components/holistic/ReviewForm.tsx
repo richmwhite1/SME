@@ -9,16 +9,16 @@ import Button from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastContainer";
 
 interface ReviewFormProps {
-  protocolId: string;
-  protocolSlug: string;
+  productId: string;
+  productSlug: string;
   onReviewAdded?: (review: any) => void;
   onReviewError?: () => void;
   onReviewSuccess?: () => void;
 }
 
 export default function ReviewForm({
-  protocolId,
-  protocolSlug,
+  productId,
+  productSlug,
   onReviewAdded,
   onReviewError,
   onReviewSuccess,
@@ -56,8 +56,8 @@ export default function ReviewForm({
       created_at: new Date().toISOString(),
       profiles: user ? {
         id: user.id,
-        full_name: user.firstName && user.lastName 
-          ? `${user.firstName} ${user.lastName}` 
+        full_name: user.firstName && user.lastName
+          ? `${user.firstName} ${user.lastName}`
           : user.firstName || user.emailAddresses[0]?.emailAddress || "User",
         username: null,
         avatar_url: user.imageUrl,
@@ -72,27 +72,27 @@ export default function ReviewForm({
 
     startTransition(async () => {
       try {
-        await submitReview(protocolId, rating, content, protocolSlug);
+        await submitReview(productId, rating, content, productSlug);
         setSuccess(true);
         setRating(0);
         setContent("");
-        
+
         // Call success callback to fetch fresh reviews
         if (onReviewSuccess) {
           onReviewSuccess();
         }
-        
+
         // Also trigger router refresh
         router.refresh();
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "Failed to submit review";
         setError(errorMessage);
-        
+
         // Remove optimistic review on error
         if (onReviewError) {
           onReviewError();
         }
-        
+
         // Show toast notification
         if (errorMessage.toLowerCase().includes("policy") || errorMessage.toLowerCase().includes("permission")) {
           showToast("Security Check: Please sign in to contribute to the Lab.", "error");
@@ -149,9 +149,9 @@ export default function ReviewForm({
         </div>
       )}
 
-      <Button 
-        type="submit" 
-        variant="primary" 
+      <Button
+        type="submit"
+        variant="primary"
         disabled={isPending}
         className="border border-sme-gold bg-sme-gold text-forest-obsidian hover:bg-[#9A7209] hover:border-[#9A7209] font-mono uppercase tracking-wider"
       >

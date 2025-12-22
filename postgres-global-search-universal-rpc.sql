@@ -35,14 +35,14 @@ BEGIN
       pr.id::TEXT AS result_id,
       pr.slug AS result_slug,
       pr.title,
-      COALESCE(pr.problem_solved, pr.description, '') AS content,
+      COALESCE(pr.problem_solved, pr.ai_summary, '') AS content,
       -- Extract snippet from content that contains search terms
       CASE
-        WHEN lower(COALESCE(pr.problem_solved, pr.description, '')) LIKE search_pattern THEN
+        WHEN lower(COALESCE(pr.problem_solved, pr.ai_summary, '')) LIKE search_pattern THEN
           substring(
-            COALESCE(pr.problem_solved, pr.description, ''),
-            greatest(1, position(search_lower in lower(COALESCE(pr.problem_solved, pr.description, ''))) - 50),
-            least(200, length(COALESCE(pr.problem_solved, pr.description, '')))
+            COALESCE(pr.problem_solved, pr.ai_summary, ''),
+            greatest(1, position(search_lower in lower(COALESCE(pr.problem_solved, pr.ai_summary, ''))) - 50),
+            least(200, length(COALESCE(pr.problem_solved, pr.ai_summary, '')))
           )
         WHEN pr.ai_summary IS NOT NULL AND lower(pr.ai_summary) LIKE search_pattern THEN
           substring(
@@ -59,15 +59,15 @@ BEGIN
       CASE
         WHEN lower(pr.title) = search_lower THEN 15
         WHEN lower(pr.title) LIKE search_pattern THEN 10
-        WHEN lower(COALESCE(pr.problem_solved, pr.description, '')) LIKE search_pattern THEN 5
+        WHEN lower(COALESCE(pr.problem_solved, pr.ai_summary, '')) LIKE search_pattern THEN 5
         WHEN pr.ai_summary IS NOT NULL AND lower(pr.ai_summary) LIKE search_pattern THEN 4
         ELSE 1
       END AS relevance_score
-    FROM protocols pr
+    FROM products pr
     LEFT JOIN profiles p ON pr.created_by = p.id
     WHERE (
       lower(pr.title) LIKE search_pattern
-      OR lower(COALESCE(pr.problem_solved, pr.description, '')) LIKE search_pattern
+      OR lower(COALESCE(pr.problem_solved, pr.ai_summary, '')) LIKE search_pattern
       OR (pr.ai_summary IS NOT NULL AND lower(pr.ai_summary) LIKE search_pattern)
     )
     AND COALESCE(pr.is_flagged, false) = false

@@ -1,3 +1,4 @@
+"use client";
 import Link from "next/link";
 import React from "react";
 import { Check, FileText, Shield, FlaskConical, Microscope, Building2, ArrowRight, Download, Star } from "lucide-react";
@@ -96,7 +97,7 @@ export default function StandardsPage() {
               <p className="text-base md:text-lg leading-relaxed text-bone-white/80 font-mono">
                 Unlike other certification programs that rely on brand summaries or marketing
                 materials, we require and verify <strong className="text-bone-white">raw Certificate of Analysis (COA)
-                documents</strong> directly from independent third-party laboratories. This ensures
+                  documents</strong> directly from independent third-party laboratories. This ensures
                 complete transparency and scientific accuracy in our certification process.
               </p>
             </div>
@@ -159,8 +160,8 @@ export default function StandardsPage() {
               <Star className="h-8 w-8 text-sme-gold" />
             </div>
             <p className="mx-auto max-w-3xl text-lg text-bone-white/70 md:text-xl font-mono">
-              Join trusted brands that prioritize transparency and scientific validation. 
-              The SME Certification Program offers a rigorous, science-backed pathway to 
+              Join trusted brands that prioritize transparency and scientific validation.
+              The SME Certification Program offers a rigorous, science-backed pathway to
               demonstrate your commitment to quality and transparency.
             </p>
           </div>
@@ -171,15 +172,15 @@ export default function StandardsPage() {
               Why Partner with SME?
             </h3>
             <p className="mb-4 leading-relaxed text-bone-white/80 font-mono">
-              Our certification program is built on a foundation of scientific integrity and 
-              transparency. Unlike other certification programs that rely on brand summaries or 
-              marketing materials, we require and verify <strong className="text-bone-white">raw Certificate of Analysis (COA) 
-              documents</strong> directly from independent, accredited third-party laboratories.
+              Our certification program is built on a foundation of scientific integrity and
+              transparency. Unlike other certification programs that rely on brand summaries or
+              marketing materials, we require and verify <strong className="text-bone-white">raw Certificate of Analysis (COA)
+                documents</strong> directly from independent, accredited third-party laboratories.
             </p>
             <p className="leading-relaxed text-bone-white/80 font-mono">
-              When your product earns the &quot;SME Certified&quot; badge, it signals to health-conscious 
-              consumers, researchers, and practitioners that your product has undergone our rigorous 
-              5-Pillar verification process and meets our highest standards for quality, purity, and 
+              When your product earns the &quot;SME Certified&quot; badge, it signals to health-conscious
+              consumers, researchers, and practitioners that your product has undergone our rigorous
+              5-Pillar verification process and meets our highest standards for quality, purity, and
               transparency.
             </p>
           </div>
@@ -197,7 +198,7 @@ export default function StandardsPage() {
               </div>
               <p className="text-bone-white/70 font-mono">
                 Your products are featured prominently in our SME Citations, making them easily
-                discoverable by researchers and health-conscious consumers seeking verified, 
+                discoverable by researchers and health-conscious consumers seeking verified,
                 science-backed solutions.
               </p>
             </div>
@@ -213,7 +214,7 @@ export default function StandardsPage() {
               </div>
               <p className="text-bone-white/70 font-mono">
                 Gain visibility within our community of Trusted Voices—experts, researchers, and
-                practitioners who value verified, science-backed products and actively recommend 
+                practitioners who value verified, science-backed products and actively recommend
                 them to their audiences.
               </p>
             </div>
@@ -229,7 +230,7 @@ export default function StandardsPage() {
               </div>
               <p className="text-bone-white/70 font-mono">
                 Benefit from our &quot;Buy via SME Partner&quot; feature, which drives qualified,
-                health-conscious customers directly to your product pages with a trusted referral 
+                health-conscious customers directly to your product pages with a trusted referral
                 pathway.
               </p>
             </div>
@@ -246,7 +247,7 @@ export default function StandardsPage() {
                   1
                 </div>
                 <p className="text-bone-white/80 font-mono">
-                  <strong className="text-bone-white">Initial Review:</strong> We review your existing COA documents and 
+                  <strong className="text-bone-white">Initial Review:</strong> We review your existing COA documents and
                   product information to assess alignment with our 5-Pillar Framework.
                 </p>
               </div>
@@ -255,8 +256,8 @@ export default function StandardsPage() {
                   2
                 </div>
                 <p className="text-bone-white/80 font-mono">
-                  <strong className="text-bone-white">Verification:</strong> Our team verifies compliance with each pillar, 
-                  cross-referencing COA documents, verifying lab credentials, and ensuring test 
+                  <strong className="text-bone-white">Verification:</strong> Our team verifies compliance with each pillar,
+                  cross-referencing COA documents, verifying lab credentials, and ensuring test
                   results align with product claims.
                 </p>
               </div>
@@ -265,8 +266,8 @@ export default function StandardsPage() {
                   3
                 </div>
                 <p className="text-bone-white/80 font-mono">
-                  <strong className="text-bone-white">Certification:</strong> Upon successful verification of all five pillars, 
-                  your product receives the &quot;SME Certified&quot; badge and is featured prominently on 
+                  <strong className="text-bone-white">Certification:</strong> Upon successful verification of all five pillars,
+                  your product receives the &quot;SME Certified&quot; badge and is featured prominently on
                   our platform.
                 </p>
               </div>

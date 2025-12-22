@@ -22,16 +22,16 @@ interface Review {
 }
 
 interface ReviewSectionClientProps {
-  protocolId: string;
-  protocolSlug: string;
+  productId: string;
+  productSlug: string;
   productTitle?: string;
   initialReviews: Review[];
   user: any;
 }
 
 export default function ReviewSectionClient({
-  protocolId,
-  protocolSlug,
+  productId,
+  productSlug,
   productTitle,
   initialReviews,
   user,
@@ -53,8 +53,8 @@ export default function ReviewSectionClient({
       {/* Review Form */}
       {user ? (
         <ReviewForm
-          protocolId={protocolId}
-          protocolSlug={protocolSlug}
+          productId={productId}
+          productSlug={productSlug}
           onReviewAdded={(newReview) => {
             // Optimistic update: add review immediately
             setReviews((prev) => [newReview, ...prev]);
@@ -87,7 +87,7 @@ export default function ReviewSectionClient({
               key={review.id}
               review={review}
               productTitle={productTitle}
-              productSlug={protocolSlug}
+              productSlug={productSlug}
             />
           ))
         )}

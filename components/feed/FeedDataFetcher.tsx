@@ -198,7 +198,7 @@ export default async function FeedDataFetcher({ followedTopics, userId }: FeedDa
                     const productsResult = await sql`
             SELECT 
               id, title, problem_solved as content, slug, tags, created_at, is_sme_certified
-            FROM protocols
+            FROM products
             WHERE tags && ${sql.array(followedMasterTopics)}
             ORDER BY created_at DESC
             LIMIT 20

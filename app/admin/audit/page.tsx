@@ -43,9 +43,9 @@ export default async function AuditDashboardPage() {
         es.status,
         es.created_at as submitted_at,
         p.id as product_id,
-        p.title as protocol_title
+        p.title as product_title
       FROM evidence_submissions es
-      LEFT JOIN protocols p ON es.product_id = p.id
+      LEFT JOIN products p ON es.product_id = p.id
       WHERE es.status = 'pending'
       ORDER BY es.created_at ASC
     `;

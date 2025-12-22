@@ -24,7 +24,7 @@ export async function markInviteSent(protocolId: string) {
   const sql = getDb();
 
   const result = await sql`
-    UPDATE protocols
+    UPDATE products
     SET invite_sent = true, updated_at = NOW()
     WHERE id = ${protocolId}
     RETURNING id

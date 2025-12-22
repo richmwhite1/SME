@@ -21,11 +21,8 @@ export default function Navbar() {
           href="/"
           className="flex flex-col flex-shrink-0 hover:text-sme-gold transition-colors"
         >
-          <span className="font-serif text-lg font-bold text-bone-white">
+          <span className="font-serif text-2xl font-bold text-bone-white">
             Health SME
-          </span>
-          <span className="hidden sm:block text-xs text-bone-white/70 font-mono uppercase tracking-wider">
-            Health through biological intelligence
           </span>
         </Link>
 
@@ -139,7 +136,7 @@ export default function Navbar() {
               </SignedIn>
               <SignedOut>
                 <SignInButton mode="modal">
-                  <button 
+                  <button
                     onClick={() => setMobileMenuOpen(false)}
                     className="mt-2 w-full px-3 py-1.5 text-xs text-bone-white hover:text-bone-white border border-translucent-emerald transition-colors hover:bg-forest-obsidian font-mono uppercase active:scale-95"
                   >

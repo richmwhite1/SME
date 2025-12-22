@@ -9,7 +9,7 @@ export async function submitReview(
   protocolId: string,
   rating: number,
   content: string,
-  protocolSlug?: string
+  productSlug?: string
 ) {
   // Auth check
   const user = await currentUser();
@@ -95,8 +95,8 @@ export async function submitReview(
   }
 
   // Revalidate the product page (using ID for routing)
-  if (protocolSlug) {
-    revalidatePath(`/products/${protocolSlug}`, "page");
+  if (productSlug) {
+    revalidatePath(`/products/${productSlug}`, "page");
     revalidatePath(`/products/[id]`, "page");
   }
   // Always revalidate products list

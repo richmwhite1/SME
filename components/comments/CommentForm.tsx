@@ -22,30 +22,30 @@ interface ResourceReference {
 interface CommentFormProps {
   // Product or Discussion context
   type: "product" | "discussion";
-  
+
   // Product-specific props
-  protocolId?: string;
-  protocolSlug?: string;
-  
+  productId?: string;
+  productSlug?: string;
+
   // Discussion-specific props
   discussionId?: string;
   discussionSlug?: string;
   parentId?: string;
   references?: ResourceReference[];
   onReferenceChange?: (refs: ResourceReference[]) => void;
-  
+
   // Callbacks
   onSuccess?: () => void;
   onError?: (error: string) => void;
-  
+
   // Styling
   className?: string;
 }
 
 export default function CommentForm({
   type,
-  protocolId,
-  protocolSlug,
+  productId,
+  productSlug,
   discussionId,
   discussionSlug,
   parentId,
@@ -69,7 +69,7 @@ export default function CommentForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!content.trim() || loading) return;
 
     // For guest users, require guest name
@@ -78,7 +78,7 @@ export default function CommentForm({
         setError("You must be logged in to comment on discussions");
         return;
       }
-      
+
       if (!guestName.trim() || guestName.trim().length < 2) {
         setError("Please enter a guest name (at least 2 characters)");
         showToast("Please enter a guest name", "error");
@@ -92,8 +92,8 @@ export default function CommentForm({
     try {
       if (isSignedIn) {
         // Authenticated user submission
-        if (type === "product" && protocolId && protocolSlug) {
-          const result = await createProductComment(protocolId, content.trim(), protocolSlug);
+        if (type === "product" && productId && productSlug) {
+          const result = await createProductComment(productId, content.trim(), productSlug);
           if (!result.success) {
             throw new Error(result.error || "Failed to post comment");
           }
@@ -108,22 +108,22 @@ export default function CommentForm({
         }
       } else {
         // Guest user submission (products only)
-        if (type === "product" && protocolId && protocolSlug) {
+        if (type === "product" && productId && productSlug) {
           // First run vibeCheck for guest product comments
           const vibeResult = await vibeCheck(content.trim());
-          
+
           if (!vibeResult.approved) {
             throw new Error("Content rejected by laboratory AI.");
           }
 
           // If approved, proceed with database insert
           const result = await createGuestProductComment(
-            protocolId,
+            productId,
             content.trim(),
             guestName.trim(),
-            protocolSlug
+            productSlug
           );
-          
+
           if (!result.success) {
             throw new Error(result.error || "Failed to post comment");
           }
@@ -136,22 +136,22 @@ export default function CommentForm({
       setContent("");
       setGuestName("");
       setError(null);
-      
+
       if (onSuccess) {
         onSuccess();
       }
-      
+
       showToast("Comment posted successfully", "success");
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to post comment";
       setError(errorMessage);
-      
+
       if (errorMessage.includes("rejected by laboratory AI")) {
         showToast("Content rejected by laboratory AI.", "error");
       } else {
         showToast(errorMessage, "error");
       }
-      
+
       if (onError) {
         onError(errorMessage);
       }
@@ -189,8 +189,8 @@ export default function CommentForm({
   }
 
   return (
-    <form 
-      onSubmit={handleSubmit} 
+    <form
+      onSubmit={handleSubmit}
       className={`space-y-3 border border-translucent-emerald bg-muted-moss p-4 relative transition-all duration-300 ease-in-out ${className}`}
     >
       {/* User Identity Section */}
@@ -201,15 +201,15 @@ export default function CommentForm({
               userId={user.id}
               username={user.username || undefined}
               avatarUrl={user.imageUrl}
-              fullName={user.firstName && user.lastName 
-                ? `${user.firstName} ${user.lastName}` 
+              fullName={user.firstName && user.lastName
+                ? `${user.firstName} ${user.lastName}`
                 : user.firstName || user.emailAddresses[0]?.emailAddress || "User"}
               size={32}
             />
             <div className="flex-1">
               <p className="text-sm font-semibold text-bone-white font-mono">
-                {user.firstName && user.lastName 
-                  ? `${user.firstName} ${user.lastName}` 
+                {user.firstName && user.lastName
+                  ? `${user.firstName} ${user.lastName}`
                   : user.firstName || user.username || "User"}
               </p>
               {user.username && (

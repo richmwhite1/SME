@@ -50,7 +50,7 @@ export async function toggleProductCertification(
       .map(([key, value]) => `${key} = ${sql(value)}`)
       .join(', ');
 
-    await sql`UPDATE protocols SET ${sql(setClauses)} WHERE id = ${protocolId}`;
+    await sql`UPDATE products SET ${sql(setClauses)} WHERE id = ${protocolId}`;
 
     revalidatePath("/admin");
     revalidatePath("/products");
@@ -96,7 +96,7 @@ export async function getFlaggedContent() {
         json_build_object('title', pr.title, 'slug', pr.slug) as protocols
       FROM reviews r
       LEFT JOIN profiles p ON r.user_id = p.id
-      LEFT JOIN protocols pr ON r.protocol_id = pr.id
+      LEFT JOIN products pr ON r.product_id = pr.id
       WHERE r.is_flagged = true OR r.flag_count > 0
       ORDER BY r.flag_count DESC, r.created_at DESC
       LIMIT 20
@@ -124,7 +124,7 @@ export async function getFlaggedContent() {
         json_build_object('title', pr.title, 'slug', pr.slug) as protocols
       FROM product_comments pc
       LEFT JOIN profiles p ON pc.author_id = p.id
-      LEFT JOIN protocols pr ON pc.protocol_id = pr.id
+      LEFT JOIN products pr ON pc.protocol_id = pr.id
       WHERE pc.is_flagged = true OR pc.flag_count > 0
       ORDER BY pc.flag_count DESC, pc.created_at DESC
       LIMIT 20
@@ -216,7 +216,7 @@ export async function getModerationQueue() {
         json_build_object('full_name', p.full_name, 'username', p.username) as profiles
       FROM moderation_queue mq
       LEFT JOIN discussions d ON mq.discussion_id = d.id
-      LEFT JOIN protocols pr ON mq.protocol_id = pr.id
+      LEFT JOIN products pr ON mq.protocol_id = pr.id
       LEFT JOIN profiles p ON mq.author_id = p.id
       ORDER BY mq.flag_count DESC, mq.queued_at DESC
     `;
@@ -508,7 +508,7 @@ export async function toggleUserBan(userId: string, ban: boolean, reason?: strin
     const setClausesStr = updates
       .map(([key], index) => `${key} = $${index + 1}`)
       .join(', ');
-    
+
     const values: any[] = updates.map(([, value]) => value);
     values.push(userId);
 
@@ -620,7 +620,7 @@ export async function getMyFlaggedComments(userId: string) {
         json_build_object('title', pr.title, 'slug', pr.slug) as protocols
       FROM moderation_queue mq
       LEFT JOIN discussions d ON mq.discussion_id = d.id
-      LEFT JOIN protocols pr ON mq.protocol_id = pr.id
+      LEFT JOIN products pr ON mq.protocol_id = pr.id
       WHERE mq.author_id = ${userId}
       ORDER BY mq.queued_at DESC
     `;

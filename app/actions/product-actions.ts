@@ -12,9 +12,9 @@ import { moderateContent } from "@/lib/actions/moderate";
  * Guest users require AI moderation, authenticated users bypass it
  */
 export async function createProductComment(
-  protocolId: string,
+  productId: string,
   content: string,
-  protocolSlug: string
+  productSlug: string
 ): Promise<{ success: boolean; error?: string; commentId?: string }> {
   const user = await currentUser();
   const sql = getDb();
@@ -51,8 +51,8 @@ export async function createProductComment(
   let result: { success: boolean; error?: string; commentId?: string };
 
   try {
-    // Ensure protocolId is a valid UUID string
-    if (!protocolId || typeof protocolId !== 'string') {
+    // Ensure productId is a valid UUID string
+    if (!productId || typeof productId !== 'string') {
       result = {
         success: false,
         error: "Invalid product ID"
@@ -60,7 +60,7 @@ export async function createProductComment(
     } else {
       // Insert comment - handle both authenticated and guest users
       const insertData: any = {
-        product_id: protocolId,
+        product_id: productId,
         content: trimmedContent,
         flag_count: 0,
         is_flagged: false,
@@ -89,7 +89,7 @@ export async function createProductComment(
           const shouldAutoFlag = blacklistMatches.length > 0;
 
           console.log('Insert Data:', {
-            product_id: protocolId,
+            product_id: productId,
             author_id: authorId,
             content: trimmedContent,
             flag_count: shouldAutoFlag ? 1 : 0,
@@ -103,7 +103,7 @@ export async function createProductComment(
                 protocol_id, author_id, content, flag_count, is_flagged
               )
               VALUES (
-                ${protocolId}, ${authorId}, ${trimmedContent},
+                ${productId}, ${authorId}, ${trimmedContent},
                 ${shouldAutoFlag ? 1 : 0}, ${shouldAutoFlag}
               )
               RETURNING id
@@ -127,7 +127,7 @@ export async function createProductComment(
                   "product",
                   trimmedContent,
                   undefined,
-                  protocolId,
+                  productId,
                   authorId,
                   undefined,
                   undefined,
@@ -143,7 +143,7 @@ export async function createProductComment(
             }
           } catch (error: any) {
             console.error("Error creating comment:", error);
-            console.error("Protocol ID:", protocolId);
+            console.error("Product ID:", productId);
             console.error("Author ID (user.id):", authorId);
 
             // Return structured error instead of throwing
@@ -183,7 +183,7 @@ export async function createProductComment(
 
   // Only revalidate on success
   if (result.success) {
-    revalidatePath(`/products/${protocolSlug}`, "page");
+    revalidatePath(`/products/${productSlug}`, "page");
     revalidatePath(`/products/[id]`, "page");
     revalidatePath("/products", "page");
   }
@@ -196,10 +196,10 @@ export async function createProductComment(
  * Requires AI moderation via OpenAI Moderation API
  */
 export async function createGuestProductComment(
-  protocolId: string,
+  productId: string,
   content: string,
   guestName: string,
-  protocolSlug: string
+  productSlug: string
 ): Promise<{ success: boolean; error?: string; commentId?: string }> {
   const user = await currentUser();
   const sql = getDb();
@@ -246,7 +246,7 @@ export async function createGuestProductComment(
         protocol_id, author_id, guest_name, content, flag_count, is_flagged
       )
       VALUES (
-        ${protocolId}, NULL, ${trimmedGuestName}, ${trimmedContent}, 0, false
+        ${productId}, NULL, ${trimmedGuestName}, ${trimmedContent}, 0, false
       )
       RETURNING id
     `;
@@ -261,7 +261,7 @@ export async function createGuestProductComment(
     }
 
     // Revalidate paths
-    revalidatePath(`/products/${protocolSlug}`, "page");
+    revalidatePath(`/products/${productSlug}`, "page");
     revalidatePath(`/products/[id]`, "page");
     revalidatePath("/products", "page");
 

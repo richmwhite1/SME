@@ -149,14 +149,14 @@ interface Comment {
 }
 
 interface ProductCommentsProps {
-  protocolId: string;
-  protocolSlug: string;
+  productId: string;
+  productSlug: string;
   initialComments: Comment[];
 }
 
 export default function ProductComments({
-  protocolId,
-  protocolSlug,
+  productId,
+  productSlug,
   initialComments,
 }: ProductCommentsProps) {
   const router = useRouter();
@@ -206,8 +206,8 @@ export default function ProductComments({
       {/* Comment Form */}
       <CommentForm
         type="product"
-        protocolId={protocolId}
-        protocolSlug={protocolSlug}
+        productId={productId}
+        productSlug={productSlug}
         onSuccess={async () => {
           // Refresh comments via Server Actions / Router Refresh
           router.refresh();

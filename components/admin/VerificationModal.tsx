@@ -13,10 +13,7 @@ interface EvidenceSubmission {
   document_type: string | null;
   status: string;
   submitted_at: string;
-  protocols: {
-    id: string;
-    title: string;
-  } | null;
+  product_title: string | null;
 }
 
 interface VerificationModalProps {
@@ -59,8 +56,8 @@ export default function VerificationModal({
         action === "approve"
           ? "Specimen approved successfully"
           : action === "reject"
-          ? "Specimen rejected"
-          : "Flagged for admin review",
+            ? "Specimen rejected"
+            : "Flagged for admin review",
         "success"
       );
 
@@ -152,7 +149,7 @@ export default function VerificationModal({
                   Product:
                 </span>
                 <p className="mt-1 font-mono text-sm text-bone-white">
-                  {submission.protocols?.title || "Unknown"}
+                  {submission.product_title || "Unknown"}
                 </p>
               </div>
               <div>

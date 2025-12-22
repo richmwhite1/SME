@@ -527,16 +527,16 @@ export default async function ProductDetailPage({
                 />
               </div>
               <ReviewSection
-                protocolId={typedProduct.id}
-                protocolSlug={typedProduct.id}
+                productId={typedProduct.id}
+                productSlug={typedProduct.slug}
                 productTitle={typedProduct.title}
               />
             </div>
 
             {/* Comments Section */}
             <ProductComments
-              protocolId={typedProduct.id}
-              protocolSlug={typedProduct.id}
+              productId={typedProduct.id}
+              productSlug={typedProduct.slug}
               initialComments={serializedComments}
             />
           </div>

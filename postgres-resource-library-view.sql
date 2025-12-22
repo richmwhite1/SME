@@ -17,15 +17,15 @@ SELECT
   pr.id AS origin_id,
   pr.slug AS origin_slug,
   pr.title AS title,
-  pr.reference_url AS reference_url,
+  COALESCE(pr.buy_url, '') AS reference_url,
   pr.created_at AS created_at,
   p.id AS author_id,
   p.full_name AS author_name,
   p.username AS author_username
-FROM protocols pr
+FROM products pr
 LEFT JOIN profiles p ON pr.created_by = p.id
-WHERE pr.reference_url IS NOT NULL
-  AND pr.reference_url != ''
+WHERE pr.buy_url IS NOT NULL
+  AND pr.buy_url != ''
   AND (pr.created_by IS NULL OR p.badge_type = 'Trusted Voice')
   AND COALESCE(pr.is_flagged, false) = false
 

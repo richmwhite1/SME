@@ -14,7 +14,7 @@ export async function POST() {
     const profile = await sql`
       SELECT is_admin FROM profiles WHERE id = ${userId} LIMIT 1
     `;
-    
+
     if (!profile[0]?.is_admin) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
@@ -110,7 +110,7 @@ export async function POST() {
     const inserted = [];
     for (const product of products) {
       const result = await sql`
-        INSERT INTO protocols (
+        INSERT INTO products (
           title,
           slug,
           problem_solved,
@@ -144,7 +144,7 @@ export async function POST() {
         ON CONFLICT (slug) DO NOTHING
         RETURNING id, title, slug
       `;
-      
+
       if (result.length > 0) {
         inserted.push(result[0]);
       }

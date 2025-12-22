@@ -17,16 +17,16 @@ interface Review {
 }
 
 interface ReviewSectionProps {
-  protocolId: string;
-  protocolSlug: string;
+  productId: string;
+  productSlug: string;
   productTitle?: string;
 }
 
 import { getDb } from "@/lib/db";
 
 export default async function ReviewSection({
-  protocolId,
-  protocolSlug,
+  productId,
+  productSlug,
   productTitle,
 }: ReviewSectionProps) {
   const user = await currentUser();
@@ -40,7 +40,7 @@ export default async function ReviewSection({
         p.id as profile_id, p.full_name, p.username, p.avatar_url, p.contributor_score, p.is_verified_expert
       FROM reviews r
       LEFT JOIN profiles p ON r.user_id = p.id
-      WHERE r.product_id = ${protocolId}
+      WHERE r.product_id = ${productId}
         AND ((r.is_flagged = false) OR (r.is_flagged IS NULL))
       ORDER BY r.created_at DESC
     `;
@@ -77,8 +77,8 @@ export default async function ReviewSection({
 
   return (
     <ReviewSectionClient
-      protocolId={protocolId}
-      protocolSlug={protocolSlug}
+      productId={productId}
+      productSlug={productSlug}
       productTitle={productTitle}
       initialReviews={serializedReviews}
       user={serializedUser}

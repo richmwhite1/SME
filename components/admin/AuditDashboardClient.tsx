@@ -13,10 +13,7 @@ interface EvidenceSubmission {
   document_type: string | null;
   status: string;
   submitted_at: string;
-  protocols: {
-    id: string;
-    title: string;
-  } | null;
+  product_title: string | null;
 }
 
 interface AuditDashboardClientProps {
@@ -85,7 +82,7 @@ export default function AuditDashboardClient({
               >
                 <td className="border-r border-translucent-emerald p-4">
                   <span className="font-mono text-sm text-bone-white">
-                    {submission.protocols?.title || "Unknown Product"}
+                    {submission.product_title || "Unknown Product"}
                   </span>
                 </td>
                 <td className="border-r border-translucent-emerald p-4">
