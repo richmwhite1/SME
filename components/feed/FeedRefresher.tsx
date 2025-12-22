@@ -12,8 +12,8 @@ interface FeedRefresherProps {
   checkInterval?: number; // milliseconds
 }
 
-export default function FeedRefresher({ 
-  initialItemCount, 
+export default function FeedRefresher({
+  initialItemCount,
   initialTimestamp,
   followedTopics = [],
   checkInterval = 30000 // Default 30 seconds
@@ -29,31 +29,20 @@ export default function FeedRefresher({
     // Check for new signals periodically
     const checkForNewSignals = async () => {
       try {
-        const supabase = createClient();
         const checkTime = initialTimestamp || new Date().toISOString();
-        
-        // Check for new discussions in followed topics since initial load
-        const { count: newDiscussions } = await supabase
-          .from("discussions")
-          .select("*", { count: "exact", head: true })
-          .eq("is_flagged", false)
-          .contains("tags", followedTopics)
-          .gt("created_at", checkTime);
 
-        // Check for new products in followed topics since initial load
-        const { count: newProducts } = await supabase
-          .from("protocols")
-          .select("*", { count: "exact", head: true })
-          .eq("is_flagged", false)
-          .contains("tags", followedTopics)
-          .gt("created_at", checkTime);
+        // Use API route to check for new content
+        const response = await fetch(`/api/feed/check-new?since=${encodeURIComponent(checkTime)}&topics=${encodeURIComponent(followedTopics.join(','))}`);
 
-        const totalNew = (newDiscussions || 0) + (newProducts || 0);
+        if (response.ok) {
+          const data = await response.json();
+          const totalNew = (data.newDiscussions || 0) + (data.newProducts || 0);
 
-        if (totalNew > 0 && !hasNewSignals) {
-          setHasNewSignals(true);
-        } else if (totalNew === 0 && hasNewSignals) {
-          setHasNewSignals(false);
+          if (totalNew > 0 && !hasNewSignals) {
+            setHasNewSignals(true);
+          } else if (totalNew === 0 && hasNewSignals) {
+            setHasNewSignals(false);
+          }
         }
       } catch (error) {
         console.error("Error checking for new signals:", error);
@@ -75,13 +64,13 @@ export default function FeedRefresher({
   const handleRefresh = async () => {
     setIsRefreshing(true);
     setHasNewSignals(false);
-    
+
     // Refresh the page data without full reload
     router.refresh();
-    
+
     // Scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    
+
     // Reset refreshing state after a brief delay
     setTimeout(() => {
       setIsRefreshing(false);
@@ -103,9 +92,9 @@ export default function FeedRefresher({
           animation: "pulse 2s ease-in-out infinite",
         }}
       >
-        <RefreshCw 
-          size={14} 
-          className={isRefreshing ? "animate-spin" : ""} 
+        <RefreshCw
+          size={14}
+          className={isRefreshing ? "animate-spin" : ""}
         />
         <span>New Signals Detected</span>
       </button>
