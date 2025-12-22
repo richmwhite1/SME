@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Button from "@/components/ui/Button";
-import ProtocolCard from "@/components/holistic/ProtocolCard";
+import ProductListCard from "@/components/holistic/ProductListCard";
 import LatestIntelligence from "@/components/social/LatestIntelligence";
 import VelocityBadge from "@/components/products/VelocityBadge";
 import { Download, Share2 } from "lucide-react";
@@ -246,7 +246,7 @@ export default async function Home() {
                     key={product.id}
                     className="relative transition-all duration-300 hover:border-translucent-emerald"
                   >
-                    <ProtocolCard
+                    <ProductListCard
                       title={product.title}
                       problemSolved={product.problem_solved}
                       productId={product.id}

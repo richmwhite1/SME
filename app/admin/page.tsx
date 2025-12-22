@@ -20,9 +20,9 @@ export default async function UnifiedAdminPage() {
   if (!adminStatus) {
     redirect("/");
   }
-  
+
   const sql = getDb();
-  
+
   // Fetch all products with review counts
   let products = [];
   try {
@@ -42,7 +42,7 @@ export default async function UnifiedAdminPage() {
         excipient_audit,
         operational_legitimacy,
         coa_url
-      FROM protocols
+      FROM products
       ORDER BY created_at DESC
     `;
   } catch (error) {
@@ -56,7 +56,7 @@ export default async function UnifiedAdminPage() {
         const reviewCount = await sql`
           SELECT COUNT(*) as count
           FROM reviews
-          WHERE protocol_id = ${(product as any).id}
+          WHERE product_id = ${(product as any).id}
           AND (is_flagged = false OR is_flagged IS NULL)
         `;
         return {

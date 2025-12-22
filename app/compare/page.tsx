@@ -4,7 +4,9 @@ import { ArrowLeft } from "lucide-react";
 import CompareClient from "./CompareClient";
 import type { Metadata } from "next";
 import { getDb } from "@/lib/db";
+
 export const dynamic = "force-dynamic";
+
 interface Product {
   id: string;
   title: string;
@@ -22,12 +24,14 @@ interface Product {
   coa_url: string | null;
   lab_pdf_url: string | null;
 }
+
 interface Review {
   id: string;
   content: string;
   rating: number;
   created_at: string;
 }
+
 // Generate dynamic metadata for SEO and social previews
 export async function generateMetadata({
   searchParams,
@@ -37,31 +41,37 @@ export async function generateMetadata({
   const params = await searchParams;
   const productAId = params.p1 || params.a;
   const productBId = params.p2 || params.b;
+
   if (!productAId || !productBId) {
     return {
       title: "Compare Products",
       description: "Community-sourced truth for holistic health. Compare products side-by-side.",
     };
   }
+
   try {
     const sql = getDb();
     const [productAResult, productBResult] = await Promise.all([
-      sql`SELECT title FROM protocols WHERE id = ${productAId} LIMIT 1`,
-      sql`SELECT title FROM protocols WHERE id = ${productBId} LIMIT 1`,
+      sql`SELECT title FROM products WHERE id = ${productAId} LIMIT 1`,
+      sql`SELECT title FROM products WHERE id = ${productBId} LIMIT 1`,
     ]);
+
     type ProductTitle = { title: string };
     const productA = (productAResult?.[0] as ProductTitle | null);
     const productB = (productBResult?.[0] as ProductTitle | null);
+
     if (!productA || !productB) {
       return {
         title: "Compare Products",
         description: "Community-sourced truth for holistic health. Compare products side-by-side.",
       };
     }
+
     const title = `SME Audit: ${productA.title} vs ${productB.title}`;
     const description = "Community-sourced truth for holistic health. See the 5-pillar audit results.";
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sme.example.com";
     const ogImageUrl = `${baseUrl}/api/og/compare?p1=${productAId}&p2=${productBId}`;
+
     return {
       title,
       description,
@@ -94,6 +104,7 @@ export async function generateMetadata({
     };
   }
 }
+
 export default async function ComparePage({
   searchParams,
 }: {
@@ -103,6 +114,7 @@ export default async function ComparePage({
   // Support both new (p1, p2) and legacy (a, b) URL parameters for backwards compatibility
   const productAId = params.p1 || params.a;
   const productBId = params.p2 || params.b;
+
   if (!productAId || !productBId) {
     return (
       <main className="min-h-screen bg-forest-obsidian">
@@ -126,11 +138,12 @@ export default async function ComparePage({
       </main>
     );
   }
+
   // Fetch both products
   const sql = getDb();
   const [productAResult, productBResult] = await Promise.all([
-    sql`SELECT * FROM protocols WHERE id = ${productAId} LIMIT 1`,
-    sql`SELECT * FROM protocols WHERE id = ${productBId} LIMIT 1`
+    sql`SELECT * FROM products WHERE id = ${productAId} LIMIT 1`,
+    sql`SELECT * FROM products WHERE id = ${productBId} LIMIT 1`
   ]);
 
   const productAData = productAResult?.[0];
@@ -139,9 +152,11 @@ export default async function ComparePage({
   if (!productAData || !productBData) {
     notFound();
   }
+
   // Type assertion to handle Supabase's complex return types
   const typedProductA = productAData as unknown as Product;
   const typedProductB = productBData as unknown as Product;
+
   // Parse images
   const parseImages = (images: any): string[] => {
     if (!images) return [];
@@ -164,14 +179,16 @@ export default async function ComparePage({
     }
     return [];
   };
+
   const imagesA = parseImages(typedProductA.images);
   const imagesB = parseImages(typedProductB.images);
+
   // Fetch most recent review for each product
   const [reviewAResult, reviewBResult] = await Promise.all([
     sql`
       SELECT id, content, rating, created_at 
       FROM reviews 
-      WHERE protocol_id = ${productAId} 
+      WHERE product_id = ${productAId} 
         AND (is_flagged IS FALSE OR is_flagged IS NULL)
       ORDER BY created_at DESC 
       LIMIT 1
@@ -179,67 +196,76 @@ export default async function ComparePage({
     sql`
       SELECT id, content, rating, created_at 
       FROM reviews 
-      WHERE protocol_id = ${productBId} 
+      WHERE product_id = ${productBId} 
         AND (is_flagged IS FALSE OR is_flagged IS NULL)
       ORDER BY created_at DESC 
       LIMIT 1
     `
   ]);
+
   const recentReviewA = (reviewAResult?.[0] || null) as Review | null;
   const recentReviewB = (reviewBResult?.[0] || null) as Review | null;
+
   // Get sentiment snippet (first 100 chars of review)
   const getSentimentSnippet = (review: Review | null): string => {
     if (!review || !review.content) return "Signal Pending: Be the first auditor to share your intuition.";
     return review.content.substring(0, 100) + (review.content.length > 100 ? "..." : "");
   };
+
   // Get expert take (first 2 sentences from AI summary)
   const getExpertTake = (summary: string | null): string => {
     if (!summary) return "No expert analysis available";
     const sentences = summary.split(/[.!?]+/).filter(s => s.trim().length > 0);
     return sentences.slice(0, 2).join(". ").trim() + (sentences.length > 2 ? "." : "");
   };
+
   // Count helpful votes (sum of helpful_count from all reviews)
   const [reviewsAResult, reviewsBResult] = await Promise.all([
     sql`
       SELECT helpful_count 
       FROM reviews 
-      WHERE protocol_id = ${productAId} 
+      WHERE product_id = ${productAId} 
         AND (is_flagged IS FALSE OR is_flagged IS NULL)
     `,
     sql`
       SELECT helpful_count 
       FROM reviews 
-      WHERE protocol_id = ${productBId} 
+      WHERE product_id = ${productBId} 
         AND (is_flagged IS FALSE OR is_flagged IS NULL)
     `
   ]);
+
   const upvoteCountA = (reviewsAResult as any[] || []).reduce((sum: number, review: any) => sum + (review.helpful_count || 0), 0);
   const upvoteCountB = (reviewsBResult as any[] || []).reduce((sum: number, review: any) => sum + (review.helpful_count || 0), 0);
+
   // Fetch intuitive reviews (reviews containing [INTUITIVE] tag)
   const [intuitiveReviewsAResult, intuitiveReviewsBResult] = await Promise.all([
     sql`
       SELECT rating 
       FROM reviews 
-      WHERE protocol_id = ${productAId} 
+      WHERE product_id = ${productAId} 
         AND content ILIKE '%[INTUITIVE]%'
         AND (is_flagged IS FALSE OR is_flagged IS NULL)
     `,
     sql`
       SELECT rating 
       FROM reviews 
-      WHERE protocol_id = ${productBId} 
+      WHERE product_id = ${productBId} 
         AND content ILIKE '%[INTUITIVE]%'
         AND (is_flagged IS FALSE OR is_flagged IS NULL)
     `
   ]);
+
   // Calculate average intuitive score
   const getIntuitiveScore = (reviews: Array<{ rating?: number }>): string => {
     if (!reviews || reviews.length === 0) return "N/A";
     const avg = reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length;
     return avg.toFixed(1);
   };
+
   const intuitiveScoreA = getIntuitiveScore((intuitiveReviewsAResult as Array<{ rating?: number }>) || []);
   const intuitiveScoreB = getIntuitiveScore((intuitiveReviewsBResult as Array<{ rating?: number }>) || []);
+
   // Calculate price per serving (placeholder - would need actual price data)
   const getPricePerServing = (buyUrl: string | null): string => {
     if (!buyUrl) return "N/A";
@@ -247,9 +273,11 @@ export default async function ComparePage({
     // For now, return a placeholder
     return "See Product Page";
   };
+
   const pricePerServingA = getPricePerServing(typedProductA.buy_url);
   const pricePerServingB = getPricePerServing(typedProductB.buy_url);
-  // Check for verified COA evidence
+
+  // Check for verified COA evidence (using product_id)
   const [evidenceAResult, evidenceBResult] = await Promise.all([
     sql`
       SELECT id, status 
@@ -266,8 +294,10 @@ export default async function ComparePage({
       LIMIT 1
     `
   ]);
+
   const hasVerifiedCOAA = !!evidenceAResult?.[0];
   const hasVerifiedCOAB = !!evidenceBResult?.[0];
+
   return (
     <CompareClient
       productA={typedProductA}

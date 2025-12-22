@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { Hash, X } from "lucide-react";
-import { toggleTopicFollow } from "@/app/actions/topic-actions";
+import { toggleTopicFollow, getFollowedTopics } from "@/app/actions/topic-actions";
 import Link from "next/link";
 
 export default function MyTopics() {
@@ -23,19 +23,14 @@ export default function MyTopics() {
         return;
       }
 
-      const { data: follows, error } = await supabase
-        .from("topic_follows")
-        .select("topic_name")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (error) {
+      try {
+        const topics = await getFollowedTopics();
+        setFollowedTopics(topics || []);
+      } catch (error) {
         console.error("Error fetching followed topics:", error);
-      } else {
-        const topics = (follows || []).map((f: { topic_name: string }) => f.topic_name);
-        setFollowedTopics(topics);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
 
     fetchFollowedTopics();

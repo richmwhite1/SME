@@ -43,9 +43,9 @@ export async function GET() {
         );
       `;
 
-      // Community Protocols (formerly products)
+      // Community Products (formerly protocols)
       await sql`
-        CREATE TABLE IF NOT EXISTS protocols (
+        CREATE TABLE IF NOT EXISTS products (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             title TEXT NOT NULL,
             slug TEXT UNIQUE,
@@ -70,7 +70,7 @@ export async function GET() {
       await sql`
         CREATE TABLE IF NOT EXISTS reviews (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            protocol_id UUID REFERENCES protocols(id),
+            product_id UUID REFERENCES products(id),
             user_id TEXT REFERENCES profiles(id),
             rating INTEGER,
             content TEXT,

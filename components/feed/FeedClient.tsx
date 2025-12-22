@@ -26,19 +26,19 @@ export default function FeedClient({ initialFollowedTopics, children }: FeedClie
 
       try {
         const followed = await getFollowedTopics();
-        
+
         // If we transition from 0 to >= 3 topics, trigger Signal Lock animation
         if (followedTopics.length < 3 && followed.length >= 3 && !isTransitioning) {
           setIsTransitioning(true);
           setShowSignalLock(true);
-          
+
           // Hide animation after fade completes
           setTimeout(() => {
             setShowSignalLock(false);
             setIsTransitioning(false);
           }, 1000);
         }
-        
+
         // Only update if changed to avoid unnecessary re-renders
         if (JSON.stringify(followed.sort()) !== JSON.stringify(followedTopics.sort())) {
           setFollowedTopics(followed);
@@ -49,15 +49,15 @@ export default function FeedClient({ initialFollowedTopics, children }: FeedClie
     }
 
     fetchFollowedTopics();
-    
+
     // Poll for updates more frequently during initial load, then less frequently
     const pollInterval = initialFollowedTopics.length === 0 ? 500 : 2000;
     const interval = setInterval(() => {
       fetchFollowedTopics();
     }, pollInterval);
-    
+
     return () => clearInterval(interval);
-  }, [user, isLoaded, initialFollowedTopics.length]);
+  }, [user, isLoaded, initialFollowedTopics.length, followedTopics, isTransitioning]);
 
   // Refresh router when topics change from < 3 to >= 3 (after animation)
   useEffect(() => {
@@ -66,7 +66,7 @@ export default function FeedClient({ initialFollowedTopics, children }: FeedClie
       const timeout = setTimeout(() => {
         router.refresh();
       }, 1200); // Slightly after animation completes
-      
+
       return () => clearTimeout(timeout);
     }
   }, [followedTopics.length, initialFollowedTopics.length, router]);

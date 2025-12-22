@@ -1,296 +1,301 @@
-import type { Metadata } from "next";
-import ProtocolCard from "@/components/holistic/ProtocolCard";
-import LocalSearchBar from "@/components/search/LocalSearchBar";
-import SortDropdown from "@/components/search/SortDropdown";
-import ProductsClient from "@/components/products/ProductsClient";
-import { Suspense } from "react";
-import { getDb } from "@/lib/db";
+import { Suspense } from 'react';
+import Link from 'next/link';
+import { getDb } from '@/lib/db';
+
+import {
+  ShieldCheck,
+  Search,
+  Filter,
+  ArrowRight,
+  TrendingUp,
+  Activity,
+  Users
+} from 'lucide-react';
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Products - SME Transparency Reports",
-  description: "Browse verified products with research-based transparency reports and SME certification.",
-  alternates: {
-    canonical: `${process.env.NEXT_PUBLIC_SITE_URL || "https://sme.example.com"}/products`,
-  },
-};
-
-interface Protocol {
+// Types
+interface Product {
   id: string;
   title: string;
-  problem_solved: string;
   slug: string;
-  images?: string[] | null;
-  is_sme_certified?: boolean | null;
-  purity_tested?: boolean | null;
-  source_transparency?: boolean | null;
-  ai_summary?: string | null;
-  third_party_lab_verified?: boolean | null;
-  potency_verified?: boolean | null;
-  excipient_audit?: boolean | null;
-  operational_legitimacy?: boolean | null;
+  problem_solved: string;
+  images: string[] | string | null; // Helper handles both
+  tags: string[];
+  is_sme_certified: boolean;
+  created_at: string;
 }
 
-interface ProtocolWithMetrics extends Protocol {
-  fullImageUrl?: string;
-  reviewCount?: number;
-  commentCount?: number;
-  averageRating?: number;
+interface ProductWithMetrics extends Product {
+  reviewCount: number;
+  activityScore: number;
 }
 
-export default async function ProductsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ search?: string; sort?: string }>;
-}) {
-  const params = await searchParams;
-  const searchQuery = params.search?.toLowerCase() || "";
-  const sortBy = params.sort || "certified";
+// Helper to safely parse images
+const parseImages = (images: string[] | string | null): string[] => {
+  if (!images) return [];
+  if (Array.isArray(images)) return images;
+  if (typeof images === 'string') {
+    try {
+      const parsed = JSON.parse(images);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      // Handle postgres array syntax {img1,img2}
+      const match = images.match(/^\{([^}]+)\}$/);
+      if (match) {
+        return match[1].split(',').map(s => s.replace(/"/g, ''));
+      }
+      return [];
+    }
+  }
+  return [];
+};
+
+async function getProducts() {
   const sql = getDb();
 
-  // Fetch products with all necessary data for tiered display and signal badges
-  // Using a single optimized query with aggregations
-  let protocolsWithMetrics: ProtocolWithMetrics[] = [];
-  let error: any = null;
-
   try {
-    const results = await sql`
+    // Fetch products
+    const productsResult = await sql`
       SELECT 
-        p.id, p.title, p.problem_solved, p.slug, p.images, p.is_sme_certified, 
-        p.purity_tested, p.source_transparency, p.ai_summary, 
-        p.third_party_lab_verified, p.potency_verified, p.excipient_audit, p.operational_legitimacy,
-        COALESCE(AVG(r.rating) FILTER (WHERE r.is_flagged IS FALSE OR r.is_flagged IS NULL), 0) as average_rating,
-        COUNT(DISTINCT r.id) FILTER (WHERE r.is_flagged IS FALSE OR r.is_flagged IS NULL) as review_count,
-        COUNT(DISTINCT dc.id) FILTER (WHERE (dc.is_flagged IS FALSE OR dc.is_flagged IS NULL) AND dc.protocol_id IS NOT NULL) as comment_count
-      FROM protocols p
-      LEFT JOIN reviews r ON p.id = r.protocol_id
-      LEFT JOIN discussion_comments dc ON p.id = dc.protocol_id
-      WHERE p.is_flagged IS FALSE OR p.is_flagged IS NULL
-      GROUP BY p.id
-      ORDER BY p.is_sme_certified DESC NULLS LAST, p.title ASC
+        id, 
+        title, 
+        slug, 
+        problem_solved, 
+        images, 
+        tags, 
+        is_sme_certified, 
+        created_at
+      FROM products
+      WHERE is_flagged = false OR is_flagged IS NULL
+      ORDER BY created_at DESC
     `;
 
-    protocolsWithMetrics = results.map((row: any) => ({
-      id: row.id,
-      title: row.title,
-      problem_solved: row.problem_solved,
-      slug: row.slug,
-      images: row.images,
-      is_sme_certified: row.is_sme_certified,
-      purity_tested: row.purity_tested,
-      source_transparency: row.source_transparency,
-      ai_summary: row.ai_summary,
-      third_party_lab_verified: row.third_party_lab_verified,
-      potency_verified: row.potency_verified,
-      excipient_audit: row.excipient_audit,
-      operational_legitimacy: row.operational_legitimacy,
-      averageRating: parseFloat(row.average_rating) || 0,
-      reviewCount: parseInt(row.review_count) || 0,
-      commentCount: parseInt(row.comment_count) || 0
+    // Fetch metrics (simpler aggregations for list view)
+    const metricsResult = await sql`
+      SELECT 
+        product_id,
+        COUNT(*) as count
+      FROM reviews
+      WHERE is_flagged = false OR is_flagged IS NULL
+      GROUP BY product_id
+    `;
+
+    // Map metrics to products
+    const metricsMap = new Map(metricsResult.map((m: any) => [m.product_id, parseInt(m.count)]));
+
+    const products: ProductWithMetrics[] = productsResult.map((p: any) => ({
+      id: p.id,
+      title: p.title,
+      slug: p.slug,
+      problem_solved: p.problem_solved,
+      images: p.images,
+      tags: p.tags,
+      is_sme_certified: p.is_sme_certified,
+      created_at: p.created_at,
+      reviewCount: metricsMap.get(p.id) || 0,
+      activityScore: (metricsMap.get(p.id) || 0) * 10 // Simplified score
     }));
 
-  } catch (err) {
-    console.error("Error fetching products:", err);
-    error = err;
+    return products;
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    return [];
   }
+}
 
-  // Handle images
-  const protocolsWithFullImageUrls = protocolsWithMetrics.map((protocol) => {
-    let fullImageUrl: string | undefined;
-    
-    if (protocol.images) {
-      if (Array.isArray(protocol.images)) {
-        const validImages = protocol.images.filter((img): img is string => typeof img === 'string' && img.length > 0);
-        if (validImages.length > 0) fullImageUrl = validImages[0];
-      } else if (typeof protocol.images === 'string') {
-        const imagesString: string = protocol.images;
-        // Try to parse array string or JSON
-        try {
-          if (imagesString.startsWith('{')) {
-             const arrayMatch = imagesString.match(/^\{([^}]*)\}$/);
-             if (arrayMatch) {
-               const parts = arrayMatch[1].split(',').map(s => s.trim().replace(/^"|"$/g, ''));
-               if (parts.length > 0 && parts[0]) fullImageUrl = parts[0];
-             }
-          } else if (imagesString.startsWith('[')) {
-             const parsed = JSON.parse(imagesString);
-             if (Array.isArray(parsed) && parsed.length > 0) fullImageUrl = parsed[0];
-          }
-        } catch (e) {
-          // Ignore parse errors
-        }
-      }
-    }
-    
-    return {
-      ...protocol,
-      fullImageUrl,
-    };
-  });
-
-  // Filter by search query
-  let sortedProtocols = protocolsWithFullImageUrls;
-  if (searchQuery) {
-    sortedProtocols = sortedProtocols.filter((p) =>
-      p.title.toLowerCase().includes(searchQuery) ||
-      p.problem_solved.toLowerCase().includes(searchQuery)
-    );
-  }
-
-  // Sort protocols
-  if (sortBy === "recent") {
-    // We didn't fetch created_at, but we can assume ID sort or fetch it if needed.
-    // For now, let's just keep the DB sort or sort by title if recent requested but no date
-    // Or better, add created_at to query
-    // Let's assume the user wants the default sort mostly.
-    // If "recent" is strictly required, I should add created_at to SELECT.
-    // I'll add created_at to SELECT just in case.
-  } else if (sortBy === "alphabetical") {
-    sortedProtocols.sort((a, b) => a.title.localeCompare(b.title));
-  } else if (sortBy === "signal") {
-    sortedProtocols.sort((a, b) => {
-      // Calculate signal score: (reviews * avg_rating) + comments
-      const signalA = ((a.reviewCount || 0) * (a.averageRating || 0)) + (a.commentCount || 0);
-      const signalB = ((b.reviewCount || 0) * (b.averageRating || 0)) + (b.commentCount || 0);
-      return signalB - signalA;
-    });
-  } else {
-    // Default: certified first (already sorted by DB)
-    // But if we filtered, we might need to resort? 
-    // DB sort was: ORDER BY p.is_sme_certified DESC NULLS LAST, p.title ASC
-    // JS sort to be safe:
-    sortedProtocols.sort((a, b) => {
-      if (a.is_sme_certified && !b.is_sme_certified) return -1;
-      if (!a.is_sme_certified && b.is_sme_certified) return 1;
-      return a.title.localeCompare(b.title);
-    });
-  }
-
-  // Separate products into tiers
-  const smeCertified = sortedProtocols.filter((p) => p.is_sme_certified === true);
-  const trendingProtocols = sortedProtocols.filter((p) => p.is_sme_certified !== true);
+export default async function ProductsPage() {
+  const products = await getProducts();
+  const trendingProducts = products
+    .sort((a, b) => b.activityScore - a.activityScore)
+    .slice(0, 3);
 
   return (
-    <main className="min-h-screen bg-forest-obsidian">
-      <div className="mx-auto max-w-7xl px-6 py-8">
-        <div className="mb-8">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h1 className="mb-2 font-serif text-3xl font-bold text-bone-white">
-                Products
-              </h1>
-              <p className="text-sm text-bone-white/70 font-mono uppercase tracking-wider">
-                Transparency Reports & Research Analysis
-              </p>
-            </div>
-            <SortDropdown
-              options={[
-                { value: "certified", label: "SME Certified" },
-                { value: "signal", label: "Sort by Signal" },
-                { value: "recent", label: "Most Recent" },
-                { value: "alphabetical", label: "Alphabetical" },
-              ]}
-              defaultOption="certified"
-            />
-          </div>
+    <div className="min-h-screen bg-forest-obsidian font-sans">
+      {/* Hero Section */}
+      <div className="relative border-b border-translucent-emerald">
+        <div className="absolute inset-0 bg-gold-gradient opacity-5" />
+        <div className="container mx-auto px-4 py-16 relative">
+          <div className="max-w-2xl">
+            <h1 className="text-4xl md:text-5xl font-serif text-bone-white mb-6">
+              Verified <span className="text-sme-gold">Products</span>
+            </h1>
+            <p className="text-lg text-bone-white/80 mb-8 leading-relaxed">
+              Explore our curated database of supplements and health products.
+              Each entry is rigorously analyzed against our 5-pillar framework
+              for safety, purity, and efficacy.
+            </p>
 
-          {/* Search Bar - Apothecary Terminal */}
-          <div className="mb-6">
-            <Suspense fallback={<div className="h-10 w-full border border-translucent-emerald bg-muted-moss" />}>
-              <ProductsClient searchQuery={searchQuery} />
-            </Suspense>
+            {/* Search Bar */}
+            <div className="relative max-w-lg">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-bone-white/40" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search products by name, problem, or ingredient..."
+                className="w-full h-10 px-3 pl-10 rounded-md bg-white/5 border border-white/10 text-bone-white placeholder:text-bone-white/40 focus:outline-none focus:border-sme-gold/50 transition-all font-mono"
+              />
+            </div>
           </div>
         </div>
-
-        {sortedProtocols.length > 0 ? (
-          <div className="space-y-12">
-            {/* Tier 1: Featured Certified Products */}
-            {smeCertified.length > 0 && (
-              <section>
-                <div className="mb-4 flex items-center gap-3 border-b border-translucent-emerald pb-3">
-                  <h2 className="font-serif text-xl font-bold text-bone-white">
-                    Featured Certified Products
-                  </h2>
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-bone-white/70">
-                    ({smeCertified.length})
-                  </span>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {smeCertified.map((protocol) => (
-                    <ProtocolCard
-                      key={protocol.id}
-                      title={protocol.title}
-                      problemSolved={protocol.problem_solved}
-                      productId={protocol.id}
-                      imageUrl={protocol.fullImageUrl || null}
-                      isSMECertified={protocol.is_sme_certified || false}
-                      hasLabTested={protocol.third_party_lab_verified || false}
-                      hasSourceVerified={protocol.source_transparency || false}
-                      hasAISummary={!!protocol.ai_summary}
-                      sourceTransparency={protocol.source_transparency || false}
-                      purityTested={protocol.purity_tested || false}
-                      potencyVerified={protocol.potency_verified || false}
-                      excipientAudit={protocol.excipient_audit || false}
-                      operationalLegitimacy={protocol.operational_legitimacy || false}
-                      reviewCount={protocol.reviewCount || 0}
-                      commentCount={protocol.commentCount || 0}
-                      averageRating={protocol.averageRating}
-                    />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Tier 2: Community Catalog */}
-            {trendingProtocols.length > 0 && (
-              <section>
-                <div className="mb-4 flex items-center gap-3 border-b border-translucent-emerald pb-3">
-                  <h2 className="font-serif text-xl font-bold text-bone-white">
-                    Community Catalog
-                  </h2>
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-bone-white/70">
-                    ({trendingProtocols.length})
-                  </span>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {trendingProtocols.map((protocol) => (
-                    <ProtocolCard
-                      key={protocol.id}
-                      title={protocol.title}
-                      problemSolved={protocol.problem_solved}
-                      productId={protocol.id}
-                      imageUrl={protocol.fullImageUrl || null}
-                      isSMECertified={false}
-                      hasLabTested={protocol.third_party_lab_verified || false}
-                      hasSourceVerified={protocol.source_transparency || false}
-                      hasAISummary={!!protocol.ai_summary}
-                      sourceTransparency={protocol.source_transparency || false}
-                      purityTested={protocol.purity_tested || false}
-                      potencyVerified={protocol.potency_verified || false}
-                      excipientAudit={protocol.excipient_audit || false}
-                      operationalLegitimacy={protocol.operational_legitimacy || false}
-                      reviewCount={protocol.reviewCount || 0}
-                      commentCount={protocol.commentCount || 0}
-                      averageRating={protocol.averageRating}
-                    />
-                  ))}
-                </div>
-              </section>
-            )}
-          </div>
-        ) : (
-          <div className="border border-translucent-emerald bg-muted-moss p-12 text-center">
-            <p className="text-bone-white/70">No products available yet.</p>
-          </div>
-        )}
-
-        {error && (
-          <div className="mt-8 text-center text-heart-green text-sm font-mono">
-            Error loading products. Please try again later.
-          </div>
-        )}
       </div>
-    </main>
+
+      {/* Main Content */}
+      <div className="container mx-auto px-4 py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+
+          {/* Filters Sidebar */}
+          <div className="lg:col-span-1 space-y-8">
+            <div className="p-6 rounded-xl bg-white/5 border border-translucent-emerald sticky top-24">
+              <div className="flex items-center gap-2 mb-6">
+                <Filter className="w-5 h-5 text-sme-gold" />
+                <h3 className="font-serif text-xl text-bone-white">Filters</h3>
+              </div>
+
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-mono text-bone-white/60 mb-3 uppercase tracking-wider">
+                    Certifications
+                  </label>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 text-bone-white/80 hover:text-bone-white cursor-pointer group">
+                      <div className="w-4 h-4 rounded border border-white/20 group-hover:border-sme-gold/50 flex items-center justify-center transition-colors">
+                        {/* Checkbox state logic would go here */}
+                      </div>
+                      <span className="flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4 text-sme-gold" />
+                        SME Verified
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-mono text-bone-white/60 mb-3 uppercase tracking-wider">
+                    Categories
+                  </label>
+                  <div className="space-y-2">
+                    {['Gut Health', 'Sleep', 'Cognition', 'Longevity', 'Immunity'].map((cat) => (
+                      <label key={cat} className="flex items-center gap-2 text-bone-white/80 hover:text-bone-white cursor-pointer group">
+                        <div className="w-4 h-4 rounded border border-white/20 group-hover:border-sme-gold/50 transition-colors" />
+                        {cat}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Product Grid */}
+          <div className="lg:col-span-3">
+            {/* Trending Section */}
+            {trendingProducts.length > 0 && (
+              <div className="mb-12">
+                <div className="flex items-center gap-2 mb-6">
+                  <TrendingUp className="w-5 h-5 text-sme-gold" />
+                  <h2 className="font-serif text-2xl text-bone-white">Trending Now</h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {trendingProducts.map((product) => (
+                    <Link key={product.id} href={`/products/${product.slug}`} className="group">
+                      <div className="h-full p-5 rounded-xl bg-white/5 border border-translucent-emerald hover:border-sme-gold/30 hover:bg-white/10 transition-all duration-300 relative overflow-hidden">
+                        <div className="aspect-square mb-4 relative rounded-lg overflow-hidden bg-black/20">
+                          {parseImages(product.images)[0] ? (
+                            <img
+                              src={parseImages(product.images)[0]}
+                              alt={product.title}
+                              className="object-contain w-full h-full transform group-hover:scale-105 transition-transform duration-500"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-bone-white/20 font-serif italic">
+                              No Image
+                            </div>
+                          )}
+                          {product.is_sme_certified && (
+                            <div className="absolute top-2 right-2 bg-sme-gold text-forest-black text-[10px] font-bold px-2 py-1 rounded shadow-lg flex items-center gap-1">
+                              <ShieldCheck className="w-3 h-3" /> SME
+                            </div>
+                          )}
+                        </div>
+                        <h3 className="font-serif text-lg text-bone-white group-hover:text-sme-gold transition-colors mb-2 line-clamp-2">
+                          {product.title}
+                        </h3>
+                        <div className="flex items-center gap-4 text-xs font-mono text-bone-white/50">
+                          <span className="flex items-center gap-1">
+                            <Activity className="w-3 h-3" /> {product.activityScore}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Users className="w-3 h-3" /> {product.reviewCount}
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* All Products */}
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="font-serif text-2xl text-bone-white">All Products</h2>
+              <div className="text-sm font-mono text-bone-white/50">
+                Showing {products.length} results
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {products.map((product) => (
+                <Link key={product.id} href={`/products/${product.slug}`} className="group">
+                  <div className="h-full flex flex-col p-6 rounded-xl bg-white/5 border border-translucent-emerald hover:border-sme-gold/30 hover:bg-white/10 transition-all duration-300">
+                    <div className="flex items-start justify-between gap-4 mb-4">
+                      <div className="w-16 h-16 rounded-lg bg-black/20 overflow-hidden flex-shrink-0">
+                        {parseImages(product.images)[0] ? (
+                          <img
+                            src={parseImages(product.images)[0]}
+                            alt={product.title}
+                            className="object-contain w-full h-full"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-bone-white/20 text-xs">
+                            N/A
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-serif text-lg text-bone-white group-hover:text-sme-gold transition-colors truncate">
+                          {product.title}
+                        </h3>
+                        {product.tags && product.tags.length > 0 && (
+                          <div className="text-xs font-mono text-sme-gold/80 mt-1">
+                            {product.tags[0].replace(/-/g, ' ')}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <p className="text-sm text-bone-white/70 line-clamp-2 mb-6 flex-grow">
+                      {product.problem_solved}
+                    </p>
+
+                    <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                      <div className="flex items-center gap-3">
+                        {product.is_sme_certified && (
+                          <ShieldCheck className="w-4 h-4 text-sme-gold" />
+                        )}
+                      </div>
+                      <span className="text-sm font-mono text-sme-gold group-hover:translate-x-1 transition-transform flex items-center gap-1">
+                        View <ArrowRight className="w-3 h-3" />
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

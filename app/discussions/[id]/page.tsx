@@ -34,7 +34,7 @@ export default async function DiscussionPage({ params }: { params: Promise<{ id:
   const { id } = await params;
   const user = await currentUser();
   const sql = getDb();
-  
+
   // Fetch discussion with full profile data using raw SQL
   const discussionResult = await sql`
     SELECT 
@@ -81,7 +81,13 @@ export default async function DiscussionPage({ params }: { params: Promise<{ id:
   };
 
   // Fetch comments using the server action (which now includes references)
-  const commentsWithReferences = await getDiscussionComments(id);
+  let commentsWithReferences = [];
+  try {
+    commentsWithReferences = await getDiscussionComments(id);
+  } catch (error) {
+    console.error(`Failed to fetch comments for discussion ${id}:`, error);
+    // Don't crash the page, just show no comments
+  }
 
   const isAuthor = user?.id === discussion.author_id;
   const isBounty = discussion.is_bounty || false;
@@ -98,7 +104,7 @@ export default async function DiscussionPage({ params }: { params: Promise<{ id:
             <h1 className="text-2xl sm:text-3xl font-serif font-bold text-bone-white mb-3">
               {discussion.title}
             </h1>
-            
+
             {/* Author & Metadata */}
             <div className="flex flex-wrap items-center gap-3 text-xs text-bone-white/70 font-mono">
               {discussion.profiles && (
@@ -149,7 +155,7 @@ export default async function DiscussionPage({ params }: { params: Promise<{ id:
                 <span className="text-sme-gold">{commentsWithReferences.length}</span> Community Signals Recorded
               </h2>
             </div>
-            
+
             <SignedIn>
               <DiscussionComments
                 discussionId={id}
@@ -162,7 +168,7 @@ export default async function DiscussionPage({ params }: { params: Promise<{ id:
                 isAuthor={isAuthor}
               />
             </SignedIn>
-            
+
             <SignedOut>
               <div className="border border-translucent-emerald bg-forest-obsidian p-6 text-center">
                 <p className="text-bone-white font-mono text-sm mb-4">

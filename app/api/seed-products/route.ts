@@ -11,7 +11,7 @@ export async function GET() {
     const sql = getDb();
 
     // Check if protocols table has any data
-    const existingCount = await sql`SELECT COUNT(*) as count FROM protocols`;
+    const existingCount = await sql`SELECT COUNT(*) as count FROM products`;
 
     if (Number(existingCount[0].count) > 0) {
       return NextResponse.json({
@@ -22,7 +22,7 @@ export async function GET() {
 
     // Insert sample products
     await sql`
-      INSERT INTO protocols (title, slug, problem_solved, ai_summary, buy_url, is_sme_certified, third_party_lab_verified, purity_tested, source_transparency, potency_verified, excipient_audit, operational_legitimacy)
+      INSERT INTO products (title, slug, problem_solved, ai_summary, buy_url, is_sme_certified, third_party_lab_verified, purity_tested, source_transparency, potency_verified, excipient_audit, operational_legitimacy)
       VALUES 
         ('Magnesium Glycinate', 'magnesium-glycinate', 'Sleep quality and muscle relaxation', 'High-absorption magnesium for better sleep and reduced muscle tension', 'https://example.com/mag', true, true, true, true, true, true, true),
         ('Omega-3 Fish Oil', 'omega-3-fish-oil', 'Heart health and inflammation', 'Premium omega-3 fatty acids for cardiovascular support', 'https://example.com/omega3', true, true, true, true, true, false, true),
@@ -31,7 +31,7 @@ export async function GET() {
         ('Creatine Monohydrate', 'creatine-monohydrate', 'Muscle performance and cognitive function', 'Pure creatine for strength and brain health', 'https://example.com/creatine', true, true, true, true, true, true, true)
     `;
 
-    const newCount = await sql`SELECT COUNT(*) as count FROM protocols`;
+    const newCount = await sql`SELECT COUNT(*) as count FROM products`;
 
     return NextResponse.json({
       status: 'Sample products seeded successfully',

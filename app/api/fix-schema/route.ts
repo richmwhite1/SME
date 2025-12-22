@@ -38,19 +38,19 @@ export async function GET() {
             }
         }
 
-        // Fix 2: Add created_by column to protocols if it doesn't exist
-        const protocolsColumns = await sql`
+        // Fix 2: Add created_by column to products if it doesn't exist
+        const productsColumns = await sql`
       SELECT column_name, data_type, is_nullable
       FROM information_schema.columns
-      WHERE table_schema = 'public' AND table_name = 'protocols'
+      WHERE table_schema = 'public' AND table_name = 'products'
       ORDER BY ordinal_position
     `;
 
-        const hasCreatedBy = protocolsColumns.some((col: any) => col.column_name === 'created_by');
+        const hasCreatedBy = productsColumns.some((col: any) => col.column_name === 'created_by');
 
         if (!hasCreatedBy) {
-            await sql`ALTER TABLE protocols ADD COLUMN IF NOT EXISTS created_by TEXT`;
-            fixes.push({ fix: 'Added created_by column to protocols table' });
+            await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS created_by TEXT`;
+            fixes.push({ fix: 'Added created_by column to products table' });
         }
 
         // Fix 3: Ensure discussions table has proper structure

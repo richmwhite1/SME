@@ -39,24 +39,13 @@ export default function ReviewSectionClient({
   const router = useRouter();
   const [reviews, setReviews] = useState<Review[]>(initialReviews);
 
+  // Sync state with props when router.refresh() updates initialReviews
+  useEffect(() => {
+    setReviews(initialReviews);
+  }, [initialReviews]);
+
   // Fetch fresh reviews function
-  const fetchReviews = async () => {
-    // Small delay to ensure database transaction has committed
-    await new Promise(resolve => setTimeout(resolve, 200));
 
-    const { data: freshReviews, error } = await supabase
-      .from("reviews")
-      .select("id, rating, content, created_at, profiles(id, full_name, username, avatar_url, contributor_score, is_verified_expert)")
-      .eq("protocol_id", protocolId)
-      .or("is_flagged.eq.false,is_flagged.is.null")
-      .order("created_at", { ascending: false });
-
-    if (!error && freshReviews) {
-      setReviews(freshReviews as Review[]);
-    } else {
-      console.error("Error fetching fresh reviews:", error);
-    }
-  };
 
   return (
     <div>
@@ -73,11 +62,10 @@ export default function ReviewSectionClient({
           onReviewError={() => {
             // On error, remove optimistic review and refetch
             setReviews(initialReviews);
-            fetchReviews();
+            router.refresh();
           }}
           onReviewSuccess={() => {
-            // On success, fetch fresh reviews from server
-            fetchReviews();
+            // On success, refresh from server
             router.refresh();
           }}
         />

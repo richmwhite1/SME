@@ -44,7 +44,7 @@ export async function GET(request: Request) {
           SELECT 
             unnest(pr.tags) AS topic,
             COUNT(*) AS count
-          FROM protocols pr
+          FROM products pr
           WHERE COALESCE(pr.is_flagged, false) = false
             AND pr.created_at >= NOW() - INTERVAL '7 days'
             AND pr.tags IS NOT NULL

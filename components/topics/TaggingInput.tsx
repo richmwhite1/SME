@@ -10,6 +10,8 @@ interface TaggingInputProps {
   maxTags?: number;
 }
 
+import { getMasterTopics } from "@/app/actions/topic-actions";
+
 export default function TaggingInput({
   selectedTags,
   onTagsChange,
@@ -21,17 +23,14 @@ export default function TaggingInput({
 
   useEffect(() => {
     async function fetchMasterTopics() {
-      const { data, error } = await supabase
-        .from("master_topics")
-        .select("name")
-        .order("display_order", { ascending: true });
-
-      if (error) {
+      try {
+        const topics = await getMasterTopics();
+        setMasterTopics(topics.map((t: any) => t.name));
+      } catch (error) {
         console.error("Error fetching master topics:", error);
-      } else {
-        setMasterTopics((data || []).map((t: { name: string }) => t.name));
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
 
     fetchMasterTopics();
@@ -80,8 +79,8 @@ export default function TaggingInput({
                   onClick={() => handleToggleMasterTopic(topic)}
                   disabled={!isSelected && selectedTags.length >= maxTags}
                   className={`relative rounded-full px-3 py-1 text-sm font-medium transition-all duration-200 ${isSelected
-                      ? "bg-earth-green text-sand-beige"
-                      : "bg-earth-green/20 text-earth-green hover:bg-earth-green/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                    ? "bg-earth-green text-sand-beige"
+                    : "bg-earth-green/20 text-earth-green hover:bg-earth-green/30 disabled:opacity-50 disabled:cursor-not-allowed"
                     }`}
                 >
                   <span className="mr-1.5 text-xs">⭐</span>

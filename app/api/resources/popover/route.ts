@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
       if (resourceData.origin_type === "Product") {
         const protocolResult = await sql`
           SELECT ai_summary, third_party_lab_verified, purity_verified
-          FROM protocols
+          FROM products
           WHERE id = ${resourceId}
           LIMIT 1
         `;
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     // If not in resource_library, try protocols
     result = await sql`
       SELECT title, reference_url, ai_summary
-      FROM protocols
+      FROM products
       WHERE id = ${resourceId}
       LIMIT 1
     `;

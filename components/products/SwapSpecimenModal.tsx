@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { X, Search, Loader2 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { searchProducts } from "@/app/actions/product-actions";
 
 interface Product {
   id: string;
@@ -57,32 +58,22 @@ export default function SwapSpecimenModal({
     };
   }, [searchQuery]);
 
+
+
   const fetchProducts = async (query: string) => {
     setLoading(true);
 
-    let queryBuilder = supabase
-      .from("protocols")
-      .select("id, title, problem_solved, images")
-      .order("title", { ascending: true })
-      .limit(20);
+    try {
+      const data = await searchProducts(query);
 
-    if (query.trim()) {
-      queryBuilder = queryBuilder.or(
-        `title.ilike.%${query}%,problem_solved.ilike.%${query}%`
-      );
-    }
-
-    const { data, error } = await queryBuilder;
-
-    if (error) {
-      console.error("Error fetching products:", error);
-      setProducts([]);
-    } else {
       // Filter out current product
       const filtered = (data || []).filter(
-        (p) => p.id !== currentProductId
+        (p: any) => p.id !== currentProductId
       ) as Product[];
       setProducts(filtered);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      setProducts([]);
     }
 
     setLoading(false);

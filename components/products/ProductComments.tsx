@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import CommentForm from "@/components/comments/CommentForm";
 import CitationText from "@/components/comments/CitationText";
@@ -162,6 +162,11 @@ export default function ProductComments({
   const router = useRouter();
   const [comments, setComments] = useState<Comment[]>(initialComments);
 
+  // Sync state with props when router.refresh() updates initialComments
+  useEffect(() => {
+    setComments(initialComments);
+  }, [initialComments]);
+
   // Build threaded comment tree
   const buildCommentTree = (comments: Comment[]): Comment[] => {
     const commentMap = new Map<string, Comment>();
@@ -204,33 +209,7 @@ export default function ProductComments({
         protocolId={protocolId}
         protocolSlug={protocolSlug}
         onSuccess={async () => {
-          // Refresh comments after successful submission
-          await new Promise(resolve => setTimeout(resolve, 200));
-          const { data: freshComments } = await supabase
-            .from("product_comments")
-            .select(`
-              id,
-              content,
-              created_at,
-              parent_id,
-              guest_name,
-              profiles(
-                id,
-                full_name,
-                username,
-                avatar_url,
-                badge_type,
-                contributor_score,
-                is_verified_expert
-              )
-            `)
-            .eq("protocol_id", protocolId)
-            .or("is_flagged.eq.false,is_flagged.is.null")
-            .order("created_at", { ascending: false });
-
-          if (freshComments) {
-            setComments(freshComments as Comment[]);
-          }
+          // Refresh comments via Server Actions / Router Refresh
           router.refresh();
         }}
       />

@@ -45,9 +45,9 @@ COMMENT ON COLUMN profiles.social_links IS 'Social media links stored as JSONB: 
 COMMENT ON COLUMN profiles.contributor_score IS 'Community contribution score';
 
 -- =====================================================
--- 2. PROTOCOLS TABLE (Products/Supplements)
+-- 2. PRODUCTS TABLE (Products/Supplements)
 -- =====================================================
-CREATE TABLE IF NOT EXISTS protocols (
+CREATE TABLE IF NOT EXISTS products (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
   slug TEXT UNIQUE NOT NULL,
@@ -69,25 +69,25 @@ CREATE TABLE IF NOT EXISTS protocols (
 );
 
 -- Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_protocols_slug ON protocols(slug);
-CREATE INDEX IF NOT EXISTS idx_protocols_created_at ON protocols(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_protocols_images ON protocols USING GIN(images);
-CREATE INDEX IF NOT EXISTS idx_protocols_is_sme_certified ON protocols(is_sme_certified) WHERE is_sme_certified = true;
+CREATE INDEX IF NOT EXISTS idx_products_slug ON products(slug);
+CREATE INDEX IF NOT EXISTS idx_products_created_at ON products(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_products_images ON products USING GIN(images);
+CREATE INDEX IF NOT EXISTS idx_products_is_sme_certified ON products(is_sme_certified) WHERE is_sme_certified = true;
 
 -- Disable RLS
-ALTER TABLE protocols DISABLE ROW LEVEL SECURITY;
+ALTER TABLE products DISABLE ROW LEVEL SECURITY;
 
-COMMENT ON TABLE protocols IS 'Products and supplements with SME certification';
-COMMENT ON COLUMN protocols.images IS 'Array of image URLs (up to 10) stored in product-images bucket';
-COMMENT ON COLUMN protocols.is_sme_certified IS 'Whether the product is SME certified (meets all verification criteria)';
-COMMENT ON COLUMN protocols.coa_url IS 'Certificate of Analysis (COA) document URL';
+COMMENT ON TABLE products IS 'Products and supplements with SME certification';
+COMMENT ON COLUMN products.images IS 'Array of image URLs (up to 10) stored in product-images bucket';
+COMMENT ON COLUMN products.is_sme_certified IS 'Whether the product is SME certified (meets all verification criteria)';
+COMMENT ON COLUMN products.coa_url IS 'Certificate of Analysis (COA) document URL';
 
 -- =====================================================
 -- 3. REVIEWS TABLE (Product reviews)
 -- =====================================================
 CREATE TABLE IF NOT EXISTS reviews (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  protocol_id UUID REFERENCES protocols(id) ON DELETE CASCADE,
+  product_id UUID REFERENCES products(id) ON DELETE CASCADE,
   user_id TEXT REFERENCES profiles(id) ON DELETE CASCADE,
   guest_author_name TEXT,
   rating INTEGER CHECK (rating >= 1 AND rating <= 5),
@@ -97,15 +97,16 @@ CREATE TABLE IF NOT EXISTS reviews (
 );
 
 -- Create indexes
-CREATE INDEX IF NOT EXISTS idx_reviews_protocol_id ON reviews(protocol_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_product_id ON reviews(product_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_user_id ON reviews(user_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_created_at ON reviews(created_at DESC);
 
 -- Disable RLS
 ALTER TABLE reviews DISABLE ROW LEVEL SECURITY;
 
-COMMENT ON TABLE reviews IS 'User reviews for products/protocols';
+COMMENT ON TABLE reviews IS 'User reviews for products';
 COMMENT ON COLUMN reviews.guest_author_name IS 'Display name for guest reviews (when user_id is null)';
+COMMENT ON COLUMN reviews.product_id IS 'Reference to the product being reviewed';
 
 -- =====================================================
 -- 4. DISCUSSIONS TABLE (Community forum posts)
@@ -330,7 +331,39 @@ ALTER TABLE admin_logs DISABLE ROW LEVEL SECURITY;
 COMMENT ON TABLE admin_logs IS 'Audit trail for admin actions';
 
 -- =====================================================
--- 11. FUNCTIONS AND TRIGGERS
+-- 11. NOTIFICATIONS TABLE
+-- =====================================================
+CREATE TABLE IF NOT EXISTS notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  actor_id TEXT REFERENCES profiles(id) ON DELETE SET NULL,
+  type TEXT NOT NULL CHECK (type IN ('upvote', 'comment', 'follow', 'mention', 'reply', 'badge', 'milestone')),
+  target_id UUID,
+  target_type TEXT CHECK (target_type IN ('discussion', 'comment', 'product', 'profile')),
+  is_read BOOLEAN DEFAULT false,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_actor_id ON notifications(actor_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read) WHERE is_read = false;
+CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type);
+CREATE INDEX IF NOT EXISTS idx_notifications_target ON notifications(target_id, target_type);
+
+-- Disable RLS for Clerk integration
+ALTER TABLE notifications DISABLE ROW LEVEL SECURITY;
+
+COMMENT ON TABLE notifications IS 'User notifications for activity and engagement';
+COMMENT ON COLUMN notifications.type IS 'Type of notification: upvote, comment, follow, mention, reply, badge, milestone';
+COMMENT ON COLUMN notifications.target_id IS 'ID of the related content (discussion, comment, etc.)';
+COMMENT ON COLUMN notifications.target_type IS 'Type of target: discussion, comment, product, profile';
+COMMENT ON COLUMN notifications.metadata IS 'Additional notification data stored as JSON';
+
+-- =====================================================
+-- 12. FUNCTIONS AND TRIGGERS
 -- =====================================================
 
 -- Function: Toggle discussion vote
@@ -406,7 +439,7 @@ CREATE TRIGGER trigger_update_profiles_updated_at
   EXECUTE FUNCTION update_updated_at_column();
 
 -- =====================================================
--- 12. VIEWS
+-- 13. VIEWS
 -- =====================================================
 
 -- Global Feed View (All discussions)
@@ -463,7 +496,7 @@ ORDER BY d.created_at DESC;
 COMMENT ON VIEW trusted_feed_view IS 'Feed of discussions from verified experts only';
 
 -- =====================================================
--- 13. GLOBAL SEARCH FUNCTION
+-- 14. GLOBAL SEARCH FUNCTION
 -- =====================================================
 CREATE OR REPLACE FUNCTION global_search(
   search_query TEXT,
@@ -505,9 +538,9 @@ BEGIN
   
   UNION ALL
   
-  -- Search Protocols/Products
+  -- Search Products
   SELECT 
-    'protocol'::TEXT AS result_type,
+    'product'::TEXT AS result_type,
     pr.id AS result_id,
     pr.title,
     COALESCE(pr.problem_solved, pr.ai_summary, '') AS content,
@@ -519,7 +552,7 @@ BEGIN
       to_tsvector('english', pr.title || ' ' || COALESCE(pr.problem_solved, '') || ' ' || COALESCE(pr.ai_summary, '')),
       plainto_tsquery('english', search_query)
     ) AS rank
-  FROM protocols pr
+  FROM products pr
   WHERE 
     to_tsvector('english', pr.title || ' ' || COALESCE(pr.problem_solved, '') || ' ' || COALESCE(pr.ai_summary, '')) 
     @@ plainto_tsquery('english', search_query)
@@ -529,10 +562,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-COMMENT ON FUNCTION global_search IS 'Full-text search across discussions and protocols';
+COMMENT ON FUNCTION global_search IS 'Full-text search across discussions and products';
 
 -- =====================================================
--- 14. TRENDING TOPICS FUNCTION
+-- 15. TRENDING TOPICS FUNCTION
 -- =====================================================
 CREATE OR REPLACE FUNCTION get_trending_topics(
   days_back INTEGER DEFAULT 7,
@@ -581,3 +614,4 @@ COMMENT ON FUNCTION get_trending_topics IS 'Get trending topics based on recent 
 -- All tables, indexes, functions, and views have been created
 -- Railway PostgreSQL database is ready for production use
 -- =====================================================
+

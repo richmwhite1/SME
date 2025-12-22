@@ -65,7 +65,7 @@ export async function submitReview(
   try {
     const insertedReviews = await sql`
       INSERT INTO reviews (
-        protocol_id, user_id, rating, content, flag_count, is_flagged, helpful_count
+        product_id, user_id, rating, content, flag_count, is_flagged, helpful_count
       )
       VALUES (
         ${protocolId},

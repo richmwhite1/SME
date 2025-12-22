@@ -1,7 +1,10 @@
 import { ImageResponse } from '@vercel/og';
 import { NextRequest } from 'next/server';
+import { getDb } from '@/lib/db';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
+// Revalidate every hour
+export const revalidate = 3600;
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,41 +16,20 @@ export async function GET(request: NextRequest) {
       return new Response('Missing product IDs', { status: 400 });
     }
 
-    // Fetch product data from Supabase
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseKey) {
-      return new Response('Missing Supabase configuration', { status: 500 });
-    }
+    const sql = getDb();
 
     // Fetch both products
-    const [productAResponse, productBResponse] = await Promise.all([
-      fetch(`${supabaseUrl}/rest/v1/protocols?id=eq.${p1}&select=*`, {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
-      }),
-      fetch(`${supabaseUrl}/rest/v1/protocols?id=eq.${p2}&select=*`, {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
-      }),
+    const [productAResult, productBResult] = await Promise.all([
+      sql`SELECT * FROM products WHERE id = ${p1} LIMIT 1`,
+      sql`SELECT * FROM products WHERE id = ${p2} LIMIT 1`
     ]);
 
-    const [productAData, productBData] = await Promise.all([
-      productAResponse.json(),
-      productBResponse.json(),
-    ]);
+    const productA = productAResult?.[0];
+    const productB = productBResult?.[0];
 
-    if (!productAData?.[0] || !productBData?.[0]) {
+    if (!productA || !productB) {
       return new Response('Product not found', { status: 404 });
     }
-
-    const productA = productAData[0];
-    const productB = productBData[0];
 
     // Calculate 5-Pillar completion
     const getPillarCount = (product: any) => {

@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
         buy_url,
         coa_url,
         lab_pdf_url
-      FROM protocols
+      FROM products
       WHERE id = ${productId}
       LIMIT 1
     `;

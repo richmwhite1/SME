@@ -92,7 +92,7 @@ export default async function TopicViewPage({
     // Fetch products/protocols with this topic
     const productsResult = await sql`
       SELECT id, title, problem_solved, slug, created_at, tags
-      FROM protocols
+      FROM products
       WHERE tags IS NOT NULL
       AND ${topicName} = ANY(tags)
       LIMIT 100

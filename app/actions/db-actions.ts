@@ -5,18 +5,18 @@ import { revalidatePath } from "next/cache";
 
 // TYPES
 export interface Review {
-  id: string;
-  rating: number;
-  content: string;
-  created_at: string;
-  profiles: {
     id: string;
-    full_name: string;
-    username: string | null;
-    avatar_url: string | null;
-    contributor_score: number | null;
-    is_verified_expert: boolean | null;
-  } | null;
+    rating: number;
+    content: string;
+    created_at: string;
+    profiles: {
+        id: string;
+        full_name: string;
+        username: string | null;
+        avatar_url: string | null;
+        contributor_score: number | null;
+        is_verified_expert: boolean | null;
+    } | null;
 }
 
 export interface Comment {
@@ -27,22 +27,22 @@ export interface Comment {
     children?: Comment[];
     guest_name?: string | null;
     profiles: {
-      id: string;
-      full_name: string | null;
-      username: string | null;
-      avatar_url: string | null;
-      badge_type: string | null;
-      contributor_score: number | null;
+        id: string;
+        full_name: string | null;
+        username: string | null;
+        avatar_url: string | null;
+        badge_type: string | null;
+        contributor_score: number | null;
     } | null;
-  }
+}
 
 // FEED REFRESHER
 export async function checkNewSignals(
-  initialTimestamp: string,
-  followedTopics: string[]
+    initialTimestamp: string,
+    followedTopics: string[]
 ): Promise<boolean> {
     const sql = getDb();
-    
+
     if (!followedTopics || followedTopics.length === 0) return false;
 
     // Sanitize timestamp
@@ -52,7 +52,7 @@ export async function checkNewSignals(
         // We use sql.unsafe for dynamic OR conditions or complex tagging if needed, 
         // but here we can use the array operator for tags if they are text[] or jsonb.
         // Assuming tags is text[] or similar.
-        
+
         // Count new discussions
         // .contains("tags", followedTopics) in supabase -> tags @> followedTopics (Postgres array)
         // or using exact match logic.
@@ -82,7 +82,7 @@ export async function checkNewSignals(
         // Let's assume the INTENT is "any of these topics".
         // I will use `&&` (overlaps) for better UX, or strictly `@>` if I must.
         // I'll stick to `&&` (overlaps) as it's the standard feed logic.
-        
+
         const [newDiscussions] = await sql`
         SELECT COUNT(*) as count
         FROM discussions
@@ -93,7 +93,7 @@ export async function checkNewSignals(
 
         const [newProducts] = await sql`
         SELECT COUNT(*) as count
-        FROM protocols
+        FROM products
         WHERE is_flagged = false
         AND tags && ${sql.array(followedTopics)}
         AND created_at > ${checkTime}
@@ -143,7 +143,7 @@ export async function fetchFreshReviews(protocolId: string): Promise<Review[]> {
             p.is_verified_expert
         FROM reviews r
         LEFT JOIN profiles p ON r.user_id = p.id
-        WHERE r.protocol_id = ${protocolId}
+        WHERE r.product_id = ${protocolId}
         AND (r.is_flagged = false OR r.is_flagged IS NULL)
         ORDER BY r.created_at DESC
         `;
@@ -185,7 +185,7 @@ export async function searchProducts(query: string, currentProductId?: string): 
         if (!query.trim()) {
             result = await sql`
             SELECT id, title, problem_solved, images
-            FROM protocols
+            FROM products
             ORDER BY title ASC
             LIMIT 20
             `;
@@ -193,7 +193,7 @@ export async function searchProducts(query: string, currentProductId?: string): 
             const pattern = `%${query}%`;
             result = await sql`
             SELECT id, title, problem_solved, images
-            FROM protocols
+            FROM products
             WHERE title ILIKE ${pattern} OR problem_solved ILIKE ${pattern}
             ORDER BY title ASC
             LIMIT 20
@@ -203,7 +203,7 @@ export async function searchProducts(query: string, currentProductId?: string): 
         // Filter current (in JS or SQL)
         // SQL is better: AND id != currentProductId
         // But doing it in JS as per previous logic is fine too.
-        
+
         const mapped = result.map(p => ({
             id: p.id,
             title: p.title,
@@ -241,7 +241,7 @@ export async function fetchFreshComments(protocolId: string): Promise<Comment[]>
             p.contributor_score
         FROM product_comments c
         LEFT JOIN profiles p ON c.user_id = p.id
-        WHERE c.protocol_id = ${protocolId}
+        WHERE c.product_id = ${protocolId}
         AND (c.is_flagged = false OR c.is_flagged IS NULL)
         ORDER BY c.created_at DESC
         `;

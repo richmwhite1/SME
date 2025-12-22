@@ -70,7 +70,7 @@ export default async function TopicPage({
     // AND THEN filtered by tags. This is actually a bug in the original code if it limits BEFORE filtering.
     // I will improve it by filtering in SQL if possible, or fetch more.
     // Let's assume tags is text[] and use the containment operator if possible, OR just fetch matching rows.
-    
+
     const discussionsResult = await sql`
       SELECT 
         d.id, d.title, d.content, d.slug, d.created_at, d.upvote_count, d.tags, d.is_pinned,
@@ -104,7 +104,7 @@ export default async function TopicPage({
     // Fetch products/protocols with this topic
     const productsResult = await sql`
       SELECT id, title, problem_solved, slug, created_at, tags
-      FROM protocols
+      FROM products
       WHERE tags IS NOT NULL
       AND ${topicName} = ANY(tags)
       LIMIT 100
@@ -142,89 +142,89 @@ export default async function TopicPage({
       <div className="mx-auto max-w-7xl">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
           <div className="lg:col-span-3">
-        {/* Breadcrumbs */}
-        <nav className="mb-6 flex items-center gap-2 text-sm text-bone-white/70 font-mono">
-          <Link
-            href="/feed"
-            className="flex items-center gap-1 text-heart-green hover:text-heart-green/80 hover:underline"
-          >
-            <Home size={14} />
-            Feed
-          </Link>
-          <span>/</span>
-          <Link
-            href="/discussions"
-            className="text-heart-green hover:text-heart-green/80 hover:underline"
-          >
-            Discussions
-          </Link>
-          <span>/</span>
-          <span className="text-bone-white">#{topicName}</span>
-        </nav>
-
-        {/* Back Button */}
-        <Link
-          href="/feed"
-          className="mb-4 inline-flex items-center gap-2 text-bone-white/70 hover:text-bone-white font-mono transition-colors"
-        >
-          <ArrowLeft size={16} />
-          Back to Feed
-        </Link>
-
-        <div className="mb-8">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Hash className="h-8 w-8 text-heart-green" />
-              <h1 className="font-serif text-4xl font-bold text-bone-white">#{topicName}</h1>
-            </div>
-            {user && (
-              <TopicFilter topic={topicName} isFollowed={isTopicFollowed} />
-            )}
-          </div>
-
-          {/* State of the Science Summary */}
-          {pinnedDiscussions.length > 0 && pinnedDiscussions[0] && (
-            <div className="mb-6 border border-translucent-emerald bg-muted-moss p-6">
-              <div className="mb-3 flex items-center gap-2">
-                <span className="border border-heart-green bg-heart-green/20 px-2 py-0.5 text-xs font-medium text-heart-green font-mono uppercase tracking-wider">
-                  Topic Hub
-                </span>
-              </div>
-              <h2 className="mb-2 font-serif text-xl font-bold text-bone-white">
-                {pinnedDiscussions[0].title}
-              </h2>
-              <div className="prose prose-sm max-w-none text-bone-white/80">
-                <p className="line-clamp-3">{pinnedDiscussions[0].content}</p>
-              </div>
+            {/* Breadcrumbs */}
+            <nav className="mb-6 flex items-center gap-2 text-sm text-bone-white/70 font-mono">
               <Link
-                href={`/discussions/${pinnedDiscussions[0].slug}`}
-                className="mt-3 inline-block text-sm font-medium text-heart-green hover:underline font-mono"
+                href="/feed"
+                className="flex items-center gap-1 text-heart-green hover:text-heart-green/80 hover:underline"
               >
-                Read full introduction →
+                <Home size={14} />
+                Feed
               </Link>
-            </div>
-          )}
+              <span>/</span>
+              <Link
+                href="/discussions"
+                className="text-heart-green hover:text-heart-green/80 hover:underline"
+              >
+                Discussions
+              </Link>
+              <span>/</span>
+              <span className="text-bone-white">#{topicName}</span>
+            </nav>
 
-          {!user && (
-            <div className="border border-translucent-emerald bg-muted-moss p-4">
-              <p className="text-sm text-bone-white/70 font-mono">
-                Sign in to follow this topic and see personalized content in your feed.
-              </p>
-            </div>
-          )}
-        </div>
+            {/* Back Button */}
+            <Link
+              href="/feed"
+              className="mb-4 inline-flex items-center gap-2 text-bone-white/70 hover:text-bone-white font-mono transition-colors"
+            >
+              <ArrowLeft size={16} />
+              Back to Feed
+            </Link>
 
-        {/* Content List with Search */}
-        <TopicContentList allContent={allContent} topicName={topicName} />
+            <div className="mb-8">
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Hash className="h-8 w-8 text-heart-green" />
+                  <h1 className="font-serif text-4xl font-bold text-bone-white">#{topicName}</h1>
+                </div>
+                {user && (
+                  <TopicFilter topic={topicName} isFollowed={isTopicFollowed} />
+                )}
+              </div>
+
+              {/* State of the Science Summary */}
+              {pinnedDiscussions.length > 0 && pinnedDiscussions[0] && (
+                <div className="mb-6 border border-translucent-emerald bg-muted-moss p-6">
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className="border border-heart-green bg-heart-green/20 px-2 py-0.5 text-xs font-medium text-heart-green font-mono uppercase tracking-wider">
+                      Topic Hub
+                    </span>
+                  </div>
+                  <h2 className="mb-2 font-serif text-xl font-bold text-bone-white">
+                    {pinnedDiscussions[0].title}
+                  </h2>
+                  <div className="prose prose-sm max-w-none text-bone-white/80">
+                    <p className="line-clamp-3">{pinnedDiscussions[0].content}</p>
+                  </div>
+                  <Link
+                    href={`/discussions/${pinnedDiscussions[0].slug}`}
+                    className="mt-3 inline-block text-sm font-medium text-heart-green hover:underline font-mono"
+                  >
+                    Read full introduction →
+                  </Link>
+                </div>
+              )}
+
+              {!user && (
+                <div className="border border-translucent-emerald bg-muted-moss p-4">
+                  <p className="text-sm text-bone-white/70 font-mono">
+                    Sign in to follow this topic and see personalized content in your feed.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Content List with Search */}
+            <TopicContentList allContent={allContent} topicName={topicName} />
           </div>
-          
+
           {/* Sidebar */}
           <aside className="lg:col-span-1 space-y-6">
             <MostHelpfulSidebar topicName={topicName} />
           </aside>
         </div>
       </div>
-      
+
       {/* Newsletter Slide-in */}
       <NewsletterSlideIn />
     </main>

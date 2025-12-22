@@ -6,40 +6,62 @@ interface ProfileActivityProps {
   userId: string;
 }
 
+import { getDb } from "@/lib/db";
+
 export default async function ProfileActivity({ userId }: ProfileActivityProps) {
+  const sql = getDb();
+  let reviews = [];
+  let discussions = [];
+
   // Fetch recent reviews
-  const { data: reviews } = await supabase
-    .from("reviews")
-    .select(`
-      id,
-      content,
-      rating,
-      created_at,
-      protocols!reviews_protocol_id_fkey(
-        id,
-        title,
-        slug
-      )
-    `)
-    .eq("user_id", userId)
-    .eq("is_flagged", false)
-    .order("created_at", { ascending: false })
-    .limit(10);
+  try {
+    const reviewsData = await sql`
+      SELECT
+        r.id,
+        r.content,
+        r.rating,
+        r.created_at,
+        p.id as product_id,
+        p.title as product_title,
+        p.slug as product_slug
+      FROM reviews r
+      LEFT JOIN products p ON r.product_id = p.id
+      WHERE r.user_id = ${userId}
+        AND r.is_flagged = false
+      ORDER BY r.created_at DESC
+      LIMIT 10
+    `;
+
+    reviews = reviewsData.map((r: any) => ({
+      ...r,
+      protocols: r.product_id ? {
+        id: r.product_id,
+        title: r.product_title,
+        slug: r.product_slug
+      } : null
+    }));
+  } catch (error) {
+    console.error("Error fetching reviews:", error);
+  }
 
   // Fetch recent discussions
-  const { data: discussions } = await supabase
-    .from("discussions")
-    .select(`
-      id,
-      title,
-      content,
-      slug,
-      created_at
-    `)
-    .eq("author_id", userId)
-    .eq("is_flagged", false)
-    .order("created_at", { ascending: false })
-    .limit(10);
+  try {
+    discussions = await sql`
+      SELECT
+        id,
+        title,
+        content,
+        slug,
+        created_at
+      FROM discussions
+      WHERE author_id = ${userId}
+        AND is_flagged = false
+      ORDER BY created_at DESC
+      LIMIT 10
+    `;
+  } catch (error) {
+    console.error("Error fetching discussions:", error);
+  }
 
   const hasActivity = (reviews && reviews.length > 0) || (discussions && discussions.length > 0);
 
@@ -72,8 +94,8 @@ export default async function ProfileActivity({ userId }: ProfileActivityProps) 
                           <Star
                             key={i}
                             className={`h-4 w-4 ${i < review.rating
-                                ? "fill-earth-green text-earth-green"
-                                : "text-soft-clay"
+                              ? "fill-earth-green text-earth-green"
+                              : "text-soft-clay"
                               }`}
                           />
                         ))}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Check, Plus } from "lucide-react";
 import { toggleTopicFollow, getFollowedTopics, getMasterTopics } from "@/app/actions/topic-actions";
 
@@ -40,12 +40,15 @@ export default function FeedCalibration() {
     fetchData();
   }, []);
 
+  const hasCelebratedRef = useRef(false);
+
   useEffect(() => {
-    if (followedTopics.length >= CALIBRATION_THRESHOLD && !showConfetti) {
+    if (followedTopics.length >= CALIBRATION_THRESHOLD && !hasCelebratedRef.current) {
       setShowConfetti(true);
+      hasCelebratedRef.current = true;
       setTimeout(() => setShowConfetti(false), 5000);
     }
-  }, [followedTopics.length, showConfetti]);
+  }, [followedTopics.length]);
 
   const handleFollow = async (topicName: string) => {
     setLoadingStates((prev) => ({ ...prev, [topicName]: true }));
@@ -53,7 +56,7 @@ export default function FeedCalibration() {
 
     try {
       const result = await toggleTopicFollow(topicName);
-      
+
       if (result.success) {
         if (result.following) {
           setFollowedTopics((prev) => [...prev, topicName]);
@@ -130,8 +133,8 @@ export default function FeedCalibration() {
       <div className="mb-6">
         <div className="mb-2 flex items-center justify-between">
           <span className="text-xs font-mono uppercase tracking-wider text-bone-white/70">
-            {isUnlocked 
-              ? "Signal Lock: Calibrated" 
+            {isUnlocked
+              ? "Signal Lock: Calibrated"
               : `Feed Calibration: Select ${remaining} Topic${remaining !== 1 ? 's' : ''} to Initialize Signal`}
           </span>
           <span className="text-xs font-mono text-bone-white">
@@ -140,11 +143,10 @@ export default function FeedCalibration() {
         </div>
         <div className="relative h-2 w-full border border-translucent-emerald bg-forest-obsidian overflow-hidden">
           <div
-            className={`h-full transition-all duration-500 ${
-              isUnlocked
-                ? "bg-sme-gold"
-                : "bg-heart-green"
-            }`}
+            className={`h-full transition-all duration-500 ${isUnlocked
+              ? "bg-sme-gold"
+              : "bg-heart-green"
+              }`}
             style={{
               width: `${progress}%`,
               boxShadow: isUnlocked
@@ -165,23 +167,21 @@ export default function FeedCalibration() {
           return (
             <div
               key={topic.name}
-              className={`group relative border bg-forest-obsidian p-4 transition-all duration-200 active:scale-95 ${
-                isFollowing
-                  ? "border-heart-green bg-heart-green/10"
-                  : hasError
+              className={`group relative border bg-forest-obsidian p-4 transition-all duration-200 active:scale-95 ${isFollowing
+                ? "border-heart-green bg-heart-green/10"
+                : hasError
                   ? "border-amber-600/50 bg-amber-900/10"
                   : "border-translucent-emerald hover:border-heart-green"
-              } ${isConfirmed ? "ring-2 ring-heart-green ring-opacity-40" : ""} ${
-                hasError ? "animate-shake" : ""
-              }`}
+                } ${isConfirmed ? "ring-2 ring-heart-green ring-opacity-40" : ""} ${hasError ? "animate-shake" : ""
+                }`}
               style={{
                 boxShadow: isFollowing
                   ? "0 0 12px rgba(16, 185, 129, 0.3), 0 0 24px rgba(16, 185, 129, 0.15)"
                   : isConfirmed
-                  ? "0 0 16px rgba(16, 185, 129, 0.4), 0 0 24px rgba(16, 185, 129, 0.2)"
-                  : hasError
-                  ? "0 0 12px rgba(217, 119, 6, 0.3), 0 0 24px rgba(217, 119, 6, 0.15)"
-                  : "none",
+                    ? "0 0 16px rgba(16, 185, 129, 0.4), 0 0 24px rgba(16, 185, 129, 0.2)"
+                    : hasError
+                      ? "0 0 12px rgba(217, 119, 6, 0.3), 0 0 24px rgba(217, 119, 6, 0.15)"
+                      : "none",
                 transition: "all 0.3s ease-in-out, transform 0.1s ease-out",
                 animation: isConfirmed ? "pulse 2s ease-in-out" : hasError ? "shake 0.5s ease-in-out" : "none",
               }}
@@ -203,21 +203,19 @@ export default function FeedCalibration() {
                 <button
                   onClick={() => handleFollow(topic.name)}
                   disabled={isLoading}
-                  className={`relative flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border transition-all duration-200 active:scale-95 ${
-                    hasError
-                      ? "border-amber-600/50 bg-amber-900/20 text-amber-500"
-                      : isFollowing
+                  className={`relative flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border transition-all duration-200 active:scale-95 ${hasError
+                    ? "border-amber-600/50 bg-amber-900/20 text-amber-500"
+                    : isFollowing
                       ? "border-heart-green bg-heart-green/20 text-heart-green hover:bg-heart-green/30"
                       : "border-translucent-emerald bg-forest-obsidian text-bone-white/70 hover:border-heart-green hover:text-bone-white"
-                  } ${isLoading ? "opacity-50" : ""} ${
-                    isConfirmed ? "ring-2 ring-heart-green ring-opacity-40" : ""
-                  } ${hasError ? "animate-shake" : ""}`}
+                    } ${isLoading ? "opacity-50" : ""} ${isConfirmed ? "ring-2 ring-heart-green ring-opacity-40" : ""
+                    } ${hasError ? "animate-shake" : ""}`}
                   style={{
                     boxShadow: isConfirmed
                       ? "0 0 16px rgba(16, 185, 129, 0.4), 0 0 24px rgba(16, 185, 129, 0.2)"
                       : hasError
-                      ? "0 0 12px rgba(217, 119, 6, 0.3), 0 0 24px rgba(217, 119, 6, 0.15)"
-                      : "none",
+                        ? "0 0 12px rgba(217, 119, 6, 0.3), 0 0 24px rgba(217, 119, 6, 0.15)"
+                        : "none",
                     transition: "all 0.3s ease-in-out",
                     animation: isConfirmed ? "pulse 2s ease-in-out" : hasError ? "shake 0.5s ease-in-out" : "none",
                   }}
@@ -233,7 +231,7 @@ export default function FeedCalibration() {
                 </button>
               </div>
               {isFollowing && (
-                <div 
+                <div
                   className="mt-2 flex items-center gap-1.5"
                   style={{
                     boxShadow: "0 0 8px rgba(16, 185, 129, 0.3)",

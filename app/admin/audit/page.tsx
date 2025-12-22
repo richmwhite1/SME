@@ -9,7 +9,7 @@ export default async function AuditDashboardPage() {
     redirect("/");
   }
   const sql = getDb();
-  
+
   // Check user's reputation and SME status
   const profiles = await sql`
     SELECT contributor_score, is_verified_expert
@@ -17,11 +17,11 @@ export default async function AuditDashboardPage() {
     WHERE id = ${user.id}
     LIMIT 1
   `;
-  
+
   if (!profiles || profiles.length === 0) {
     redirect("/");
   }
-  
+
   const profile = profiles[0];
   const contributorScore = (profile as { contributor_score?: number }).contributor_score || 0;
   const isCertifiedSME = (profile as { is_verified_expert?: boolean }).is_verified_expert || false;
@@ -35,14 +35,14 @@ export default async function AuditDashboardPage() {
     submissions = await sql`
       SELECT 
         es.id,
-        es.protocol_id,
+        es.product_id,
         es.lab_name,
         es.batch_number,
         es.document_url,
         es.document_type,
         es.status,
         es.created_at as submitted_at,
-        p.id as protocol_id,
+        p.id as product_id,
         p.title as protocol_title
       FROM evidence_submissions es
       LEFT JOIN protocols p ON es.product_id = p.id
@@ -71,7 +71,7 @@ export default async function AuditDashboardPage() {
               Audit Queue
             </h2>
           </div>
-          <AuditDashboardClient 
+          <AuditDashboardClient
             submissions={(submissions || []) as any[]}
           />
         </div>

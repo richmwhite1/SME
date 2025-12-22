@@ -168,14 +168,31 @@ export async function getMasterTopics() {
   try {
     // Try to fetch from topics table first
     const topics = await sql`
-      SELECT name, description, icon
-      FROM topics
-      ORDER BY name ASC
+      SELECT name, description
+      FROM master_topics
+      ORDER BY display_order ASC
     `;
     return topics;
   } catch (error) {
     console.error("Error fetching master topics:", error);
     // Fallback or return empty
+    return [];
+  }
+}
+
+/**
+ * Get trending topics
+ */
+export async function getTrendingTopics(limit = 5) {
+  const sql = getDb();
+  try {
+    const trending = await sql`
+      SELECT * FROM get_trending_topics(${limit})
+    `;
+    return trending;
+  } catch (error) {
+    console.error("Error fetching trending topics:", error);
+    // Fallback if function doesn't exist
     return [];
   }
 }

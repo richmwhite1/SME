@@ -53,14 +53,14 @@ export async function createProductComment(
   try {
     // Ensure protocolId is a valid UUID string
     if (!protocolId || typeof protocolId !== 'string') {
-      result = { 
-        success: false, 
-        error: "Invalid product ID" 
+      result = {
+        success: false,
+        error: "Invalid product ID"
       };
     } else {
       // Insert comment - handle both authenticated and guest users
       const insertData: any = {
-        protocol_id: protocolId,
+        product_id: protocolId,
         content: trimmedContent,
         flag_count: 0,
         is_flagged: false,
@@ -70,18 +70,18 @@ export async function createProductComment(
         // Check if user is banned
         const isBanned = await checkUserBanned(user.id);
         if (isBanned) {
-          return { 
-            success: false, 
-            error: "Your laboratory access has been restricted" 
+          return {
+            success: false,
+            error: "Your laboratory access has been restricted"
           };
         }
 
         // Authenticated user
         const authorId = String(user.id);
         if (!authorId || authorId.trim() === '') {
-          result = { 
-            success: false, 
-            error: "Invalid user ID" 
+          result = {
+            success: false,
+            error: "Invalid user ID"
           };
         } else {
           // Check keyword blacklist (Revenue Guard)
@@ -89,7 +89,7 @@ export async function createProductComment(
           const shouldAutoFlag = blacklistMatches.length > 0;
 
           console.log('Insert Data:', {
-            protocol_id: protocolId,
+            product_id: protocolId,
             author_id: authorId,
             content: trimmedContent,
             flag_count: shouldAutoFlag ? 1 : 0,
@@ -113,13 +113,13 @@ export async function createProductComment(
 
             if (!insertedComment || !insertedComment.id) {
               console.error("Comment insert returned no data");
-              result = { 
-                success: false, 
-                error: "Comment was not created. Please try again." 
+              result = {
+                success: false,
+                error: "Comment was not created. Please try again."
               };
             } else {
               console.log("Comment successfully created:", insertedComment.id);
-              
+
               // If blacklisted keyword found, auto-flag and move to moderation queue
               if (shouldAutoFlag && blacklistMatches.length > 0) {
                 await handleBlacklistedContent(
@@ -136,19 +136,19 @@ export async function createProductComment(
                 console.log("Comment auto-flagged due to blacklisted keyword:", blacklistMatches[0].keyword);
               }
 
-              result = { 
-                success: true, 
-                commentId: insertedComment.id 
+              result = {
+                success: true,
+                commentId: insertedComment.id
               };
             }
           } catch (error: any) {
             console.error("Error creating comment:", error);
             console.error("Protocol ID:", protocolId);
             console.error("Author ID (user.id):", authorId);
-            
+
             // Return structured error instead of throwing
             let errorMessage = "Failed to create comment";
-            
+
             if (error.message?.includes("does not exist") || error.code === "42P01") {
               errorMessage = "Product comments table not found. Please run the SQL migration.";
             } else if (error.message?.includes("foreign key") || error.code === "23503") {
@@ -158,26 +158,26 @@ export async function createProductComment(
             } else {
               errorMessage = `Failed to create comment: ${error.message || "Unknown error"}`;
             }
-            
-            result = { 
-              success: false, 
-              error: errorMessage 
+
+            result = {
+              success: false,
+              error: errorMessage
             };
           }
         }
       } else {
         // Guest user - will be handled by createGuestProductComment
-        result = { 
-          success: false, 
-          error: "Use createGuestProductComment for guest comments" 
+        result = {
+          success: false,
+          error: "Use createGuestProductComment for guest comments"
         };
       }
     }
   } catch (err) {
     console.error("Unexpected error in createProductComment:", err);
-    result = { 
-      success: false, 
-      error: err instanceof Error ? err.message : "An unexpected error occurred" 
+    result = {
+      success: false,
+      error: err instanceof Error ? err.message : "An unexpected error occurred"
     };
   }
 
@@ -206,9 +206,9 @@ export async function createGuestProductComment(
 
   // Ensure user is NOT authenticated (this is for guests only)
   if (user) {
-    return { 
-      success: false, 
-      error: "Authenticated users should use createProductComment" 
+    return {
+      success: false,
+      error: "Authenticated users should use createProductComment"
     };
   }
 
@@ -233,9 +233,9 @@ export async function createGuestProductComment(
   // Guest users require AI moderation via OpenAI Moderation API
   const moderationResult = await moderateContent(trimmedContent);
   if (moderationResult.isFlagged) {
-    return { 
-      success: false, 
-      error: "Content rejected by laboratory AI." 
+    return {
+      success: false,
+      error: "Content rejected by laboratory AI."
     };
   }
 
@@ -254,9 +254,9 @@ export async function createGuestProductComment(
     const insertedComment = result[0];
 
     if (!insertedComment || !insertedComment.id) {
-      return { 
-        success: false, 
-        error: "Comment was not created. Please try again." 
+      return {
+        success: false,
+        error: "Comment was not created. Please try again."
       };
     }
 
@@ -265,15 +265,15 @@ export async function createGuestProductComment(
     revalidatePath(`/products/[id]`, "page");
     revalidatePath("/products", "page");
 
-    return { 
-      success: true, 
-      commentId: insertedComment.id 
+    return {
+      success: true,
+      commentId: insertedComment.id
     };
   } catch (err: any) {
     console.error("Unexpected error in createGuestProductComment:", err);
-    return { 
-      success: false, 
-      error: err instanceof Error ? err.message : "An unexpected error occurred" 
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "An unexpected error occurred"
     };
   }
 }
@@ -330,7 +330,7 @@ export async function createOrUpdateProduct(formData: FormData) {
     if (productId) {
       // Update existing product
       await sql`
-        UPDATE protocols
+        UPDATE products
         SET title = ${title.trim()},
             problem_solved = ${problemSolved.trim()},
             slug = ${slug},
@@ -349,7 +349,7 @@ export async function createOrUpdateProduct(formData: FormData) {
     } else {
       // Create new product
       await sql`
-        INSERT INTO protocols (
+        INSERT INTO products (
           title, problem_solved, slug, created_by, reference_url, ai_summary,
           buy_url, discount_code, lab_tested, organic, purity_verified,
           third_party_coa, certification_notes, lab_pdf_url
@@ -428,17 +428,17 @@ export async function onboardProduct(formData: FormData) {
   const thirdPartyLabVerified = formData.get("third_party_lab_verified") === "on";
   const coaUrl = formData.get("coa_url") as string | null;
   const referenceUrl = formData.get("reference_url") as string | null;
-  
+
   // Parse images array from JSON string
   // NOTE: We use "image_urls" instead of "images" because the file input uses "images"
   let images: string[] = [];
   const imagesJson = formData.get("image_urls") as string | null;
   console.log("onboardProduct - Image URLs JSON received:", imagesJson);
-  
+
   // Fallback: Also check "images" in case of old form submissions
   const fallbackImagesJson = imagesJson ? null : (formData.get("images") as string | null);
   const finalImagesJson = imagesJson || fallbackImagesJson;
-  
+
   if (finalImagesJson) {
     try {
       // Check if it's a File object (shouldn't happen, but handle it)
@@ -485,7 +485,7 @@ export async function onboardProduct(formData: FormData) {
   // Ensure images is properly formatted as an array for PostgreSQL TEXT[]
   // PostgreSQL arrays need to be actual arrays, not JSON strings
   const imagesForDb = images.length > 0 ? images : null;
-  
+
   console.log("onboardProduct - Preparing images for database:");
   console.log("  Images array:", images);
   console.log("  Images for DB:", imagesForDb);
@@ -527,7 +527,7 @@ export async function onboardProduct(formData: FormData) {
   try {
     // Insert product using raw SQL
     const result = await sql`
-      INSERT INTO protocols (
+      INSERT INTO products (
         title, problem_solved, slug, created_by, reference_url, ai_summary, buy_url,
         is_sme_certified, source_transparency, purity_tested, potency_verified,
         excipient_audit, operational_legitimacy, third_party_lab_verified, coa_url,
@@ -548,41 +548,41 @@ export async function onboardProduct(formData: FormData) {
     const insertedId = insertedData?.id || null;
     const insertedSlug = insertedData?.slug || slug;
     const insertedImages = insertedData?.images || null;
-  
-  console.log("onboardProduct - Product created successfully:");
-  console.log("  ID:", insertedId);
-  console.log("  Slug:", insertedSlug);
-  console.log("  Images saved in DB:", insertedImages);
-  console.log("  Images type:", typeof insertedImages);
-  console.log("  Images is array?", Array.isArray(insertedImages));
-  
-  // CRITICAL VERIFICATION: Check if images were actually saved
-  if (images.length > 0) {
-    if (!insertedImages || (Array.isArray(insertedImages) && insertedImages.length === 0)) {
-      console.error("⚠️ WARNING: Images were uploaded but NOT saved to database!");
-      console.error("  Expected images:", images);
-      console.error("  Saved images:", insertedImages);
-      
-      // ATTEMPT FIX: Try to update the product with images directly
-      if (insertedId) {
-        console.log("Attempting to fix by updating product with images...");
-        try {
-          const updateResult = await sql`
-            UPDATE protocols
+
+    console.log("onboardProduct - Product created successfully:");
+    console.log("  ID:", insertedId);
+    console.log("  Slug:", insertedSlug);
+    console.log("  Images saved in DB:", insertedImages);
+    console.log("  Images type:", typeof insertedImages);
+    console.log("  Images is array?", Array.isArray(insertedImages));
+
+    // CRITICAL VERIFICATION: Check if images were actually saved
+    if (images.length > 0) {
+      if (!insertedImages || (Array.isArray(insertedImages) && insertedImages.length === 0)) {
+        console.error("⚠️ WARNING: Images were uploaded but NOT saved to database!");
+        console.error("  Expected images:", images);
+        console.error("  Saved images:", insertedImages);
+
+        // ATTEMPT FIX: Try to update the product with images directly
+        if (insertedId) {
+          console.log("Attempting to fix by updating product with images...");
+          try {
+            const updateResult = await sql`
+            UPDATE products
             SET images = ${sql.array(images)}
             WHERE id = ${insertedId}
             RETURNING images
           `;
-          console.log("✅ Fixed: Images updated successfully:", updateResult[0]?.images);
-        } catch (updateError) {
-          console.error("Failed to update images:", updateError);
+            console.log("✅ Fixed: Images updated successfully:", updateResult[0]?.images);
+          } catch (updateError) {
+            console.error("Failed to update images:", updateError);
+          }
         }
+      } else {
+        console.log("✅ SUCCESS: Images were saved to database");
+        console.log("  Saved images count:", Array.isArray(insertedImages) ? insertedImages.length : "N/A");
       }
-    } else {
-      console.log("✅ SUCCESS: Images were saved to database");
-      console.log("  Saved images count:", Array.isArray(insertedImages) ? insertedImages.length : "N/A");
     }
-  }
 
     if (!insertedId) {
       throw new Error("Failed to create product: No ID returned");
@@ -597,7 +597,7 @@ export async function onboardProduct(formData: FormData) {
   } catch (error: any) {
     console.error("Error creating product:", error);
     console.error("Product data:", productData);
-    
+
     // Provide more specific error messages
     if (error.code === "42501") {
       throw new Error("Permission denied. Please ensure you have admin access.");
@@ -609,3 +609,34 @@ export async function onboardProduct(formData: FormData) {
   }
 }
 
+
+/**
+ * Search products for Swap Specimen Modal
+ */
+export async function searchProducts(query: string, limit = 20) {
+  const sql = getDb();
+  let products;
+
+  try {
+    if (query.trim()) {
+      products = await sql`
+        SELECT id, title, problem_solved, images
+        FROM products
+        WHERE (title ILIKE ${`%${query}%`} OR problem_solved ILIKE ${`%${query}%`})
+        ORDER BY title ASC
+        LIMIT ${limit}
+      `;
+    } else {
+      products = await sql`
+        SELECT id, title, problem_solved, images
+        FROM products
+        ORDER BY title ASC
+        LIMIT ${limit}
+      `;
+    }
+    return products;
+  } catch (error) {
+    console.error("Error searching products:", error);
+    return [];
+  }
+}

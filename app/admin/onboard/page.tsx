@@ -20,7 +20,7 @@ export default async function AdminOnboardPage() {
   try {
     products = await sql`
       SELECT id, title, slug
-      FROM protocols
+      FROM products
       ORDER BY created_at DESC
       LIMIT 50
     `;

@@ -1,72 +1,51 @@
 import { ImageResponse } from '@vercel/og';
 import { NextRequest } from 'next/server';
+import { getDb } from '@/lib/db';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
+// Revalidate every hour
+export const revalidate = 3600;
 
 export async function GET(request: NextRequest) {
   try {
-    // Fetch top 3 trending products from Supabase
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseKey) {
-      return new Response('Missing Supabase configuration', { status: 500 });
-    }
+    const sql = getDb();
 
     // Get start of this month
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
+    const startOfMonthISO = startOfMonth.toISOString();
 
-    // Fetch protocols created this month
-    const protocolsResponse = await fetch(
-      `${supabaseUrl}/rest/v1/protocols?created_at=gte.${startOfMonth.toISOString()}&is_flagged=eq.false&select=id,title,images,tags,is_sme_certified&order=created_at.desc&limit=50`,
-      {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
-      }
-    );
-
-    const protocols = await protocolsResponse.json();
+    // Fetch products created this month
+    const protocols = await sql`
+      SELECT id, title, images, tags, is_sme_certified
+      FROM products
+      WHERE created_at >= ${startOfMonthISO}
+      AND (is_flagged = false OR is_flagged IS NULL)
+      ORDER BY created_at DESC
+      LIMIT 50
+    `;
 
     if (!protocols || protocols.length === 0) {
       return new Response('No trending products found', { status: 404 });
     }
 
     // Fetch review counts for this month
-    const reviewsResponse = await fetch(
-      `${supabaseUrl}/rest/v1/reviews?created_at=gte.${startOfMonth.toISOString()}&is_flagged=eq.false&select=protocol_id`,
-      {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
-      }
-    );
+    const reviews = await sql`
+      SELECT product_id
+      FROM reviews
+      WHERE created_at >= ${startOfMonthISO}
+      AND (is_flagged = false OR is_flagged IS NULL)
+    `;
 
-    // Fetch comment counts for this month
-    const commentsResponse = await fetch(
-      `${supabaseUrl}/rest/v1/product_comments?created_at=gte.${startOfMonth.toISOString()}&is_flagged=eq.false&select=protocol_id`,
-      {
-        headers: {
-          'apikey': supabaseKey,
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
-      }
-    );
-
-    const reviews = await reviewsResponse.json();
-    const comments = await commentsResponse.json();
-
-    // Calculate activity scores (reviews + comments this month)
+    // Calculate activity scores (reviews this month)
     const protocolsWithScores = protocols.map((protocol: any) => {
-      const protocolReviews = (reviews || []).filter((r: any) => r.protocol_id === protocol.id);
-      const protocolComments = (comments || []).filter((c: any) => c.protocol_id === protocol.id);
-      // activity_score = total community signals (reviews + comments) this month
-      const activityScore = protocolReviews.length + protocolComments.length;
-      
+      const protocolReviews = reviews.filter((r: any) => r.product_id === protocol.id);
+
+      // activity_score = total community signals (reviews) this month
+      // Note: We removed detailed product comments table for simplification, relying on reviews
+      const activityScore = protocolReviews.length;
+
       return {
         ...protocol,
         activityScore, // Source of Truth: actual database counts

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { Hash, TrendingUp, Plus, Sparkles } from "lucide-react";
-import { toggleTopicFollow } from "@/app/actions/topic-actions";
+import { toggleTopicFollow, getMasterTopics, getTrendingTopics, getFollowedTopics } from "@/app/actions/topic-actions";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -32,61 +32,37 @@ export default function TopicLeaderboard() {
 
   useEffect(() => {
     async function fetchData() {
-      // Fetch master topics first (for Discover Topics sidebar)
-      const { data: masterData, error: masterError } = await supabase
-        .from("master_topics")
-        .select("name, description")
-        .order("display_order", { ascending: true })
-        .limit(12);
-
-      if (!masterError && masterData) {
-        setMasterTopics(masterData as MasterTopic[]);
-      }
-
-      // Try to fetch trending topics with error handling
       try {
-        const { data: trendingData, error } = await supabase.rpc("get_trending_topics", {
-          limit_count: 5,
-        } as any);
+        // Fetch master topics
+        const masterData = await getMasterTopics();
+        setMasterTopics(masterData as MasterTopic[]);
 
-        if (error) {
-          console.error("Error fetching trending topics:", error);
-          // If RPC fails, show master topics as "Discover Topics"
-          setShowMasterTopics(true);
+        // Fetch trending topics
+        const trendingData = await getTrendingTopics(5);
+        if (trendingData && trendingData.length > 0) {
+          setTopics(trendingData as TrendingTopic[]);
         } else {
-          const trendingTopics = (trendingData || []) as TrendingTopic[];
-          if (trendingTopics.length > 0) {
-            setTopics(trendingTopics);
-          } else {
-            // If no trending topics, show master topics as "Discover Topics"
-            setShowMasterTopics(true);
-          }
+          setShowMasterTopics(true);
         }
-      } catch (err) {
-        console.error("Error in get_trending_topics RPC call:", err);
-        // If database is busy or RPC fails, show master topics as fallback
+
+        // Fetch followed topics if user is logged in
+        if (isLoaded && user) {
+          const followed = await getFollowedTopics();
+          setFollowedTopics(followed);
+
+          // Initialize following states
+          const states: Record<string, boolean> = {};
+          followed.forEach((topic: string) => {
+            states[topic] = true;
+          });
+          setFollowingStates(states);
+        }
+      } catch (error) {
+        console.error("Error fetching leaderboard data:", error);
         setShowMasterTopics(true);
+      } finally {
+        setLoading(false);
       }
-
-      // Fetch followed topics if user is logged in
-      if (isLoaded && user) {
-        const { data: follows } = await supabase
-          .from("topic_follows")
-          .select("topic_name")
-          .eq("user_id", user.id);
-
-        const followed = (follows || []).map((f: { topic_name: string }) => f.topic_name);
-        setFollowedTopics(followed);
-
-        // Initialize following states
-        const states: Record<string, boolean> = {};
-        followed.forEach((topic: string) => {
-          states[topic] = true;
-        });
-        setFollowingStates(states);
-      }
-
-      setLoading(false);
     }
 
     fetchData();
@@ -233,8 +209,8 @@ export default function TopicLeaderboard() {
                     }}
                     disabled={isLoading}
                     className={`relative flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition-all duration-200 active:scale-95 ${isFollowing
-                        ? "border-heart-green bg-heart-green/20 text-heart-green hover:bg-heart-green/30"
-                        : "border-translucent-emerald bg-forest-obsidian text-bone-white/70 hover:border-heart-green hover:text-bone-white"
+                      ? "border-heart-green bg-heart-green/20 text-heart-green hover:bg-heart-green/30"
+                      : "border-translucent-emerald bg-forest-obsidian text-bone-white/70 hover:border-heart-green hover:text-bone-white"
                       } ${isLoading ? "opacity-50" : ""} ${signalConfirmed[topic.name] ? "ring-2 ring-heart-green ring-opacity-40" : ""
                       }`}
                     style={{
@@ -313,8 +289,8 @@ export default function TopicLeaderboard() {
                         <div
                           key={level}
                           className={`h-1.5 w-1.5 rounded-full ${level <= topic.signal_score
-                              ? getSignalColor(topic.signal_score)
-                              : "bg-soft-clay/20"
+                            ? getSignalColor(topic.signal_score)
+                            : "bg-soft-clay/20"
                             }`}
                         />
                       ))}
@@ -334,8 +310,8 @@ export default function TopicLeaderboard() {
                   }}
                   disabled={isLoading}
                   className={`relative flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition-all duration-200 ${isFollowing
-                      ? "border-heart-green bg-heart-green/20 text-heart-green hover:bg-heart-green/30"
-                      : "bg-soft-clay/30 text-deep-stone/60 hover:bg-earth-green/20 hover:text-earth-green"
+                    ? "border-heart-green bg-heart-green/20 text-heart-green hover:bg-heart-green/30"
+                    : "bg-soft-clay/30 text-deep-stone/60 hover:bg-earth-green/20 hover:text-earth-green"
                     } ${isLoading ? "opacity-50" : ""} ${signalConfirmed[topic.topic_name] ? "ring-2 ring-heart-green ring-opacity-40" : ""
                     }`}
                   style={{

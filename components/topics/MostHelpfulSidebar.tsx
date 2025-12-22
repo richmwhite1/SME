@@ -14,23 +14,28 @@ interface Contributor {
   reputation: number;
 }
 
+import { getDb } from "@/lib/db";
+
 export default async function MostHelpfulSidebar({
   topicName,
 }: MostHelpfulSidebarProps) {
-  // Fetch most helpful contributors for this topic
-  const { data: contributors, error } = await supabase
-    .from("most_helpful_contributors")
-    .select("user_id, full_name, username, avatar_url, reputation")
-    .eq("topic", topicName)
-    .order("reputation", { ascending: false })
-    .limit(10);
+  const sql = getDb();
+  let typedContributors: Contributor[] = [];
 
-  if (error) {
+  try {
+    // Fetch most helpful contributors for this topic
+    const contributors = await sql`
+      SELECT user_id, full_name, username, avatar_url, reputation
+      FROM most_helpful_contributors
+      WHERE topic = ${topicName}
+      ORDER BY reputation DESC
+      LIMIT 10
+    `;
+    typedContributors = contributors as unknown as Contributor[];
+  } catch (error) {
     console.error("Error fetching most helpful contributors:", error);
     return null;
   }
-
-  const typedContributors = (contributors || []) as Contributor[];
 
   if (typedContributors.length === 0) {
     return null;

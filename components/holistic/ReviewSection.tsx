@@ -11,7 +11,8 @@ interface Review {
     full_name: string;
     username: string | null;
     avatar_url: string | null;
-    healer_score: number;
+    contributor_score: number | null;
+    is_verified_expert: boolean | null;
   } | null;
 }
 
@@ -21,42 +22,47 @@ interface ReviewSectionProps {
   productTitle?: string;
 }
 
+import { getDb } from "@/lib/db";
+
 export default async function ReviewSection({
   protocolId,
   protocolSlug,
   productTitle,
 }: ReviewSectionProps) {
   const user = await currentUser();
+  const sql = getDb();
+  let serializedReviews: Review[] = [];
 
-  // Fetch reviews with profile information
-  // Filter by protocol_id (product ID) and exclude flagged reviews
-  // Handle null is_flagged values (reviews created before flagging was added)
-  const { data: reviews, error } = await supabase
-    .from("reviews")
-    .select("id, rating, content, created_at, profiles(id, full_name, username, avatar_url, contributor_score, is_verified_expert)")
-    .eq("protocol_id", protocolId)
-    .or("is_flagged.eq.false,is_flagged.is.null")
-    .order("created_at", { ascending: false });
+  try {
+    const rows = await sql`
+      SELECT
+        r.id, r.rating, r.content, r.created_at,
+        p.id as profile_id, p.full_name, p.username, p.avatar_url, p.contributor_score, p.is_verified_expert
+      FROM reviews r
+      LEFT JOIN profiles p ON r.user_id = p.id
+      WHERE r.product_id = ${protocolId}
+        AND ((r.is_flagged = false) OR (r.is_flagged IS NULL))
+      ORDER BY r.created_at DESC
+    `;
 
-  if (error) {
+    // Serialize reviews data
+    serializedReviews = rows.map((row: any) => ({
+      id: row.id,
+      rating: row.rating,
+      content: row.content,
+      created_at: new Date(row.created_at).toISOString(),
+      profiles: row.profile_id ? {
+        id: String(row.profile_id),
+        full_name: row.full_name,
+        username: row.username,
+        avatar_url: row.avatar_url,
+        contributor_score: row.contributor_score || 0,
+        is_verified_expert: row.is_verified_expert || false,
+      } : null,
+    }));
+  } catch (error) {
     console.error("Error fetching reviews:", error);
   }
-
-  // Serialize reviews data - convert Date objects to ISO strings
-  const serializedReviews = (reviews || []).map((review: any) => ({
-    ...review,
-    created_at: review.created_at instanceof Date
-      ? review.created_at.toISOString()
-      : typeof review.created_at === 'string'
-        ? review.created_at
-        : new Date(review.created_at).toISOString(),
-    profiles: review.profiles ? {
-      ...review.profiles,
-      id: String(review.profiles.id),
-      contributor_score: review.profiles.contributor_score ?? 0,
-      is_verified_expert: review.profiles.is_verified_expert ?? false,
-    } : null,
-  })) as Review[];
 
   // Serialize user object - only pass serializable data
   const serializedUser = user ? {

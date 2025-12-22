@@ -25,7 +25,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Fetch all products (protocols)
     const productsResult = await sql`
       SELECT id, slug, updated_at, created_at
-      FROM protocols
+      FROM products
       WHERE is_flagged IS FALSE OR is_flagged IS NULL
     `;
     products = productsResult as unknown as Product[];
@@ -87,11 +87,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     products.forEach((product) => {
       sitemapEntries.push({
         url: `${baseUrl}/products/${product.id}`,
-        lastModified: product.updated_at 
-          ? new Date(product.updated_at) 
-          : product.created_at 
-          ? new Date(product.created_at) 
-          : new Date(),
+        lastModified: product.updated_at
+          ? new Date(product.updated_at)
+          : product.created_at
+            ? new Date(product.created_at)
+            : new Date(),
         changeFrequency: "weekly",
         priority: 0.8,
       });
@@ -103,11 +103,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     discussions.forEach((discussion) => {
       sitemapEntries.push({
         url: `${baseUrl}/discussions/${discussion.slug}`,
-        lastModified: discussion.updated_at 
-          ? new Date(discussion.updated_at) 
-          : discussion.created_at 
-          ? new Date(discussion.created_at) 
-          : new Date(),
+        lastModified: discussion.updated_at
+          ? new Date(discussion.updated_at)
+          : discussion.created_at
+            ? new Date(discussion.created_at)
+            : new Date(),
         changeFrequency: "weekly",
         priority: 0.7,
       });

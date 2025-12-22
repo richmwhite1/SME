@@ -12,7 +12,7 @@ export async function GET() {
     try {
       const certifiedResult = await sql`
         SELECT COUNT(*)::INTEGER as count
-        FROM protocols
+        FROM products
         WHERE is_sme_certified = true
       `;
       certifiedCount = certifiedResult[0]?.count || 0;
