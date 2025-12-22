@@ -40,7 +40,7 @@ export default function NotificationCenter() {
     // Only fetch if user is loaded and logged in
     if (isLoaded && user) {
       fetchNotifications();
-      
+
       // Poll for new notifications every 30 seconds
       const interval = setInterval(() => {
         if (user) {
@@ -63,54 +63,18 @@ export default function NotificationCenter() {
       return;
     }
 
-    const supabase = createClient();
-    
-    // Fetch notifications
-    const { data: notificationsData, error } = await supabase
-      .from("notifications")
-      .select(`
-        id,
-        actor_id,
-        type,
-        target_id,
-        target_type,
-        is_read,
-        created_at,
-        metadata
-      `)
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(50);
+    try {
+      const response = await fetch('/api/notifications');
 
-    if (error) {
-      console.error("Error fetching notifications:", error);
-      return;
-    }
+      if (!response.ok) {
+        console.error("Error fetching notifications:", response.statusText);
+        setLoading(false);
+        return;
+      }
 
-    // Fetch actor profiles separately if we have notifications
-    let profilesMap = new Map();
-    if (notificationsData && notificationsData.length > 0) {
-      const actorIds = [...new Set((notificationsData || []).map((n: any) => n.actor_id))];
-      const { data: profilesData } = await supabase
-        .from("profiles")
-        .select("id, full_name, username, avatar_url")
-        .in("id", actorIds);
+      const data = await response.json();
 
-      // Create a map of actor_id to profile
-      (profilesData || []).forEach((profile: any) => {
-        profilesMap.set(profile.id, profile);
-      });
-    }
-
-    // Combine notifications with profile data
-    const notificationsWithProfiles = (notificationsData || []).map((n: any) => ({
-      ...n,
-      profiles: profilesMap.get(n.actor_id) || null,
-    }));
-
-    const formattedNotifications = (notificationsWithProfiles || []).map((n: any) => {
-      const profile = n.profiles || null;
-      return {
+      const formattedNotifications = (data.notifications || []).map((n: any) => ({
         id: n.id,
         actor_id: n.actor_id,
         type: n.type,
@@ -119,42 +83,50 @@ export default function NotificationCenter() {
         is_read: n.is_read,
         created_at: n.created_at,
         metadata: n.metadata || {},
-        actor_name: profile?.full_name || null,
-        actor_username: profile?.username || null,
-        actor_avatar: profile?.avatar_url || null,
-      };
-    });
+        actor_name: n.actor_name || null,
+        actor_username: n.actor_username || null,
+        actor_avatar: n.actor_avatar || null,
+      }));
 
-    setNotifications(formattedNotifications);
-    setUnreadCount(formattedNotifications.filter((n) => !n.is_read).length);
-    setLoading(false);
+      setNotifications(formattedNotifications);
+      setUnreadCount(formattedNotifications.filter((n) => !n.is_read).length);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      setLoading(false);
+    }
   };
 
   const markAsRead = async (notificationId: string) => {
-    const supabase = createClient();
-    await supabase
-      .from("notifications")
-      .update({ is_read: true })
-      .eq("id", notificationId);
+    try {
+      await fetch('/api/notifications/mark-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationId }),
+      });
 
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === notificationId ? { ...n, is_read: true } : n))
-    );
-    setUnreadCount((prev) => Math.max(0, prev - 1));
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notificationId ? { ...n, is_read: true } : n))
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+    }
   };
 
   const markAllAsRead = async () => {
     if (!user) return;
 
-    const supabase = createClient();
-    await supabase
-      .from("notifications")
-      .update({ is_read: true })
-      .eq("user_id", user.id)
-      .eq("is_read", false);
+    try {
+      await fetch('/api/notifications/mark-all-read', {
+        method: 'POST',
+      });
 
-    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    setUnreadCount(0);
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error("Error marking all as read:", error);
+    }
   };
 
   const getNotificationUrl = (notification: Notification): string => {
@@ -199,7 +171,7 @@ export default function NotificationCenter() {
 
   const getNotificationText = (notification: Notification): string => {
     const actor = notification.actor_name || "Someone";
-    
+
     switch (notification.type) {
       case "reply":
         return `${actor} replied to your comment`;
@@ -294,7 +266,7 @@ export default function NotificationCenter() {
             className="fixed inset-0 z-40 bg-forest-obsidian/80"
             onClick={() => setIsOpen(false)}
           />
-          
+
           {/* Drawer */}
           <div className="fixed right-0 top-0 z-50 h-full w-96 border-l border-translucent-emerald bg-muted-moss shadow-xl">
             <div className="flex h-full flex-col">
@@ -352,11 +324,10 @@ export default function NotificationCenter() {
                             }
                             setIsOpen(false);
                           }}
-                          className={`block border-l-2 p-3 transition-colors ${
-                            isUnread
+                          className={`block border-l-2 p-3 transition-colors ${isUnread
                               ? "border-sme-gold bg-forest-obsidian/50"
                               : "border-transparent bg-muted-moss"
-                          } hover:bg-forest-obsidian`}
+                            } hover:bg-forest-obsidian`}
                         >
                           <div className="flex items-start gap-3">
                             <div className="mt-0.5 flex-shrink-0">

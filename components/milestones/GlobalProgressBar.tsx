@@ -14,22 +14,13 @@ export default function GlobalProgressBar({ className = "" }: GlobalProgressBarP
   useEffect(() => {
     async function fetchVerifiedCount() {
       try {
-        const supabase = createClient();
-        
-        // Count verified products (SME certified or with reviews)
-        const { count: certifiedCount } = await supabase
-          .from("protocols")
-          .select("*", { count: "exact", head: true })
-          .eq("is_sme_certified", true);
-
-        const { count: reviewedCount } = await supabase
-          .from("reviews")
-          .select("*", { count: "exact", head: true })
-          .or("is_flagged.eq.false,is_flagged.is.null");
-
-        // Use certified count as primary, fallback to reviewed count
-        const count = certifiedCount || reviewedCount || 0;
-        setVerifiedCount(count);
+        // Fetch verified product count from API
+        const response = await fetch('/api/stats/verified-count');
+        if (!response.ok) {
+          throw new Error('Failed to fetch verified count');
+        }
+        const data = await response.json();
+        setVerifiedCount(data.count || 0);
       } catch (error) {
         // Silently fail - don't crash the page if fetch fails
         console.error("Error fetching verified count:", error);

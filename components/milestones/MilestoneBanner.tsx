@@ -21,25 +21,21 @@ export default function MilestoneBanner() {
   useEffect(() => {
     async function fetchMilestone() {
       try {
-        const supabase = createClient();
-        
-        // Fetch the most recent displayed milestone
-        const { data, error } = await supabase
-          .from("community_milestones")
-          .select("*")
-          .eq("is_displayed", true)
-          .order("achieved_at", { ascending: false })
-          .limit(1)
-          .single();
+        // Fetch the most recent displayed milestone from API
+        const response = await fetch('/api/milestones/latest');
+        if (!response.ok) {
+          throw new Error('Failed to fetch milestone');
+        }
+        const data = await response.json();
 
-        if (!error && data) {
+        if (data.milestone) {
           // Check if this milestone was already dismissed
           const dismissedIds = JSON.parse(
             localStorage.getItem("dismissedMilestones") || "[]"
           );
-          
-          if (!dismissedIds.includes(data.id)) {
-            setMilestone(data as Milestone);
+
+          if (!dismissedIds.includes(data.milestone.id)) {
+            setMilestone(data.milestone as Milestone);
           }
         }
       } catch (error) {
@@ -50,7 +46,7 @@ export default function MilestoneBanner() {
     }
 
     fetchMilestone();
-    
+
     // Refresh every 30 seconds to check for new milestones
     const interval = setInterval(fetchMilestone, 30000);
     return () => clearInterval(interval);
@@ -99,7 +95,7 @@ export default function MilestoneBanner() {
         >
           <X size={16} />
         </button>
-        
+
         <div className="flex items-start gap-3 pr-6">
           <div className="flex-shrink-0 mt-0.5">
             <Award className="h-5 w-5 text-sme-gold" />

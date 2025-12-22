@@ -38,20 +38,19 @@ export default function ReviewSectionClient({
 }: ReviewSectionClientProps) {
   const router = useRouter();
   const [reviews, setReviews] = useState<Review[]>(initialReviews);
-  
+
   // Fetch fresh reviews function
   const fetchReviews = async () => {
     // Small delay to ensure database transaction has committed
     await new Promise(resolve => setTimeout(resolve, 200));
-    
-    const supabase = createClient();
+
     const { data: freshReviews, error } = await supabase
       .from("reviews")
       .select("id, rating, content, created_at, profiles(id, full_name, username, avatar_url, contributor_score, is_verified_expert)")
       .eq("protocol_id", protocolId)
       .or("is_flagged.eq.false,is_flagged.is.null")
       .order("created_at", { ascending: false });
-    
+
     if (!error && freshReviews) {
       setReviews(freshReviews as Review[]);
     } else {
@@ -64,8 +63,8 @@ export default function ReviewSectionClient({
 
       {/* Review Form */}
       {user ? (
-        <ReviewForm 
-          protocolId={protocolId} 
+        <ReviewForm
+          protocolId={protocolId}
           protocolSlug={protocolSlug}
           onReviewAdded={(newReview) => {
             // Optimistic update: add review immediately
@@ -96,9 +95,9 @@ export default function ReviewSectionClient({
           </div>
         ) : (
           reviews.map((review) => (
-            <ReviewCard 
-              key={review.id} 
-              review={review} 
+            <ReviewCard
+              key={review.id}
+              review={review}
               productTitle={productTitle}
               productSlug={protocolSlug}
             />

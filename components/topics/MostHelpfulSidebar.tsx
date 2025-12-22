@@ -17,8 +17,6 @@ interface Contributor {
 export default async function MostHelpfulSidebar({
   topicName,
 }: MostHelpfulSidebarProps) {
-  const supabase = createClient();
-
   // Fetch most helpful contributors for this topic
   const { data: contributors, error } = await supabase
     .from("most_helpful_contributors")

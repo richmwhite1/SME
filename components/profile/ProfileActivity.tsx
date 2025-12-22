@@ -7,8 +7,6 @@ interface ProfileActivityProps {
 }
 
 export default async function ProfileActivity({ userId }: ProfileActivityProps) {
-  const supabase = createClient();
-
   // Fetch recent reviews
   const { data: reviews } = await supabase
     .from("reviews")
@@ -73,11 +71,10 @@ export default async function ProfileActivity({ userId }: ProfileActivityProps) 
                         {[...Array(5)].map((_, i) => (
                           <Star
                             key={i}
-                            className={`h-4 w-4 ${
-                              i < review.rating
+                            className={`h-4 w-4 ${i < review.rating
                                 ? "fill-earth-green text-earth-green"
                                 : "text-soft-clay"
-                            }`}
+                              }`}
                           />
                         ))}
                       </div>

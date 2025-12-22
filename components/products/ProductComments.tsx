@@ -18,16 +18,16 @@ function CommentThread({ comment, depth = 0, parentUsername }: { comment: Commen
   // No reply can ever indent more than 20px (ml-5 = 1.25rem = 20px)
   const isGuest = !comment.profiles && comment.guest_name;
   const marginLeft = depth === 0 ? '0px' : '20px';
-  
+
   return (
-    <div 
-      className={depth === 0 ? 'ml-0' : 'ml-5 border-l border-white/10'} 
+    <div
+      className={depth === 0 ? 'ml-0' : 'ml-5 border-l border-white/10'}
       style={{ marginLeft }}
       data-comment-depth={depth}
     >
       {/* SIGNAL BRIDGE: Context for flattened threads - show for ANY nested comment */}
       {depth > 0 && parentUsername && (
-        <span 
+        <span
           className="text-[10px] text-sme-gold/60 font-mono mb-1 pl-4 block"
           style={{ fontFamily: 'var(--font-geist-mono)' }}
         >
@@ -43,8 +43,8 @@ function CommentThread({ comment, depth = 0, parentUsername }: { comment: Commen
             </div>
           ) : comment.profiles ? (
             <Link
-              href={comment.profiles.username 
-                ? `/u/${comment.profiles.username}` 
+              href={comment.profiles.username
+                ? `/u/${comment.profiles.username}`
                 : `/profile/${comment.profiles.id}`}
               onClick={(e) => e.stopPropagation()}
               className="flex-shrink-0 hover:opacity-80 transition-opacity"
@@ -72,8 +72,8 @@ function CommentThread({ comment, depth = 0, parentUsername }: { comment: Commen
               ) : comment.profiles ? (
                 <>
                   <Link
-                    href={comment.profiles.username 
-                      ? `/u/${comment.profiles.username}` 
+                    href={comment.profiles.username
+                      ? `/u/${comment.profiles.username}`
                       : `/profile/${comment.profiles.id}`}
                     className="font-semibold text-bone-white hover:text-heart-green transition-colors"
                   >
@@ -118,10 +118,10 @@ function CommentThread({ comment, depth = 0, parentUsername }: { comment: Commen
       {comment.children && comment.children.length > 0 && (
         <div className="mt-2 space-y-2" data-comment-list>
           {comment.children.map((child) => (
-            <CommentThread 
-              key={child.id} 
-              comment={child} 
-              depth={1} 
+            <CommentThread
+              key={child.id}
+              comment={child}
+              depth={1}
               parentUsername={comment.profiles?.username || comment.profiles?.full_name || comment.guest_name || null}
             />
           ))}
@@ -206,7 +206,6 @@ export default function ProductComments({
         onSuccess={async () => {
           // Refresh comments after successful submission
           await new Promise(resolve => setTimeout(resolve, 200));
-          const supabase = createClient();
           const { data: freshComments } = await supabase
             .from("product_comments")
             .select(`
@@ -228,7 +227,7 @@ export default function ProductComments({
             .eq("protocol_id", protocolId)
             .or("is_flagged.eq.false,is_flagged.is.null")
             .order("created_at", { ascending: false });
-          
+
           if (freshComments) {
             setComments(freshComments as Comment[]);
           }
@@ -237,7 +236,7 @@ export default function ProductComments({
       />
 
       {/* Comments List */}
-      <div 
+      <div
         data-comment-list
         className="space-y-4 transition-all duration-300"
       >

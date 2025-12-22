@@ -59,7 +59,6 @@ export default function SwapSpecimenModal({
 
   const fetchProducts = async (query: string) => {
     setLoading(true);
-    const supabase = createClient();
 
     let queryBuilder = supabase
       .from("protocols")

@@ -21,7 +21,6 @@ export default function TaggingInput({
 
   useEffect(() => {
     async function fetchMasterTopics() {
-      const supabase = createClient();
       const { data, error } = await supabase
         .from("master_topics")
         .select("name")
@@ -80,11 +79,10 @@ export default function TaggingInput({
                   type="button"
                   onClick={() => handleToggleMasterTopic(topic)}
                   disabled={!isSelected && selectedTags.length >= maxTags}
-                  className={`relative rounded-full px-3 py-1 text-sm font-medium transition-all duration-200 ${
-                    isSelected
+                  className={`relative rounded-full px-3 py-1 text-sm font-medium transition-all duration-200 ${isSelected
                       ? "bg-earth-green text-sand-beige"
                       : "bg-earth-green/20 text-earth-green hover:bg-earth-green/30 disabled:opacity-50 disabled:cursor-not-allowed"
-                  }`}
+                    }`}
                 >
                   <span className="mr-1.5 text-xs">⭐</span>
                   {topic}

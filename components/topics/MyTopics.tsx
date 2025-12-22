@@ -17,13 +17,12 @@ export default function MyTopics() {
   useEffect(() => {
     async function fetchFollowedTopics() {
       if (!isLoaded) return;
-      
+
       if (!user) {
         setLoading(false);
         return;
       }
 
-      const supabase = createClient();
       const { data: follows, error } = await supabase
         .from("topic_follows")
         .select("topic_name")

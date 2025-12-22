@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^5.0.0",
+    "@clerk/themes": "^2.4.46",
     "@vercel/og": "^0.8.6",
     "clsx": "^2.1.0",
     "date-fns": "^4.1.0",

@@ -17,6 +17,13 @@ export async function toggleTopicFollow(topicName: string) {
 
   const sql = getDb();
 
+  // Normalize topic name (trim for consistency) - declare before try block for error logging
+  const normalizedTopic = topicName.trim();
+
+  if (!normalizedTopic) {
+    throw new Error("Topic name cannot be empty");
+  }
+
   try {
     // Just-in-Time Profile Sync: Ensure user exists in profiles table
     const existingProfileResult = await sql`
@@ -45,13 +52,6 @@ export async function toggleTopicFollow(topicName: string) {
             full_name = EXCLUDED.full_name,
             avatar_url = EXCLUDED.avatar_url
       `;
-    }
-
-    // Normalize topic name (trim for consistency)
-    const normalizedTopic = topicName.trim();
-
-    if (!normalizedTopic) {
-      throw new Error("Topic name cannot be empty");
     }
 
     // Check if user is already following this topic
@@ -96,8 +96,16 @@ export async function toggleTopicFollow(topicName: string) {
       return { success: true, following: true };
     }
   } catch (error: any) {
-    console.error("Error in toggleTopicFollow:", error);
-    
+    console.error("Error in toggleTopicFollow:", {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      hint: error.hint,
+      stack: error.stack,
+      userId: user.id,
+      topicName: normalizedTopic
+    });
+
     // Provide more specific error messages for common issues
     if (error.code === '42501' || error.message?.includes('row-level security')) {
       throw new Error(
@@ -105,14 +113,23 @@ export async function toggleTopicFollow(topicName: string) {
         `Please disable RLS for this table.`
       );
     }
-    
+
     if (error.code === '23503' || error.message?.includes('foreign key')) {
       throw new Error(
         `Foreign key constraint error: User profile not found. Please try again.`
       );
     }
-    
-    throw new Error(error.message || "Failed to toggle topic follow");
+
+    if (error.code === '23505' || error.message?.includes('unique constraint')) {
+      // This shouldn't happen due to our check, but handle it gracefully
+      throw new Error('You are already following this topic.');
+    }
+
+    // Generic error with more context
+    throw new Error(
+      `Failed to toggle topic follow: ${error.message || 'Unknown database error'}. ` +
+      `Please check the server logs for details.`
+    );
   }
 }
 

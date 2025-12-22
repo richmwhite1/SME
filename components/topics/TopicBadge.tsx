@@ -49,13 +49,11 @@ export default function TopicBadge({
   useEffect(() => {
     async function fetchFollowerCount() {
       try {
-        const supabase = createClient();
-        const { count } = await supabase
-          .from("topic_follows")
-          .select("*", { count: "exact", head: true })
-          .eq("topic_name", topic);
-
-        setFollowerCount(count || 0);
+        // TODO: Create API route for fetching follower count
+        // const response = await fetch(`/api/topics/${encodeURIComponent(topic)}/followers`);
+        // const data = await response.json();
+        // setFollowerCount(data.count || 0);
+        setFollowerCount(0); // Temporary: set to 0 until API route is created
       } catch (error) {
         console.error("Error fetching follower count:", error);
       }
@@ -122,9 +120,8 @@ export default function TopicBadge({
           onClick={handleBadgeClick}
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
-          className={`relative inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-mono uppercase tracking-wider text-slate-700 transition-colors hover:bg-slate-200 hover:border-slate-300 cursor-pointer ${
-            isMasterTopic ? "border-slate-300" : ""
-          }`}
+          className={`relative inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-mono uppercase tracking-wider text-slate-700 transition-colors hover:bg-slate-200 hover:border-slate-300 cursor-pointer ${isMasterTopic ? "border-slate-300" : ""
+            }`}
         >
           {badgeContent}
         </div>
@@ -132,9 +129,8 @@ export default function TopicBadge({
         <span
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
-          className={`relative inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-mono uppercase tracking-wider text-slate-700 ${
-            isMasterTopic ? "border-slate-300" : ""
-          }`}
+          className={`relative inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-mono uppercase tracking-wider text-slate-700 ${isMasterTopic ? "border-slate-300" : ""
+            }`}
         >
           {badgeContent}
         </span>
@@ -150,11 +146,10 @@ export default function TopicBadge({
           variant="outline"
           onClick={handleFollow}
           disabled={loading}
-          className={`text-xs px-2 py-1 h-auto border transition-all ${
-            following
+          className={`text-xs px-2 py-1 h-auto border transition-all ${following
               ? "border-sme-gold bg-muted-moss/50 text-sme-gold hover:bg-muted-moss"
               : "border-translucent-emerald bg-forest-obsidian text-bone-white/70 hover:border-heart-green hover:text-bone-white"
-          }`}
+            }`}
         >
           {loading ? "..." : following ? "Following" : "Follow"}
         </Button>

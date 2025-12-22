@@ -46,12 +46,15 @@ export default function SMEUserButton() {
           Admin
         </span>
       )}
-      <UserButton 
+      <UserButton
         afterSignOutUrl="/"
         appearance={{
           elements: {
             userButtonPopoverCard: "bg-forest-obsidian border border-translucent-emerald",
-            userButtonPopoverActionButton: "text-bone-white hover:bg-muted-moss",
+            userButtonPopoverActionButton: "text-white hover:bg-muted-moss",
+            userButtonPopoverActionButtonText: "text-white",
+            userButtonPopoverActionButtonIcon: "text-white",
+            userButtonPopoverFooter: "text-white",
           }
         }}
       >

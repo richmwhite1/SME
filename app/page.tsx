@@ -8,7 +8,7 @@ import { getDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-interface TrendingProtocol {
+interface TrendingProduct {
   id: string;
   title: string;
   problem_solved: string;
@@ -29,7 +29,7 @@ interface TrendingProtocol {
   activity_score: number;
 }
 
-interface Protocol {
+interface Product {
   id: string;
   title: string;
   problem_solved: string;
@@ -50,22 +50,22 @@ interface Protocol {
   velocity_count?: number;
 }
 
-async function fetchTrendingProtocols(): Promise<TrendingProtocol[]> {
+async function fetchTrendingProducts(): Promise<TrendingProduct[]> {
   const sql = getDb();
-  
+
   try {
     // Get start of this month
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
-    
+
     // Get start of this week (7 days ago)
     const startOfWeek = new Date();
     startOfWeek.setDate(startOfWeek.getDate() - 7);
     startOfWeek.setHours(0, 0, 0, 0);
 
-    // Fetch protocols with aggregated metrics
-    const protocols = await sql<Protocol[]>`
+    // Fetch products with aggregated metrics
+    const products = await sql<Product[]>`
       SELECT 
         p.id,
         p.title,
@@ -85,44 +85,43 @@ async function fetchTrendingProtocols(): Promise<TrendingProtocol[]> {
         COALESCE(c.comment_count, 0) as comment_count,
         COALESCE(r.average_rating, 0) as average_rating,
         COALESCE(rv.velocity_count, 0) as velocity_count
-      FROM protocols p
+      FROM products p
       LEFT JOIN (
-        SELECT protocol_id, COUNT(*) as review_count, AVG(rating) as average_rating
+        SELECT product_id, COUNT(*) as review_count, AVG(rating) as average_rating
         FROM reviews
         WHERE (is_flagged IS FALSE OR is_flagged IS NULL)
           AND created_at >= ${startOfMonth.toISOString()}
-        GROUP BY protocol_id
-      ) r ON p.id = r.protocol_id
+        GROUP BY product_id
+      ) r ON p.id = r.product_id
       LEFT JOIN (
-        SELECT protocol_id, COUNT(*) as comment_count
+        SELECT product_id, COUNT(*) as comment_count
         FROM product_comments
         WHERE (is_flagged IS FALSE OR is_flagged IS NULL)
           AND created_at >= ${startOfMonth.toISOString()}
-        GROUP BY protocol_id
-      ) c ON p.id = c.protocol_id
+        GROUP BY product_id
+      ) c ON p.id = c.product_id
       LEFT JOIN (
-        SELECT protocol_id, COUNT(*) as velocity_count
+        SELECT product_id, COUNT(*) as velocity_count
         FROM (
-          SELECT protocol_id, created_at FROM reviews
+          SELECT product_id, created_at FROM reviews
           WHERE (is_flagged IS FALSE OR is_flagged IS NULL)
             AND created_at >= ${startOfWeek.toISOString()}
           UNION ALL
-          SELECT protocol_id, created_at FROM product_comments
+          SELECT product_id, created_at FROM product_comments
           WHERE (is_flagged IS FALSE OR is_flagged IS NULL)
             AND created_at >= ${startOfWeek.toISOString()}
         ) v
-        GROUP BY protocol_id
-      ) rv ON p.id = rv.protocol_id
-      WHERE (p.is_flagged IS FALSE OR p.is_flagged IS NULL)
-        AND p.created_at >= ${startOfMonth.toISOString()}
+        GROUP BY product_id
+      ) rv ON p.id = rv.product_id
+      WHERE p.created_at >= ${startOfMonth.toISOString()}
       ORDER BY 
         (COALESCE(r.review_count, 0) + COALESCE(c.comment_count, 0)) DESC,
         COALESCE(rv.velocity_count, 0) DESC
       LIMIT 6
     `;
 
-    // Map to TrendingProtocol format
-    return protocols.map((p: any) => ({
+    // Map to TrendingProduct format
+    return products.map((p: any) => ({
       id: p.id,
       title: p.title,
       problem_solved: p.problem_solved,
@@ -144,13 +143,13 @@ async function fetchTrendingProtocols(): Promise<TrendingProtocol[]> {
       activity_score: (Number(p.review_count || 0) + Number(p.comment_count || 0)),
     }));
   } catch (error) {
-    console.error("Error fetching trending protocols:", error);
+    console.error("Error fetching trending products:", error);
     return [];
   }
 }
 
 export default async function Home() {
-  const trendingProtocols = await fetchTrendingProtocols();
+  const trendingProducts = await fetchTrendingProducts();
 
   return (
     <main className="min-h-[calc(100vh-4rem)] bg-forest-obsidian px-6 py-16">
@@ -183,7 +182,7 @@ export default async function Home() {
         </div>
 
         {/* Trending Products Section */}
-        {trendingProtocols.length > 0 && (
+        {trendingProducts.length > 0 && (
           <div className="mt-16">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="font-serif text-3xl font-semibold text-bone-white">
@@ -191,28 +190,28 @@ export default async function Home() {
               </h2>
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {trendingProtocols.map((protocol: TrendingProtocol) => {
+              {trendingProducts.map((product: TrendingProduct) => {
                 // Handle images array - get first image (matching products page logic)
                 let imageUrl: string | null = null;
                 let imagesArray: string[] = [];
-                
-                if (protocol.images) {
-                  if (Array.isArray(protocol.images)) {
+
+                if (product.images) {
+                  if (Array.isArray(product.images)) {
                     // Direct array - expected format from PostgreSQL TEXT[]
-                    imagesArray = protocol.images.filter((img): img is string => 
+                    imagesArray = product.images.filter((img): img is string =>
                       typeof img === 'string' && img.length > 0
                     );
-                  } else if (typeof protocol.images === 'string') {
+                  } else if (typeof product.images === 'string') {
                     // String format - try to parse
                     try {
-                      const parsed = JSON.parse(protocol.images);
+                      const parsed = JSON.parse(product.images);
                       if (Array.isArray(parsed)) {
-                        imagesArray = parsed.filter((img: any): img is string => 
+                        imagesArray = parsed.filter((img: any): img is string =>
                           typeof img === 'string' && img.length > 0
                         );
                       } else {
                         // PostgreSQL array format: {url1,url2}
-                        const arrayMatch = (protocol.images as string).match(/^\{([^}]*)\}$/);
+                        const arrayMatch = (product.images as string).match(/^\{([^}]*)\}$/);
                         if (arrayMatch) {
                           imagesArray = arrayMatch[1]
                             .split(',')
@@ -222,7 +221,7 @@ export default async function Home() {
                       }
                     } catch (e) {
                       // Try PostgreSQL array format directly
-                      const arrayMatch = (protocol.images as string).match(/^\{([^}]*)\}$/);
+                      const arrayMatch = (product.images as string).match(/^\{([^}]*)\}$/);
                       if (arrayMatch) {
                         imagesArray = arrayMatch[1]
                           .split(',')
@@ -232,39 +231,39 @@ export default async function Home() {
                     }
                   }
                 }
-                
+
                 // Use the first image from the array, ensuring it's a valid URL
                 const firstImage = imagesArray.length > 0
                   ? (imagesArray[0] && typeof imagesArray[0] === 'string' && (imagesArray[0].startsWith('http://') || imagesArray[0].startsWith('https://'))
-                      ? imagesArray[0]
-                      : null)
+                    ? imagesArray[0]
+                    : null)
                   : null;
-                
+
                 imageUrl = firstImage;
 
                 return (
-                  <div 
-                    key={protocol.id} 
+                  <div
+                    key={product.id}
                     className="relative transition-all duration-300 hover:border-translucent-emerald"
                   >
                     <ProtocolCard
-                      title={protocol.title}
-                      problemSolved={protocol.problem_solved}
-                      productId={protocol.id}
+                      title={product.title}
+                      problemSolved={product.problem_solved}
+                      productId={product.id}
                       imageUrl={imageUrl}
-                      isSMECertified={protocol.is_sme_certified || false}
-                      hasLabTested={protocol.third_party_lab_verified || false}
-                      hasSourceVerified={protocol.source_transparency || false}
-                      hasAISummary={protocol.ai_summary || false}
-                      sourceTransparency={protocol.source_transparency || false}
-                      purityTested={protocol.purity_tested || false}
-                      potencyVerified={protocol.potency_verified || false}
-                      excipientAudit={protocol.excipient_audit || false}
-                      operationalLegitimacy={protocol.operational_legitimacy || false}
-                      reviewCount={protocol.reviewCount}
-                      commentCount={protocol.commentCount}
-                      averageRating={protocol.averageRating}
-                      activityScore={protocol.activity_score}
+                      isSMECertified={product.is_sme_certified || false}
+                      hasLabTested={product.third_party_lab_verified || false}
+                      hasSourceVerified={product.source_transparency || false}
+                      hasAISummary={product.ai_summary || false}
+                      sourceTransparency={product.source_transparency || false}
+                      purityTested={product.purity_tested || false}
+                      potencyVerified={product.potency_verified || false}
+                      excipientAudit={product.excipient_audit || false}
+                      operationalLegitimacy={product.operational_legitimacy || false}
+                      reviewCount={product.reviewCount}
+                      commentCount={product.commentCount}
+                      averageRating={product.averageRating}
+                      activityScore={product.activity_score}
                     />
                   </div>
                 );
@@ -273,7 +272,7 @@ export default async function Home() {
           </div>
         )}
 
-        {trendingProtocols.length === 0 && (
+        {trendingProducts.length === 0 && (
           <div className="mt-8 text-center text-bone-white/70 font-mono">
             No trending products this month. Check back soon!
           </div>

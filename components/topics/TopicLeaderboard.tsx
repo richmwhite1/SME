@@ -32,8 +32,6 @@ export default function TopicLeaderboard() {
 
   useEffect(() => {
     async function fetchData() {
-      const supabase = createClient();
-
       // Fetch master topics first (for Discover Topics sidebar)
       const { data: masterData, error: masterError } = await supabase
         .from("master_topics")
@@ -103,11 +101,11 @@ export default function TopicLeaderboard() {
     // Optimistic update: immediately update UI
     const currentFollowing = followingStates[topicName] || false;
     const newFollowingState = !currentFollowing;
-    
+
     // Immediately update state for instant UI feedback
     setLoadingStates((prev) => ({ ...prev, [topicName]: true }));
     setFollowingStates((prev) => ({ ...prev, [topicName]: newFollowingState }));
-    
+
     if (newFollowingState) {
       setFollowedTopics((prev) => [...prev, topicName]);
       // Trigger Emerald Aura immediately on follow
@@ -131,7 +129,7 @@ export default function TopicLeaderboard() {
           }
           return prev;
         });
-        
+
         // Keep the animation if it was already set optimistically
         if (!signalConfirmed[topicName]) {
           setSignalConfirmed((prev) => ({ ...prev, [topicName]: true }));
@@ -234,16 +232,14 @@ export default function TopicLeaderboard() {
                       handleFollow(topic.name);
                     }}
                     disabled={isLoading}
-                    className={`relative flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition-all duration-200 active:scale-95 ${
-                      isFollowing
+                    className={`relative flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition-all duration-200 active:scale-95 ${isFollowing
                         ? "border-heart-green bg-heart-green/20 text-heart-green hover:bg-heart-green/30"
                         : "border-translucent-emerald bg-forest-obsidian text-bone-white/70 hover:border-heart-green hover:text-bone-white"
-                    } ${isLoading ? "opacity-50" : ""} ${
-                      signalConfirmed[topic.name] ? "ring-2 ring-heart-green ring-opacity-40" : ""
-                    }`}
+                      } ${isLoading ? "opacity-50" : ""} ${signalConfirmed[topic.name] ? "ring-2 ring-heart-green ring-opacity-40" : ""
+                      }`}
                     style={{
-                      boxShadow: signalConfirmed[topic.name] 
-                        ? "0 0 16px rgba(16, 185, 129, 0.4), 0 0 24px rgba(16, 185, 129, 0.2)" 
+                      boxShadow: signalConfirmed[topic.name]
+                        ? "0 0 16px rgba(16, 185, 129, 0.4), 0 0 24px rgba(16, 185, 129, 0.2)"
                         : "none",
                       transition: "all 0.3s ease-in-out",
                       animation: signalConfirmed[topic.name] ? "pulse 2s ease-in-out" : "none",
@@ -257,7 +253,7 @@ export default function TopicLeaderboard() {
                         <span className="text-xs font-mono opacity-0 animate-[fadeIn_0.2s_ease-in-out_forwards]">
                           Following
                         </span>
-                        <span 
+                        <span
                           className="relative flex h-1.5 w-1.5"
                           style={{
                             boxShadow: "0 0 8px rgba(16, 185, 129, 0.3)",
@@ -268,8 +264,8 @@ export default function TopicLeaderboard() {
                         </span>
                       </>
                     ) : (
-                    <Plus size={14} style={{ transition: "transform 0.2s" }} />
-                  )}
+                      <Plus size={14} style={{ transition: "transform 0.2s" }} />
+                    )}
                   </button>
                 )}
               </div>
@@ -316,11 +312,10 @@ export default function TopicLeaderboard() {
                       {[1, 2, 3, 4, 5].map((level) => (
                         <div
                           key={level}
-                          className={`h-1.5 w-1.5 rounded-full ${
-                            level <= topic.signal_score
+                          className={`h-1.5 w-1.5 rounded-full ${level <= topic.signal_score
                               ? getSignalColor(topic.signal_score)
                               : "bg-soft-clay/20"
-                          }`}
+                            }`}
                         />
                       ))}
                     </div>
@@ -338,16 +333,14 @@ export default function TopicLeaderboard() {
                     handleFollow(topic.topic_name);
                   }}
                   disabled={isLoading}
-                  className={`relative flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition-all duration-200 ${
-                    isFollowing
+                  className={`relative flex items-center gap-1.5 rounded-full border px-3 py-1.5 transition-all duration-200 ${isFollowing
                       ? "border-heart-green bg-heart-green/20 text-heart-green hover:bg-heart-green/30"
                       : "bg-soft-clay/30 text-deep-stone/60 hover:bg-earth-green/20 hover:text-earth-green"
-                  } ${isLoading ? "opacity-50" : ""} ${
-                    signalConfirmed[topic.topic_name] ? "ring-2 ring-heart-green ring-opacity-40" : ""
-                  }`}
+                    } ${isLoading ? "opacity-50" : ""} ${signalConfirmed[topic.topic_name] ? "ring-2 ring-heart-green ring-opacity-40" : ""
+                    }`}
                   style={{
-                    boxShadow: signalConfirmed[topic.topic_name] 
-                      ? "0 0 16px rgba(16, 185, 129, 0.4), 0 0 24px rgba(16, 185, 129, 0.2)" 
+                    boxShadow: signalConfirmed[topic.topic_name]
+                      ? "0 0 16px rgba(16, 185, 129, 0.4), 0 0 24px rgba(16, 185, 129, 0.2)"
                       : "none",
                     transition: "all 0.3s ease-in-out",
                     animation: signalConfirmed[topic.topic_name] ? "pulse 2s ease-in-out" : "none",
@@ -356,22 +349,22 @@ export default function TopicLeaderboard() {
                 >
                   {isLoading ? (
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    ) : isFollowing ? (
-                      <>
-                        <span className="text-xs font-mono opacity-0 animate-[fadeIn_0.2s_ease-in-out_forwards]">
-                          Following
-                        </span>
-                        <span 
-                          className="relative flex h-1.5 w-1.5"
-                          style={{
-                            boxShadow: "0 0 8px rgba(16, 185, 129, 0.3)",
-                          }}
-                        >
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-heart-green opacity-75"></span>
-                          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-heart-green"></span>
-                        </span>
-                      </>
-                    ) : (
+                  ) : isFollowing ? (
+                    <>
+                      <span className="text-xs font-mono opacity-0 animate-[fadeIn_0.2s_ease-in-out_forwards]">
+                        Following
+                      </span>
+                      <span
+                        className="relative flex h-1.5 w-1.5"
+                        style={{
+                          boxShadow: "0 0 8px rgba(16, 185, 129, 0.3)",
+                        }}
+                      >
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-heart-green opacity-75"></span>
+                        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-heart-green"></span>
+                      </span>
+                    </>
+                  ) : (
                     <Plus size={14} style={{ transition: "transform 0.2s" }} />
                   )}
                 </button>

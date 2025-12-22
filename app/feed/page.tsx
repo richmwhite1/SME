@@ -124,7 +124,7 @@ export default async function FeedPage() {
 
   // 1. Active Threads: Discussions user commented on with new replies
   const activeThreads: ActiveThread[] = [];
-  
+
   // Get discussions user has commented on
   const userCommentsResult = await sql`
     SELECT DISTINCT discussion_id 
@@ -132,10 +132,10 @@ export default async function FeedPage() {
     WHERE author_id = ${user.id} 
       AND discussion_id IS NOT NULL
   `;
-  
+
   if (userCommentsResult.length > 0) {
     const discussionIds = userCommentsResult.map((c: any) => c.discussion_id);
-    
+
     // Get discussions with new replies (replies after user's last comment)
     for (const discussionId of discussionIds) {
       // Get user's last comment time
@@ -147,7 +147,7 @@ export default async function FeedPage() {
         ORDER BY created_at DESC 
         LIMIT 1
       `;
-      
+
       const userLastComment = userLastCommentResult[0];
 
       if (userLastComment && userLastComment.created_at) {
@@ -159,7 +159,7 @@ export default async function FeedPage() {
             AND created_at > ${userLastComment.created_at} 
             AND author_id != ${user.id}
         `;
-        
+
         if (newRepliesResult.length > 0) {
           // Get discussion details
           const discussionResult = await sql`
@@ -171,7 +171,7 @@ export default async function FeedPage() {
             WHERE d.id = ${discussionId}
             LIMIT 1
           `;
-          
+
           const discussion = discussionResult[0];
 
           if (discussion) {
@@ -179,7 +179,7 @@ export default async function FeedPage() {
               discussion_id: discussion.id,
               discussion_slug: discussion.slug,
               discussion_title: discussion.title,
-              last_reply_at: newRepliesResult[0].created_at, 
+              last_reply_at: newRepliesResult[0].created_at,
               reply_count: newRepliesResult.length,
               author_name: discussion.full_name || null,
               author_username: discussion.username || null,
@@ -207,7 +207,7 @@ export default async function FeedPage() {
       ORDER BY display_order ASC 
       LIMIT 12
     `;
-    
+
     const masterTopicNames = masterTopicsResult.map((t: any) => t.name);
     const followedMasterTopics = followedTopics.filter((t) =>
       masterTopicNames.includes(t)
@@ -368,7 +368,7 @@ export default async function FeedPage() {
       const unfollowedDiscussions = allDiscussionsResult.filter((d: any) => {
         if (!d.tags || d.tags.length === 0) return false;
         if (d.badge_type !== "Trusted Voice") return false;
-        
+
         // Check if all tags are unfollowed
         return d.tags.every((tag: string) => !followedTopics.includes(tag));
       });
@@ -379,7 +379,7 @@ export default async function FeedPage() {
         const firstUnfollowedTopic = selected.tags.find(
           (tag: string) => !followedTopics.includes(tag)
         );
-        
+
         trustTrendItem = {
           id: selected.id,
           type: "discussion",
@@ -410,21 +410,21 @@ export default async function FeedPage() {
                 Personalized research intelligence
               </p>
             </div>
-            
+
             {/* Feed Client handles Calibration/Feed transition */}
             <FeedClient initialFollowedTopics={followedTopics}>
               {/* Feed Refresher - Shows when new signals are detected */}
-              <FeedRefresher 
+              <FeedRefresher
                 initialItemCount={
-                  activeThreads.length + 
-                  trackedSMEItems.length + 
-                  followedSignalItems.length + 
+                  activeThreads.length +
+                  trackedSMEItems.length +
+                  followedSignalItems.length +
                   (trustTrendItem ? 1 : 0)
                 }
                 initialTimestamp={new Date().toISOString()}
                 followedTopics={followedTopics}
               />
-              
+
               {/* Active Threads */}
               {activeThreads.length > 0 && (
                 <section className="mb-8 border border-translucent-emerald bg-muted-moss p-6">

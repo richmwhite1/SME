@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Playfair_Display, JetBrains_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
+import { dark } from "@clerk/themes";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -9,14 +10,14 @@ import { ToastProvider } from "@/components/ui/ToastContainer";
 import { SignalProvider } from "@/components/ui/SignalReceivedContainer";
 import ReputationListener from "@/components/ui/ReputationListener";
 
-const inter = Inter({ 
-  subsets: ["latin"], 
+const inter = Inter({
+  subsets: ["latin"],
   variable: "--font-inter",
   display: "swap",
 });
 
-const playfair = Playfair_Display({ 
-  subsets: ["latin"], 
+const playfair = Playfair_Display({
+  subsets: ["latin"],
   variable: "--font-playfair",
   weight: ["400", "500", "600", "700", "800", "900"],
   display: "swap",
@@ -45,15 +46,40 @@ export default function RootLayout({
       <body className="min-h-screen bg-forest-obsidian flex flex-col overflow-x-hidden">
         <ClerkProvider
           appearance={{
+            baseTheme: dark,
+            variables: {
+              colorPrimary: "#D4AF37", // SME Gold
+              colorBackground: "#0A0F0D", // forest-obsidian
+              colorText: "#F5F1E8", // bone-white
+              colorTextSecondary: "#F5F1E8CC", // bone-white with opacity
+              colorInputBackground: "#0A0F0D",
+              colorInputText: "#F5F1E8",
+            },
             elements: {
               rootBox: "w-full",
               card: "bg-forest-obsidian border border-translucent-emerald",
+              headerTitle: "text-bone-white",
+              headerSubtitle: "text-bone-white/70",
+              socialButtonsBlockButton: "bg-white/10 border-white/20 text-bone-white hover:bg-white/20",
+              socialButtonsBlockButtonText: "text-bone-white font-medium",
+              socialButtonsProviderIcon__google: "brightness-0 invert",
+              formButtonPrimary: "bg-heart-green text-forest-black hover:bg-heart-green/90",
+              footerActionLink: "text-heart-green hover:text-heart-green/80",
+              identityPreviewText: "text-bone-white",
+              identityPreviewEditButton: "text-heart-green",
+              userButtonPopoverCard: "bg-forest-obsidian border border-translucent-emerald",
+              userButtonPopoverActionButton: "text-bone-white hover:bg-white/10",
+              userButtonPopoverActionButtonText: "text-bone-white",
+              userButtonPopoverFooter: "hidden",
+              userPreviewTextContainer: "text-bone-white",
+              userPreviewMainIdentifier: "text-bone-white",
+              userPreviewSecondaryIdentifier: "text-bone-white/70",
             },
           }}
           signInUrl="/"
           signUpUrl="/"
-          afterSignInUrl="/"
-          afterSignUpUrl="/"
+          signInFallbackRedirectUrl="/"
+          signUpFallbackRedirectUrl="/"
         >
           <ToastProvider>
             <SignalProvider>

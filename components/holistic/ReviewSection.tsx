@@ -6,13 +6,13 @@ interface Review {
   rating: number;
   content: string;
   created_at: string;
-    profiles: {
-      id: string;
-      full_name: string;
-      username: string | null;
-      avatar_url: string | null;
-      healer_score: number;
-    } | null;
+  profiles: {
+    id: string;
+    full_name: string;
+    username: string | null;
+    avatar_url: string | null;
+    healer_score: number;
+  } | null;
 }
 
 interface ReviewSectionProps {
@@ -26,7 +26,6 @@ export default async function ReviewSection({
   protocolSlug,
   productTitle,
 }: ReviewSectionProps) {
-  const supabase = createClient();
   const user = await currentUser();
 
   // Fetch reviews with profile information
@@ -46,10 +45,10 @@ export default async function ReviewSection({
   // Serialize reviews data - convert Date objects to ISO strings
   const serializedReviews = (reviews || []).map((review: any) => ({
     ...review,
-    created_at: review.created_at instanceof Date 
-      ? review.created_at.toISOString() 
-      : typeof review.created_at === 'string' 
-        ? review.created_at 
+    created_at: review.created_at instanceof Date
+      ? review.created_at.toISOString()
+      : typeof review.created_at === 'string'
+        ? review.created_at
         : new Date(review.created_at).toISOString(),
     profiles: review.profiles ? {
       ...review.profiles,
@@ -71,7 +70,7 @@ export default async function ReviewSection({
   } : null;
 
   return (
-    <ReviewSectionClient 
+    <ReviewSectionClient
       protocolId={protocolId}
       protocolSlug={protocolSlug}
       productTitle={productTitle}
