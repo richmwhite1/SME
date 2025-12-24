@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronRight, Check } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -425,101 +425,102 @@ export default function ProductWizardV2() {
                                     </div>
                                 </div>
                             </div>
+                        </div>
 
-                            {/* STEP 4: TRUTH SIGNALS */}
-                            <div className={step === 4 ? "block animate-in fade-in slide-in-from-right-4 duration-300" : "hidden"}>
-                                <h2 className="text-xl font-semibold text-white uppercase tracking-wider mb-4 border-l-2 border-emerald-500 pl-4">
-                                    IV. Truth Signals
-                                </h2>
+                        {/* STEP 4: TRUTH SIGNALS */}
+                        <div className={step === 4 ? "block animate-in fade-in slide-in-from-right-4 duration-300" : "hidden"}>
+                            <h2 className="text-xl font-semibold text-white uppercase tracking-wider mb-4 border-l-2 border-emerald-500 pl-4">
+                                IV. Truth Signals
+                            </h2>
 
-                                <div className="mb-6 p-4 border border-emerald-900/30 bg-emerald-900/10 text-emerald-100 text-sm">
-                                    <p>Select applicable signals and provide evidence (PDF/Image) for verification.</p>
-                                </div>
+                            <div className="mb-6 p-4 border border-emerald-900/30 bg-emerald-900/10 text-emerald-100 text-sm">
+                                <p>Select applicable signals and provide evidence (PDF/Image) for verification.</p>
+                            </div>
 
-                                <div className="space-y-4">
-                                    {[
-                                        { key: 'third_party_lab_verified', label: 'Third-Party Lab Verified', desc: 'Independent testing for purity/potency.' },
-                                        { key: 'purity_tested', label: 'Purity Tested', desc: 'Free from contaminants like heavy metals.' },
-                                        { key: 'source_transparency', label: 'Source Transparency', desc: 'Clear origin of ingredients.' },
-                                        { key: 'potency_verified', label: 'Potency Verified', desc: 'Active ingredients match label claims.' },
-                                        { key: 'excipient_audit', label: 'Excipient Audit', desc: 'All fillers/binders are clean and disclosed.' },
-                                        { key: 'operational_legitimacy', label: 'Operational Legitimacy', desc: 'Company has verified business address/support.' },
-                                    ].map((signal) => {
-                                        const isSelected = !!smeSignals[signal.key];
-                                        const evidence = smeSignals[signal.key]?.evidence || '';
+                            <div className="space-y-4">
+                                {[
+                                    { key: 'third_party_lab_verified', label: 'Third-Party Lab Verified', desc: 'Independent testing for purity/potency.' },
+                                    { key: 'purity_tested', label: 'Purity Tested', desc: 'Free from contaminants like heavy metals.' },
+                                    { key: 'source_transparency', label: 'Source Transparency', desc: 'Clear origin of ingredients.' },
+                                    { key: 'potency_verified', label: 'Potency Verified', desc: 'Active ingredients match label claims.' },
+                                    { key: 'excipient_audit', label: 'Excipient Audit', desc: 'All fillers/binders are clean and disclosed.' },
+                                    { key: 'operational_legitimacy', label: 'Operational Legitimacy', desc: 'Company has verified business address/support.' },
+                                ].map((signal) => {
+                                    const isSelected = !!smeSignals[signal.key];
+                                    const evidence = smeSignals[signal.key]?.evidence || '';
 
-                                        return (
-                                            <div key={signal.key} className={`p-4 border rounded transition-colors ${isSelected ? 'border-emerald-500/50 bg-emerald-900/10' : 'border-[#333] bg-[#0a0a0a]'}`}>
-                                                <div className="flex items-start gap-3">
-                                                    <input
-                                                        type="checkbox"
-                                                        id={signal.key}
-                                                        checked={isSelected}
-                                                        onChange={() => {
-                                                            const newSignals = { ...smeSignals };
-                                                            if (isSelected) {
-                                                                delete newSignals[signal.key];
-                                                            } else {
-                                                                newSignals[signal.key] = { verified: false, evidence: '' };
-                                                            }
-                                                            setValue("sme_signals", newSignals);
-                                                        }}
-                                                        className="mt-1 w-4 h-4 rounded border-gray-600 text-emerald-500 focus:ring-emerald-500 bg-gray-900"
-                                                    />
-                                                    <div className="flex-1">
-                                                        <label htmlFor={signal.key} className="block font-medium text-white select-none">
-                                                            {signal.label}
-                                                        </label>
-                                                        <p className="text-xs text-gray-400 mb-2">{signal.desc}</p>
+                                    return (
+                                        <div key={signal.key} className={`p-4 border rounded transition-colors ${isSelected ? 'border-emerald-500/50 bg-emerald-900/10' : 'border-[#333] bg-[#0a0a0a]'}`}>
+                                            <div className="flex items-start gap-3">
+                                                <input
+                                                    type="checkbox"
+                                                    id={signal.key}
+                                                    checked={isSelected}
+                                                    onChange={() => {
+                                                        const newSignals = { ...smeSignals };
+                                                        if (isSelected) {
+                                                            delete newSignals[signal.key];
+                                                        } else {
+                                                            newSignals[signal.key] = { verified: false, evidence: '' };
+                                                        }
+                                                        setValue("sme_signals", newSignals);
+                                                    }}
+                                                    className="mt-1 w-4 h-4 rounded border-gray-600 text-emerald-500 focus:ring-emerald-500 bg-gray-900"
+                                                />
+                                                <div className="flex-1">
+                                                    <label htmlFor={signal.key} className="block font-medium text-white select-none">
+                                                        {signal.label}
+                                                    </label>
+                                                    <p className="text-xs text-gray-400 mb-2">{signal.desc}</p>
 
-                                                        {isSelected && (
-                                                            <div className="mt-3 pl-4 border-l border-emerald-500/30">
-                                                                <label className="text-xs uppercase tracking-wider text-emerald-400/80 mb-2 block">
-                                                                    Evidence Upload <span className="text-red-500">*</span>
-                                                                </label>
+                                                    {isSelected && (
+                                                        <div className="mt-3 pl-4 border-l border-emerald-500/30">
+                                                            <label className="text-xs uppercase tracking-wider text-emerald-400/80 mb-2 block">
+                                                                Evidence Upload <span className="text-red-500">*</span>
+                                                            </label>
 
-                                                                {evidence ? (
-                                                                    <div className="flex items-center justify-between p-2 bg-black/40 border border-emerald-500/30 rounded">
-                                                                        <a href={evidence} target="_blank" className="text-xs text-emerald-400 hover:underline truncate max-w-[200px]">
-                                                                            View Documentation
-                                                                        </a>
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => {
-                                                                                const newSignals = { ...smeSignals };
-                                                                                newSignals[signal.key].evidence = '';
-                                                                                setValue("sme_signals", newSignals);
-                                                                            }}
-                                                                            className="text-xs text-red-400 hover:text-red-300 ml-2"
-                                                                        >
-                                                                            Change
-                                                                        </button>
-                                                                    </div>
-                                                                ) : (
-                                                                    <CloudinaryUploadWidget
-                                                                        onUpload={(url) => {
+                                                            {evidence ? (
+                                                                <div className="flex items-center justify-between p-2 bg-black/40 border border-emerald-500/30 rounded">
+                                                                    <a href={evidence} target="_blank" className="text-xs text-emerald-400 hover:underline truncate max-w-[200px]">
+                                                                        View Documentation
+                                                                    </a>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
                                                                             const newSignals = { ...smeSignals };
-                                                                            newSignals[signal.key].evidence = url;
+                                                                            newSignals[signal.key].evidence = '';
                                                                             setValue("sme_signals", newSignals);
                                                                         }}
-                                                                        maxPhotos={1}
-                                                                        currentCount={0}
-                                                                    />
-                                                                )}
-                                                                {errors.sme_signals?.[signal.key]?.evidence && (
-                                                                    <p className="text-red-500 text-xs mt-1">
-                                                                        {errors.sme_signals[signal.key]?.evidence?.message}
-                                                                    </p>
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                                                        className="text-xs text-red-400 hover:text-red-300 ml-2"
+                                                                    >
+                                                                        Change
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <CloudinaryUploadWidget
+                                                                    onUpload={(url) => {
+                                                                        const newSignals = { ...smeSignals };
+                                                                        newSignals[signal.key].evidence = url;
+                                                                        setValue("sme_signals", newSignals);
+                                                                    }}
+                                                                    maxPhotos={1}
+                                                                    currentCount={0}
+                                                                />
+                                                            )}
+                                                            {errors.sme_signals?.[signal.key]?.evidence && (
+                                                                <p className="text-red-500 text-xs mt-1">
+                                                                    {errors.sme_signals[signal.key]?.evidence?.message}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
-                                        );
-                                    })}
-                                </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
+                        </div>
 
                     </form>
 
