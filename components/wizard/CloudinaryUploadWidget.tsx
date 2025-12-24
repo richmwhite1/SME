@@ -48,8 +48,9 @@ export default function CloudinaryUploadWidget({
                     sources: ["local", "url", "camera"],
                     multiple: false,
                     maxFiles: 1,
-                    clientAllowedFormats: ["jpg", "jpeg", "png", "webp"],
+                    clientAllowedFormats: ["jpg", "jpeg", "png", "webp", "pdf"],
                     maxFileSize: 10000000, // 10MB
+                    resourceType: "auto",
                     transformation: [
                         {
                             width: 1200,
@@ -104,7 +105,7 @@ export default function CloudinaryUploadWidget({
       `}
         >
             <Upload className="w-4 h-4" />
-            {isDisabled ? `Max ${maxPhotos} Photos` : "Upload Photo"}
+            {isDisabled ? `Max ${maxPhotos} Photos` : "Upload Photo / PDF"}
         </button>
     );
 }

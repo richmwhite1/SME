@@ -144,6 +144,23 @@ export default function Step3Integration() {
                 {errors.sme_access_note && <p className="text-red-500 text-xs flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.sme_access_note.message as string}</p>}
             </div>
 
+            {/* Technical Documentation Link */}
+            <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                    <Wrench className="w-4 h-4 text-emerald-500" />
+                    <label className="text-xs uppercase tracking-wider text-gray-500">Technical Documentation <span className="text-gray-600">(Optional)</span></label>
+                </div>
+                <input
+                    {...register("technical_docs_url")}
+                    className="w-full bg-[#0a0a0a] border border-[#333] p-3 text-sm focus:border-emerald-500 focus:outline-none transition-colors placeholder:text-gray-700 text-white"
+                    placeholder="https://example.com/specs.pdf"
+                />
+                <p className="text-xs text-gray-600">
+                    Link to detailed specs, whitepapers, or lab methods.
+                </p>
+                {errors.technical_docs_url && <p className="text-red-500 text-xs flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.technical_docs_url.message as string}</p>}
+            </div>
+
         </div>
     );
 }

@@ -82,11 +82,6 @@ export default function AdminDashboardClient({
         {products.length === 0 ? (
           <div className="rounded-lg border border-soft-clay/30 bg-white/50 p-12 text-center">
             <p className="text-deep-stone/70">No products found.</p>
-            <Link href="/admin/add-product">
-              <Button variant="primary" className="mt-4">
-                Add Product
-              </Button>
-            </Link>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -134,11 +129,10 @@ export default function AdminDashboardClient({
                     </td>
                     <td className="px-4 py-4">
                       <span
-                        className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${
-                          product.is_sme_certified
+                        className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${product.is_sme_certified
                             ? "bg-yellow-100 text-yellow-800"
                             : "bg-soft-clay/30 text-deep-stone/70"
-                        }`}
+                          }`}
                       >
                         {product.is_sme_certified ? (
                           <>
@@ -161,9 +155,8 @@ export default function AdminDashboardClient({
                         <Button
                           variant={product.invite_sent ? "outline" : "primary"}
                           onClick={() => handleOpenOutreach(product)}
-                          className={`flex items-center gap-1 px-3 py-1.5 text-sm ${
-                            product.invite_sent ? "opacity-75" : ""
-                          }`}
+                          className={`flex items-center gap-1 px-3 py-1.5 text-sm ${product.invite_sent ? "opacity-75" : ""
+                            }`}
                         >
                           {product.invite_sent ? (
                             <>

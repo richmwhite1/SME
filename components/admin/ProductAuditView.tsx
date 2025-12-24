@@ -61,23 +61,21 @@ export default function ProductAuditView({ product }: ProductAuditViewProps) {
 
     // State for signals
     // Ensure we have a valid object, default to existing or empty
-    const initialSignals = product.sme_signals || {
-        third_party_lab_verified: false,
-        purity_tested: false,
-        source_transparency: false,
-        potency_verified: false,
-        excipient_audit: false,
-        operational_legitimacy: false,
-    };
-
+    // The previous implementation utilized boolean values, but the new implementation utilizes objects { verified: boolean, evidence: string }
+    const initialSignals = product.sme_signals || {};
     const [signals, setSignals] = useState(initialSignals);
 
     const handleToggleSignal = (key: string) => {
-        setSignals(prev => ({ ...prev, [key]: true }));
+        // When toggling ON manually, we assume verified=true but no evidence yet
+        setSignals((prev: any) => ({ ...prev, [key]: { verified: true, evidence: '' } }));
     };
 
     const handleRemoveSignal = (key: string) => {
-        setSignals(prev => ({ ...prev, [key]: false }));
+        setSignals((prev: any) => {
+            const newState = { ...prev };
+            delete newState[key];
+            return newState;
+        });
     };
 
     // State for decision
@@ -372,48 +370,94 @@ export default function ProductAuditView({ product }: ProductAuditViewProps) {
                                 Truth Signal Verification
                             </h2>
                             <div className="flex gap-4 font-mono text-sm">
-                                <span className="text-emerald-400">Active: <b>{Object.values(signals).filter(Boolean).length}</b></span>
+                                <span className="text-emerald-400">Active: <b>{Object.keys(signals).length}</b></span>
                                 {/* <span className="text-red-400">Inactive: <b>{redFlagsCount}</b></span> */}
                             </div>
                         </div>
 
                         <div className="grid gap-4 sm:grid-cols-2">
-                            {['third_party_lab_verified', 'purity_tested', 'source_transparency', 'potency_verified', 'excipient_audit', 'operational_legitimacy'].map((key) => {
-                                const isVerified = signals[key as keyof typeof signals];
+                            {['third_party_lab_verified', 'purity_tested', 'source_transparency', 'potency_verified', 'excipient_audit', 'operational_legitimacy', 'esoteric', 'safe', 'warning'].map((key) => {
+                                const signalData = signals[key as keyof typeof signals] as any;
+                                const isVerified = !!signalData; // If functionality is simply presence check
+                                const evidence = signalData?.evidence;
+
                                 return (
                                     <div
                                         key={key}
-                                        className={`flex items-center justify-between rounded border p-3 transition-colors ${isVerified
+                                        className={`flex flex-col gap-2 rounded border p-3 transition-colors ${isVerified
                                             ? 'border-emerald-500/30 bg-emerald-500/5'
                                             : 'border-bone-white/10 bg-bone-white/5 opacity-60'
                                             }`}
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <div className={`flex h-8 w-8 items-center justify-center rounded-full ${isVerified ? 'bg-emerald-500/20 text-emerald-400' : 'bg-bone-white/10 text-bone-white/30'
-                                                }`}>
-                                                {isVerified ? <CheckCircle className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`flex h-8 w-8 items-center justify-center rounded-full ${isVerified ? 'bg-emerald-500/20 text-emerald-400' : 'bg-bone-white/10 text-bone-white/30'
+                                                    }`}>
+                                                    {isVerified ? <CheckCircle className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                                                </div>
+                                                <span className={`font-mono text-sm font-medium ${isVerified ? 'text-bone-white' : 'text-bone-white/50'
+                                                    }`}>
+                                                    {key.split('_').join(' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                                </span>
                                             </div>
-                                            <span className={`font-mono text-sm font-medium ${isVerified ? 'text-bone-white' : 'text-bone-white/50'
-                                                }`}>
-                                                {key.split('_').join(' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                            </span>
+
+                                            {isVerified ? (
+                                                <button
+                                                    onClick={() => handleRemoveSignal(key)}
+                                                    className="rounded p-1.5 text-bone-white/40 hover:bg-red-500/20 hover:text-red-400"
+                                                    title="Remove Signal"
+                                                >
+                                                    <X className="h-4 w-4" />
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => handleToggleSignal(key)}
+                                                    className="rounded border border-bone-white/10 px-2 py-1 text-xs text-bone-white/40 hover:bg-emerald-500/10 hover:text-emerald-400"
+                                                >
+                                                    Add
+                                                </button>
+                                            )}
                                         </div>
 
-                                        {isVerified ? (
-                                            <button
-                                                onClick={() => handleRemoveSignal(key)}
-                                                className="rounded p-1.5 text-bone-white/40 hover:bg-red-500/20 hover:text-red-400"
-                                                title="Remove Signal"
-                                            >
-                                                <X className="h-4 w-4" />
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={() => handleToggleSignal(key)}
-                                                className="rounded border border-bone-white/10 px-2 py-1 text-xs text-bone-white/40 hover:bg-emerald-500/10 hover:text-emerald-400"
-                                            >
-                                                Add
-                                            </button>
+                                        {/* Evidence Display */}
+                                        {isVerified && (
+                                            <div className="mt-2 pl-11">
+                                                {evidence ? (
+                                                    evidence.endsWith('.pdf') ? (
+                                                        <a
+                                                            href={evidence}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="flex items-center gap-2 rounded border border-emerald-500/30 bg-black/40 px-3 py-2 text-xs text-emerald-400 hover:bg-emerald-500/10"
+                                                        >
+                                                            <FileText className="h-4 w-4" />
+                                                            View Evidence (PDF)
+                                                        </a>
+                                                    ) : (
+                                                        <a
+                                                            href={evidence}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="group relative block h-16 w-full overflow-hidden rounded border border-emerald-500/30 bg-black/40"
+                                                        >
+                                                            <Image
+                                                                src={evidence}
+                                                                alt="Evidence"
+                                                                fill
+                                                                className="object-cover opacity-80 transition-opacity group-hover:opacity-100"
+                                                            />
+                                                            <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+                                                                <span className="text-xs font-bold uppercase text-white">View</span>
+                                                            </div>
+                                                        </a>
+                                                    )
+                                                ) : (
+                                                    <div className="flex items-center gap-2 text-xs italic text-yellow-500/70">
+                                                        <AlertTriangle className="h-3 w-3" />
+                                                        No evidence provided
+                                                    </div>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
                                 );

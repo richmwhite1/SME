@@ -26,6 +26,10 @@ const SubmissionSchema = z.object({
         value: z.string().min(1)
     })).default([]),
     sme_access_note: z.string().optional().or(z.literal("")),
+    technical_docs_url: z.string().url().optional().or(z.literal("")),
+
+    // Step 4: Signals
+    sme_signals: z.record(z.string(), z.any()).optional(),
 });
 
 export async function submitProductWizard(formData: FormData) {
@@ -47,6 +51,7 @@ export async function submitProductWizard(formData: FormData) {
         core_value_proposition: formData.get("core_value_proposition"),
         technical_specs: JSON.parse(formData.get("technical_specs") as string || "[]"),
         sme_access_note: formData.get("sme_access_note"),
+        sme_signals: JSON.parse(formData.get("sme_signals") as string || "{}"),
     };
 
     const validation = SubmissionSchema.safeParse(rawData);
@@ -78,6 +83,8 @@ export async function submitProductWizard(formData: FormData) {
                 core_value_proposition,
                 technical_specs,
                 sme_access_note,
+                sme_signals,
+                truth_evidence_urls,
                 slug,
                 created_by,
                 admin_status,
@@ -95,6 +102,8 @@ export async function submitProductWizard(formData: FormData) {
                 ${data.core_value_proposition || null},
                 ${JSON.stringify(data.technical_specs)},
                 ${data.sme_access_note || null},
+                ${JSON.stringify(data.sme_signals || {})},
+                ${JSON.stringify(Object.values(data.sme_signals || {}).map((s: any) => s.evidence).filter(Boolean))},
                 ${slug},
                 ${user.id},
                 'pending_review',

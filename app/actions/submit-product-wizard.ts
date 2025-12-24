@@ -20,8 +20,11 @@ const ProductWizardSchema = z.object({
         )
         .nullable()
         .optional(),
-    tech_docs: z.array(z.string().url()).max(10, "Maximum 10 documentation links allowed").optional(),
+    technical_docs_url: z.string().url().nullable().optional().or(z.literal("")),
+    target_audience: z.string(),
+    core_value_proposition: z.string(),
     technical_specs: z.record(z.string(), z.string()),
+    sme_access_notes: z.string().nullable().optional(),
     sme_signals: z.record(z.string(), z.any()).optional(),
 });
 
@@ -51,8 +54,11 @@ export async function submitProductWizard(data: ProductWizardInput) {
         company_blurb,
         product_photos,
         youtube_link,
-        tech_docs,
+        technical_docs_url,
+        target_audience,
+        core_value_proposition,
         technical_specs,
+        sme_access_note,
         sme_signals,
         created_at,
         updated_at
@@ -65,8 +71,11 @@ export async function submitProductWizard(data: ProductWizardInput) {
         ${validated.company_blurb},
         ${validated.product_photos},
         ${validated.youtube_link || null},
-        ${JSON.stringify(validated.tech_docs || [])},
+        ${validated.technical_docs_url || null},
+        ${validated.target_audience},
+        ${validated.core_value_proposition},
         ${JSON.stringify(validated.technical_specs)},
+        ${validated.sme_access_notes || null},
         ${JSON.stringify(validated.sme_signals || {})},
         NOW(),
         NOW()

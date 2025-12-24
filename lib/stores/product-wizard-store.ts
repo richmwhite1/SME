@@ -17,7 +17,6 @@ export const Step1Schema = z.object({
 export const Step2Schema = z.object({
     product_photos: z.array(z.string().url("Invalid photo URL")).default([]),
     video_url: z.union([z.string().url("Invalid video URL"), z.literal("")]).optional(),
-    technical_docs_url: z.union([z.string().url("Invalid documentation URL"), z.literal("")]).optional(),
 });
 
 // Step 3: SME Assessment Prep (Technical)
@@ -30,10 +29,19 @@ export const Step3Schema = z.object({
         value: z.string().min(1)
     })).default([]),
     sme_access_note: z.union([z.string(), z.literal("")]).optional(),
+    technical_docs_url: z.union([z.string().url("Invalid documentation URL"), z.literal("")]).optional(),
+});
+
+// Step 4: Truth Signals (Evidence)
+export const Step4Schema = z.object({
+    sme_signals: z.record(z.string(), z.object({
+        verified: z.boolean().optional(),
+        evidence: z.string().min(1, "Evidence required"),
+    })).optional(),
 });
 
 // Combined Schema for final submission
-export const ProductWizardSchema = Step1Schema.merge(Step2Schema).merge(Step3Schema);
+export const ProductWizardSchema = Step1Schema.merge(Step2Schema).merge(Step3Schema).merge(Step4Schema);
 
 export type ProductWizardData = z.infer<typeof ProductWizardSchema>;
 

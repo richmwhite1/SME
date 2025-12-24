@@ -37,18 +37,27 @@ const wizardSchema = z.object({
             return /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/.test(val);
         }, { message: "Must be a valid YouTube URL" })
         .optional(),
-    tech_docs: z.array(z.string()).max(10), // simplified for UI state
+    technical_docs_url: z.string().url("Must be a valid URL").or(z.literal("")).optional(),
+    target_audience: z.string().min(1, "Target audience is required"),
+    core_value_proposition: z.string().min(1, "Core value proposition is required"),
     technical_specs: z.array(z.object({
         key: z.string(),
         value: z.string()
     })),
-    sme_signals: z.record(z.string(), z.any())
+    sme_access_notes: z.string().optional(),
+    sme_signals: z.record(z.string(), z.object({
+        verified: z.boolean().optional(),
+        evidence: z.string().min(1, "Evidence documentation is required for this signal"),
+    }))
 });
 
 type WizardFormValues = z.infer<typeof wizardSchema>;
 
+import { useProductWizardStore } from "@/lib/stores/product-wizard-store";
+
 export default function ProductWizardV2() {
     const router = useRouter();
+    const { data: storedData, updateData, setHasHydrated } = useProductWizardStore();
     const [step, setStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
@@ -56,23 +65,40 @@ export default function ProductWizardV2() {
     const form = useForm<WizardFormValues>({
         resolver: zodResolver(wizardSchema),
         defaultValues: {
-            name: "",
-            category: "",
-            company_blurb: "",
-            product_photos: [],
-            youtube_link: "",
-            tech_docs: [],
-            technical_specs: [],
-            sme_signals: {}
+            name: storedData.name || "",
+            category: storedData.category || "",
+            company_blurb: storedData.company_blurb || "",
+            product_photos: storedData.product_photos || [],
+            youtube_link: storedData.youtube_link || "",
+            technical_docs_url: storedData.technical_docs_url || "",
+            target_audience: storedData.target_audience || "",
+            core_value_proposition: storedData.core_value_proposition || "",
+            technical_specs: storedData.technical_specs || [],
+            sme_access_notes: storedData.sme_access_note || "", // Map to store name if different
+            sme_signals: storedData.sme_signals || {}
         },
         mode: "onChange"
     });
+
+    // Hydrate store on mount
+    useEffect(() => {
+        useProductWizardStore.persist.rehydrate();
+        setHasHydrated(true);
+    }, [setHasHydrated]);
+
+    // Persist form changes
+    const formValues = form.watch();
+    useEffect(() => {
+        const subscription = form.watch((value) => {
+            updateData(value as any);
+        });
+        return () => subscription.unsubscribe();
+    }, [form.watch, updateData]);
 
     const { register, trigger, setValue, watch, formState: { errors } } = form;
 
     // Watch complex values for rendering
     const photos = watch("product_photos");
-    const techDocs = watch("tech_docs");
     const smeSignals = watch("sme_signals");
     const technicalSpecs = watch("technical_specs");
 
@@ -93,21 +119,7 @@ export default function ProductWizardV2() {
         setValue("product_photos", updated);
     };
 
-    const handleAddTechDoc = () => {
-        if (techDocs.length < 10) {
-            setValue("tech_docs", [...techDocs, ""]);
-        }
-    };
 
-    const handleUpdateTechDoc = (index: number, value: string) => {
-        const updated = [...techDocs];
-        updated[index] = value;
-        setValue("tech_docs", updated);
-    };
-
-    const handleRemoveTechDoc = (index: number) => {
-        setValue("tech_docs", techDocs.filter((_, i) => i !== index));
-    };
 
     const handleNext = async () => {
         let fieldsToValidate: (keyof WizardFormValues)[] = [];
@@ -117,11 +129,10 @@ export default function ProductWizardV2() {
                 fieldsToValidate = ["name", "category", "company_blurb"];
                 break;
             case 2:
-                fieldsToValidate = ["product_photos", "youtube_link", "tech_docs"];
+                fieldsToValidate = ["product_photos", "youtube_link", "technical_docs_url"];
                 break;
             case 3:
-                // Tech specs are optional in previous code, but let's validate struct if needed
-                fieldsToValidate = ["technical_specs"];
+                fieldsToValidate = ["target_audience", "core_value_proposition", "technical_specs", "sme_access_notes"];
                 break;
             case 4:
                 // Signals validation if any
@@ -160,8 +171,11 @@ export default function ProductWizardV2() {
                 company_blurb: data.company_blurb,
                 product_photos: data.product_photos,
                 youtube_link: data.youtube_link || null,
-                tech_docs: data.tech_docs.filter(doc => doc.trim() !== ""),
+                technical_docs_url: data.technical_docs_url || null,
+                target_audience: data.target_audience,
+                core_value_proposition: data.core_value_proposition,
                 technical_specs: specsObject,
+                sme_access_notes: data.sme_access_notes || null,
                 sme_signals: data.sme_signals,
             });
 
@@ -306,45 +320,16 @@ export default function ProductWizardV2() {
                                     {errors.youtube_link && <p className="text-red-500 text-xs">{errors.youtube_link.message}</p>}
                                 </div>
 
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <label className="text-xs uppercase tracking-wider text-gray-500">
-                                            Technical Documentation Links ({techDocs.length}/10)
-                                        </label>
-                                        {techDocs.length < 10 && (
-                                            <button
-                                                type="button"
-                                                onClick={handleAddTechDoc}
-                                                className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
-                                            >
-                                                + Add Link
-                                            </button>
-                                        )}
-                                    </div>
-                                    {techDocs.length > 0 && (
-                                        <div className="space-y-2">
-                                            {techDocs.map((doc, index) => (
-                                                <div key={index} className="flex gap-2">
-                                                    <input
-                                                        value={doc}
-                                                        onChange={(e) => handleUpdateTechDoc(index, e.target.value)}
-                                                        className="flex-1 bg-[#0a0a0a] border border-[#333] p-2 text-sm focus:border-emerald-500 focus:outline-none transition-colors placeholder:text-gray-700"
-                                                        placeholder="https://example.com/documentation.pdf"
-                                                    />
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleRemoveTechDoc(index)}
-                                                        className="bg-red-900/20 border border-red-500/50 px-3 text-red-400 hover:bg-red-900/40 transition-colors text-xs"
-                                                    >
-                                                        Remove
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                    <p className="text-xs text-gray-600">
-                                        Add links to PDFs, specs sheets, lab reports, or other technical documentation
-                                    </p>
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-wider text-gray-500">
+                                        Technical Documentation Link (Optional)
+                                    </label>
+                                    <input
+                                        {...register("technical_docs_url")}
+                                        className="w-full bg-[#0a0a0a] border border-[#333] p-3 text-sm focus:border-emerald-500 focus:outline-none transition-colors placeholder:text-gray-700"
+                                        placeholder="https://example.com/specs.pdf"
+                                    />
+                                    {errors.technical_docs_url && <p className="text-red-500 text-xs">{errors.technical_docs_url.message}</p>}
                                 </div>
                             </div>
                         </div>
@@ -354,144 +339,187 @@ export default function ProductWizardV2() {
                             <h2 className="text-xl font-semibold text-white uppercase tracking-wider mb-4 border-l-2 border-emerald-500 pl-4">
                                 III. Technical Specifications
                             </h2>
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-center">
-                                    <p className="text-xs text-gray-500">Key-Value specifications for comparison.</p>
-                                    <button
-                                        type="button"
-                                        onClick={() => setValue("technical_specs", [...technicalSpecs, { key: "", value: "" }])}
-                                        className="text-emerald-400 text-xs hover:text-emerald-300"
-                                    >
-                                        + Add Specification
-                                    </button>
+                            <div className="space-y-6">
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-wider text-gray-500">
+                                        Target Audience <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        {...register("target_audience")}
+                                        className="w-full bg-[#0a0a0a] border border-[#333] p-3 text-sm focus:border-emerald-500 focus:outline-none transition-colors placeholder:text-gray-700"
+                                        placeholder="Who is this product for?"
+                                    />
+                                    {errors.target_audience && <p className="text-red-500 text-xs">{errors.target_audience.message}</p>}
                                 </div>
 
-                                {technicalSpecs.map((spec, index) => (
-                                    <div key={index} className="flex gap-2">
-                                        <input
-                                            placeholder="Spec Name (e.g. Weight)"
-                                            value={spec.key}
-                                            onChange={(e) => {
-                                                const newSpecs = [...technicalSpecs];
-                                                newSpecs[index].key = e.target.value;
-                                                setValue("technical_specs", newSpecs);
-                                            }}
-                                            className="flex-1 bg-[#0a0a0a] border border-[#333] p-2 text-sm focus:border-emerald-500 focus:outline-none"
-                                        />
-                                        <input
-                                            placeholder="Value (e.g. 50g)"
-                                            value={spec.value}
-                                            onChange={(e) => {
-                                                const newSpecs = [...technicalSpecs];
-                                                newSpecs[index].value = e.target.value;
-                                                setValue("technical_specs", newSpecs);
-                                            }}
-                                            className="flex-1 bg-[#0a0a0a] border border-[#333] p-2 text-sm focus:border-emerald-500 focus:outline-none"
-                                        />
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-wider text-gray-500">
+                                        Core Value Proposition <span className="text-red-500">*</span>
+                                    </label>
+                                    <textarea
+                                        {...register("core_value_proposition")}
+                                        className="w-full bg-[#0a0a0a] border border-[#333] p-3 text-sm focus:border-emerald-500 focus:outline-none transition-colors placeholder:text-gray-700 min-h-[100px]"
+                                        placeholder="What is the main benefit or promise?"
+                                    />
+                                    {errors.core_value_proposition && <p className="text-red-500 text-xs">{errors.core_value_proposition.message}</p>}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-center">
+                                        <label className="text-xs uppercase tracking-wider text-gray-500">
+                                            Technical Specifications
+                                        </label>
                                         <button
                                             type="button"
-                                            onClick={() => setValue("technical_specs", technicalSpecs.filter((_, i) => i !== index))}
-                                            className="text-red-400 hover:text-red-300 px-2"
+                                            onClick={() => setValue("technical_specs", [...technicalSpecs, { key: "", value: "" }])}
+                                            className="text-emerald-400 text-xs hover:text-emerald-300"
                                         >
-                                            ×
+                                            + Add Specification
                                         </button>
                                     </div>
-                                ))}
-                                {technicalSpecs.length === 0 && (
-                                    <p className="text-gray-700 text-sm italic py-4">No specifications added yet.</p>
-                                )}
+
+                                    {technicalSpecs.map((spec, index) => (
+                                        <div key={index} className="flex gap-2">
+                                            <input
+                                                placeholder="Spec Name (e.g. Weight)"
+                                                value={spec.key}
+                                                onChange={(e) => {
+                                                    const newSpecs = [...technicalSpecs];
+                                                    newSpecs[index].key = e.target.value;
+                                                    setValue("technical_specs", newSpecs);
+                                                }}
+                                                className="flex-1 bg-[#0a0a0a] border border-[#333] p-2 text-sm focus:border-emerald-500 focus:outline-none"
+                                            />
+                                            <input
+                                                placeholder="Value (e.g. 50g)"
+                                                value={spec.value}
+                                                onChange={(e) => {
+                                                    const newSpecs = [...technicalSpecs];
+                                                    newSpecs[index].value = e.target.value;
+                                                    setValue("technical_specs", newSpecs);
+                                                }}
+                                                className="flex-1 bg-[#0a0a0a] border border-[#333] p-2 text-sm focus:border-emerald-500 focus:outline-none"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setValue("technical_specs", technicalSpecs.filter((_, i) => i !== index))}
+                                                className="text-red-400 hover:text-red-300 px-2"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {technicalSpecs.length === 0 && (
+                                        <p className="text-gray-700 text-sm italic py-4">No specifications added yet.</p>
+                                    )}
+
+                                    <div className="space-y-2">
+                                        <label className="text-xs uppercase tracking-wider text-gray-500">
+                                            SME Access Notes (Optional)
+                                        </label>
+                                        <textarea
+                                            {...register("sme_access_notes")}
+                                            className="w-full bg-[#0a0a0a] border border-[#333] p-3 text-sm focus:border-emerald-500 focus:outline-none transition-colors placeholder:text-gray-700 min-h-[100px]"
+                                            placeholder="Notes for the Subject Matter Expert (hidden from public)..."
+                                        />
+                                    </div>
+                                </div>
                             </div>
-                        </div>
 
-                        {/* STEP 4: TRUTH SIGNALS */}
-                        <div className={step === 4 ? "block animate-in fade-in slide-in-from-right-4 duration-300" : "hidden"}>
-                            <h2 className="text-xl font-semibold text-white uppercase tracking-wider mb-4 border-l-2 border-emerald-500 pl-4">
-                                IV. Truth Signals
-                            </h2>
+                            {/* STEP 4: TRUTH SIGNALS */}
+                            <div className={step === 4 ? "block animate-in fade-in slide-in-from-right-4 duration-300" : "hidden"}>
+                                <h2 className="text-xl font-semibold text-white uppercase tracking-wider mb-4 border-l-2 border-emerald-500 pl-4">
+                                    IV. Truth Signals
+                                </h2>
 
-                            <div className="mb-6 p-4 border border-emerald-900/30 bg-emerald-900/10 text-emerald-100 text-sm">
-                                <p>Select applicable signals and provide evidence (PDF/Image) for verification.</p>
-                            </div>
+                                <div className="mb-6 p-4 border border-emerald-900/30 bg-emerald-900/10 text-emerald-100 text-sm">
+                                    <p>Select applicable signals and provide evidence (PDF/Image) for verification.</p>
+                                </div>
 
-                            <div className="space-y-4">
-                                {[
-                                    { key: 'third_party_lab_verified', label: 'Third-Party Lab Verified', desc: 'Independent testing for purity/potency.' },
-                                    { key: 'purity_tested', label: 'Purity Tested', desc: 'Free from contaminants like heavy metals.' },
-                                    { key: 'source_transparency', label: 'Source Transparency', desc: 'Clear origin of ingredients.' },
-                                    { key: 'potency_verified', label: 'Potency Verified', desc: 'Active ingredients match label claims.' },
-                                    { key: 'excipient_audit', label: 'Excipient Audit', desc: 'All fillers/binders are clean and disclosed.' },
-                                    { key: 'operational_legitimacy', label: 'Operational Legitimacy', desc: 'Company has verified business address/support.' },
-                                ].map((signal) => {
-                                    const isSelected = !!smeSignals[signal.key];
-                                    const evidence = smeSignals[signal.key]?.evidence || '';
+                                <div className="space-y-4">
+                                    {[
+                                        { key: 'third_party_lab_verified', label: 'Third-Party Lab Verified', desc: 'Independent testing for purity/potency.' },
+                                        { key: 'purity_tested', label: 'Purity Tested', desc: 'Free from contaminants like heavy metals.' },
+                                        { key: 'source_transparency', label: 'Source Transparency', desc: 'Clear origin of ingredients.' },
+                                        { key: 'potency_verified', label: 'Potency Verified', desc: 'Active ingredients match label claims.' },
+                                        { key: 'excipient_audit', label: 'Excipient Audit', desc: 'All fillers/binders are clean and disclosed.' },
+                                        { key: 'operational_legitimacy', label: 'Operational Legitimacy', desc: 'Company has verified business address/support.' },
+                                    ].map((signal) => {
+                                        const isSelected = !!smeSignals[signal.key];
+                                        const evidence = smeSignals[signal.key]?.evidence || '';
 
-                                    return (
-                                        <div key={signal.key} className={`p-4 border rounded transition-colors ${isSelected ? 'border-emerald-500/50 bg-emerald-900/10' : 'border-[#333] bg-[#0a0a0a]'}`}>
-                                            <div className="flex items-start gap-3">
-                                                <input
-                                                    type="checkbox"
-                                                    id={signal.key}
-                                                    checked={isSelected}
-                                                    onChange={() => {
-                                                        const newSignals = { ...smeSignals };
-                                                        if (isSelected) {
-                                                            delete newSignals[signal.key];
-                                                        } else {
-                                                            newSignals[signal.key] = { verified: false, evidence: '' };
-                                                        }
-                                                        setValue("sme_signals", newSignals);
-                                                    }}
-                                                    className="mt-1 w-4 h-4 rounded border-gray-600 text-emerald-500 focus:ring-emerald-500 bg-gray-900"
-                                                />
-                                                <div className="flex-1">
-                                                    <label htmlFor={signal.key} className="block font-medium text-white select-none">
-                                                        {signal.label}
-                                                    </label>
-                                                    <p className="text-xs text-gray-400 mb-2">{signal.desc}</p>
+                                        return (
+                                            <div key={signal.key} className={`p-4 border rounded transition-colors ${isSelected ? 'border-emerald-500/50 bg-emerald-900/10' : 'border-[#333] bg-[#0a0a0a]'}`}>
+                                                <div className="flex items-start gap-3">
+                                                    <input
+                                                        type="checkbox"
+                                                        id={signal.key}
+                                                        checked={isSelected}
+                                                        onChange={() => {
+                                                            const newSignals = { ...smeSignals };
+                                                            if (isSelected) {
+                                                                delete newSignals[signal.key];
+                                                            } else {
+                                                                newSignals[signal.key] = { verified: false, evidence: '' };
+                                                            }
+                                                            setValue("sme_signals", newSignals);
+                                                        }}
+                                                        className="mt-1 w-4 h-4 rounded border-gray-600 text-emerald-500 focus:ring-emerald-500 bg-gray-900"
+                                                    />
+                                                    <div className="flex-1">
+                                                        <label htmlFor={signal.key} className="block font-medium text-white select-none">
+                                                            {signal.label}
+                                                        </label>
+                                                        <p className="text-xs text-gray-400 mb-2">{signal.desc}</p>
 
-                                                    {isSelected && (
-                                                        <div className="mt-3 pl-4 border-l border-emerald-500/30">
-                                                            <label className="text-xs uppercase tracking-wider text-emerald-400/80 mb-2 block">
-                                                                Evidence Upload <span className="text-red-500">*</span>
-                                                            </label>
+                                                        {isSelected && (
+                                                            <div className="mt-3 pl-4 border-l border-emerald-500/30">
+                                                                <label className="text-xs uppercase tracking-wider text-emerald-400/80 mb-2 block">
+                                                                    Evidence Upload <span className="text-red-500">*</span>
+                                                                </label>
 
-                                                            {evidence ? (
-                                                                <div className="flex items-center justify-between p-2 bg-black/40 border border-emerald-500/30 rounded">
-                                                                    <a href={evidence} target="_blank" className="text-xs text-emerald-400 hover:underline truncate max-w-[200px]">
-                                                                        View Documentation
-                                                                    </a>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => {
+                                                                {evidence ? (
+                                                                    <div className="flex items-center justify-between p-2 bg-black/40 border border-emerald-500/30 rounded">
+                                                                        <a href={evidence} target="_blank" className="text-xs text-emerald-400 hover:underline truncate max-w-[200px]">
+                                                                            View Documentation
+                                                                        </a>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                const newSignals = { ...smeSignals };
+                                                                                newSignals[signal.key].evidence = '';
+                                                                                setValue("sme_signals", newSignals);
+                                                                            }}
+                                                                            className="text-xs text-red-400 hover:text-red-300 ml-2"
+                                                                        >
+                                                                            Change
+                                                                        </button>
+                                                                    </div>
+                                                                ) : (
+                                                                    <CloudinaryUploadWidget
+                                                                        onUpload={(url) => {
                                                                             const newSignals = { ...smeSignals };
-                                                                            newSignals[signal.key].evidence = '';
+                                                                            newSignals[signal.key].evidence = url;
                                                                             setValue("sme_signals", newSignals);
                                                                         }}
-                                                                        className="text-xs text-red-400 hover:text-red-300 ml-2"
-                                                                    >
-                                                                        Change
-                                                                    </button>
-                                                                </div>
-                                                            ) : (
-                                                                <CloudinaryUploadWidget
-                                                                    onUpload={(url) => {
-                                                                        const newSignals = { ...smeSignals };
-                                                                        newSignals[signal.key].evidence = url;
-                                                                        setValue("sme_signals", newSignals);
-                                                                    }}
-                                                                    maxPhotos={1}
-                                                                    currentCount={0}
-                                                                />
-                                                            )}
-                                                        </div>
-                                                    )}
+                                                                        maxPhotos={1}
+                                                                        currentCount={0}
+                                                                    />
+                                                                )}
+                                                                {errors.sme_signals?.[signal.key]?.evidence && (
+                                                                    <p className="text-red-500 text-xs mt-1">
+                                                                        {errors.sme_signals[signal.key]?.evidence?.message}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    );
-                                })}
+                                        );
+                                    })}
+                                </div>
                             </div>
-                        </div>
 
                     </form>
 

@@ -16,7 +16,7 @@ export default function ApprovalQueueTable({ initialQueue }: ApprovalQueueTableP
     const [queue, setQueue] = useState(initialQueue);
     const [sortField, setSortField] = useState<SortField>('created_at');
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-    const [statusFilter, setStatusFilter] = useState<'all' | 'pending_review' | 'approved' | 'rejected'>('all');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'pending_review' | 'approved' | 'rejected'>('pending_review');
 
     // Filter and sort queue
     const filteredAndSortedQueue = useMemo(() => {
@@ -77,22 +77,57 @@ export default function ApprovalQueueTable({ initialQueue }: ApprovalQueueTableP
 
     return (
         <div className="space-y-4">
-            {/* Filters */}
-            <div className="flex items-center gap-4">
-                <label className="font-mono text-sm text-bone-white/70">Filter by Status:</label>
-                <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value as any)}
-                    className="rounded border border-bone-white/20 bg-bone-white/5 px-3 py-2 font-mono text-sm text-bone-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            {/* Tabs */}
+            <div className="flex items-center gap-6 border-b border-bone-white/20 pb-4">
+                <button
+                    onClick={() => setStatusFilter('pending_review')}
+                    className={`relative font-mono text-sm font-bold uppercase tracking-wider transition-colors ${statusFilter === 'pending_review'
+                        ? 'text-emerald-400'
+                        : 'text-bone-white/50 hover:text-bone-white'
+                        }`}
                 >
-                    <option value="all">All</option>
-                    <option value="pending_review">Pending Review</option>
-                    <option value="approved">Approved</option>
-                    <option value="rejected">Rejected</option>
-                </select>
-                <span className="ml-auto font-mono text-sm text-bone-white/60">
-                    {filteredAndSortedQueue.length} product{filteredAndSortedQueue.length !== 1 ? 's' : ''}
-                </span>
+                    Pending Approvals
+                    {queue.filter(i => i.admin_status === 'pending_review').length > 0 && (
+                        <span className="ml-2 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs text-emerald-400">
+                            {queue.filter(i => i.admin_status === 'pending_review').length}
+                        </span>
+                    )}
+                    {statusFilter === 'pending_review' && (
+                        <div className="absolute -bottom-[17px] left-0 h-0.5 w-full bg-emerald-500" />
+                    )}
+                </button>
+
+                <button
+                    onClick={() => setStatusFilter('approved')}
+                    className={`relative font-mono text-sm font-bold uppercase tracking-wider transition-colors ${statusFilter === 'approved'
+                        ? 'text-emerald-400'
+                        : 'text-bone-white/50 hover:text-bone-white'
+                        }`}
+                >
+                    Product Inventory
+                    <span className="ml-2 rounded-full bg-bone-white/10 px-2 py-0.5 text-xs text-bone-white/60">
+                        {queue.filter(i => i.admin_status === 'approved').length}
+                    </span>
+                    {statusFilter === 'approved' && (
+                        <div className="absolute -bottom-[17px] left-0 h-0.5 w-full bg-emerald-500" />
+                    )}
+                </button>
+
+                <button
+                    onClick={() => setStatusFilter('rejected')}
+                    className={`relative font-mono text-sm font-bold uppercase tracking-wider transition-colors ${statusFilter === 'rejected'
+                        ? 'text-red-400'
+                        : 'text-bone-white/50 hover:text-bone-white'
+                        }`}
+                >
+                    Rejected
+                    <span className="ml-2 rounded-full bg-bone-white/10 px-2 py-0.5 text-xs text-bone-white/60">
+                        {queue.filter(i => i.admin_status === 'rejected').length}
+                    </span>
+                    {statusFilter === 'rejected' && (
+                        <div className="absolute -bottom-[17px] left-0 h-0.5 w-full bg-red-500" />
+                    )}
+                </button>
             </div>
 
             {/* Table */}

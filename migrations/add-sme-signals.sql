@@ -1,0 +1,3 @@
+ALTER TABLE products
+ADD COLUMN IF NOT EXISTS sme_signals JSONB DEFAULT '{}',
+ADD COLUMN IF NOT EXISTS truth_evidence_urls JSONB DEFAULT '[]';
