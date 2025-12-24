@@ -1,0 +1,163 @@
+"use client";
+
+import { useProductWizardStore, ProductWizardSchema } from "@/lib/stores/product-wizard-store";
+import { ChevronRight, Check, AlertTriangle, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { onboardProduct } from "@/app/actions/product-onboarding"; // We will update this action
+
+import Step1Foundation from "./steps/Step1Foundation";
+import Step2Configuration from "./steps/Step2Configuration";
+import Step3Integration from "./steps/Step3Integration";
+
+export default function ProductWizardContainer() {
+    const { currentStep, setStep, data, isSubmitting, setSubmitting, setError, submissionError, resetWizard, _hasHydrated } = useProductWizardStore();
+    const router = useRouter();
+
+    const handleNext = () => {
+        // Logic to prevent next if current step invalid could go here
+        // But we rely on Zod validation at submission for strictness,
+        // or we could inspect the form state in the steps. 
+        // For now, allow navigation, validate at end.
+        setStep(currentStep + 1);
+    };
+
+    const handleBack = () => {
+        setStep(currentStep - 1);
+    };
+
+    const handleSubmit = async () => {
+        setSubmitting(true);
+        setError(null);
+
+        // 1. Final Validation
+        const result = ProductWizardSchema.safeParse(data);
+        if (!result.success) {
+            console.error("Validation errors:", result.error.errors);
+            setError("Please correct the errors in previous steps before submitting.");
+            setSubmitting(false);
+            return;
+        }
+
+        // 2. Prepare FormData
+        const formData = new FormData();
+        formData.append("name", data.name || "");
+        formData.append("category", data.category || "");
+        formData.append("tagline", data.tagline || "");
+        formData.append("company_blurb", data.company_blurb || "");
+        formData.append("product_photos", JSON.stringify(data.product_photos || []));
+        formData.append("video_url", data.video_url || "");
+        formData.append("technical_docs_url", data.technical_docs_url || "");
+        formData.append("target_audience", data.target_audience || "");
+        formData.append("core_value_proposition", data.core_value_proposition || "");
+        formData.append("technical_specs", JSON.stringify(data.technical_specs || []));
+        formData.append("sme_access_note", data.sme_access_note || "");
+
+        try {
+            // Dynamic import to avoid build-time issues if action file isn't ready
+            const { submitProductWizard } = await import("@/app/actions/product-wizard-submit");
+
+            const response = await submitProductWizard(formData);
+
+            if (response.success) {
+                resetWizard();
+                router.push(`/products/${response.slug}`);
+            }
+        } catch (e: any) {
+            setError(e.message);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    if (!_hasHydrated) {
+        // Show loading skeleton with same structure to prevent hydration mismatch
+        return (
+            <div className="min-h-screen bg-[#0a0a0a] text-[#e5e5e5] font-mono p-4 md:p-8 flex items-center justify-center">
+                <div className="w-full max-w-4xl border border-[#333] bg-[#111] shadow-2xl relative overflow-hidden min-h-[600px] flex flex-col">
+                    <div className="p-8 border-b border-[#333] flex justify-between items-end bg-[#0f0f0f]">
+                        <div>
+                            <h1 className="text-2xl font-bold tracking-tight text-emerald-500 uppercase">Product Onboarding</h1>
+                            <p className="text-sm text-gray-500 mt-1">Wizard v2.0 // Initializing...</p>
+                        </div>
+                        <div className="flex gap-1">
+                            {[1, 2, 3].map(s => (
+                                <div key={s} className="h-2 w-8 rounded-full bg-[#333]" />
+                            ))}
+                        </div>
+                    </div>
+                    <div className="flex-1 p-8 flex items-center justify-center">
+                        <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-[#0a0a0a] text-[#e5e5e5] font-mono p-4 md:p-8 flex items-center justify-center">
+            <div className="w-full max-w-4xl border border-[#333] bg-[#111] shadow-2xl relative overflow-hidden min-h-[600px] flex flex-col">
+
+                {/* Header */}
+                <div className="p-8 border-b border-[#333] flex justify-between items-end bg-[#0f0f0f]">
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight text-emerald-500 uppercase">Product Onboarding</h1>
+                        <p className="text-sm text-gray-500 mt-1">
+                            {currentStep === 1 && "Step 1: The Foundation (Marketing & Core)"}
+                            {currentStep === 2 && "Step 2: Visuals & Media (Show, Don't Tell)"}
+                            {currentStep === 3 && "Step 3: SME Assessment Prep (Technical)"}
+                        </p>
+                    </div>
+                    <div className="flex gap-1">
+                        {[1, 2, 3].map(s => (
+                            <div key={s} className={`h-2 w-8 rounded-full transition-all ${s <= currentStep ? 'bg-emerald-500' : 'bg-[#333]'}`} />
+                        ))}
+                    </div>
+                </div>
+
+                {/* Error Banner */}
+                {submissionError && (
+                    <div className="bg-red-900/20 border-b border-red-500/30 p-4 text-red-500 flex items-center gap-2 text-sm">
+                        <AlertTriangle className="w-4 h-4" /> {submissionError}
+                    </div>
+                )}
+
+                {/* Content Area */}
+                <div className="flex-1 p-8">
+                    {currentStep === 1 && <Step1Foundation />}
+                    {currentStep === 2 && <Step2Configuration />}
+                    {currentStep === 3 && <Step3Integration />}
+                </div>
+
+                {/* Footer Navigation */}
+                <div className="p-8 border-t border-[#333] flex justify-between bg-[#0f0f0f]">
+                    <button
+                        onClick={handleBack}
+                        disabled={currentStep === 1}
+                        className="px-6 py-2 text-xs uppercase tracking-wider text-gray-500 hover:text-white transition-colors disabled:opacity-30 disabled:hover:text-gray-500"
+                    >
+                        Back
+                    </button>
+
+                    {currentStep < 3 ? (
+                        <button
+                            onClick={handleNext}
+                            className="flex items-center gap-2 bg-[#1a1a1a] border border-[#333] px-6 py-2 text-xs uppercase tracking-wider text-white hover:bg-emerald-900/20 hover:border-emerald-500/50 transition-all"
+                        >
+                            Next Step <ChevronRight className="w-3 h-3" />
+                        </button>
+                    ) : (
+                        <button
+                            onClick={handleSubmit}
+                            disabled={isSubmitting}
+                            className="flex items-center gap-2 bg-emerald-600/10 border border-emerald-500/50 px-8 py-2 text-xs uppercase tracking-wider text-emerald-400 hover:bg-emerald-600/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isSubmitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                            {isSubmitting ? "Processing..." : "Initialize Product"}
+                        </button>
+                    )}
+                </div>
+
+            </div>
+        </div>
+    );
+}

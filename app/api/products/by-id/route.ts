@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
         coa_url,
         lab_pdf_url
       FROM products
-      WHERE id = ${productId}
+      WHERE id::text = ${productId} OR slug = ${productId}
       LIMIT 1
     `;
 

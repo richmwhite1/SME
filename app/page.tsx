@@ -5,6 +5,8 @@ import LatestIntelligence from "@/components/social/LatestIntelligence";
 import VelocityBadge from "@/components/products/VelocityBadge";
 import { Download, Share2 } from "lucide-react";
 import { getDb } from "@/lib/db";
+import LensAwareSearch from "@/components/search/LensAwareSearch";
+import LiveLedger from "@/components/feed/LiveLedger";
 
 export const dynamic = "force-dynamic";
 
@@ -159,6 +161,11 @@ export default async function Home() {
           <LatestIntelligence className="max-w-2xl mx-auto" />
         </div>
 
+        {/* Live Activity Feed */}
+        <div className="mb-12">
+          <LiveLedger />
+        </div>
+
         {/* Homeostasis Anchor - Positioned below Recent Insights */}
         <div className="mb-16 text-center">
           <h1 className="mb-6 font-serif text-5xl font-bold tracking-tight text-bone-white md:text-6xl lg:text-7xl">
@@ -170,7 +177,7 @@ export default async function Home() {
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link href="/products">
               <Button variant="primary" className="text-lg px-8 py-4 border border-sme-gold bg-sme-gold text-forest-obsidian hover:bg-[#9A7209] hover:border-[#9A7209] font-mono uppercase tracking-wider">
-                Find a Product
+                Browse All
               </Button>
             </Link>
             <Link href="/discussions">
@@ -179,6 +186,11 @@ export default async function Home() {
               </Button>
             </Link>
           </div>
+        </div>
+
+        {/* Lens-Aware Search */}
+        <div className="mb-24">
+          <LensAwareSearch />
         </div>
 
         {/* Trending Products Section */}

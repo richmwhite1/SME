@@ -6,6 +6,8 @@ export const dynamic = "force-dynamic";
 
 interface UserProfile {
   username: string | null;
+  needs_sme_review?: boolean;
+  has_completed_expert_profile?: boolean;
 }
 
 /**
@@ -29,7 +31,10 @@ export default async function MyProfileRedirect() {
   try {
     // Fetch user's username from profiles table
     const result = await sql`
-      SELECT username
+      SELECT 
+        username,
+        needs_sme_review,
+        has_completed_expert_profile
       FROM profiles
       WHERE id = ${user.id}
       LIMIT 1
@@ -46,6 +51,11 @@ export default async function MyProfileRedirect() {
   if (!profile || !profile.username) {
     // User doesn't have a username set yet - redirect to settings
     redirect("/settings");
+  }
+
+  // Check if user needs to complete expert profile wizard
+  if (profile.needs_sme_review && !profile.has_completed_expert_profile) {
+    redirect("/expert-profile");
   }
 
   // Redirect to the user's actual profile (Owner View)

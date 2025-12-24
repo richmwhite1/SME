@@ -47,7 +47,7 @@ export default async function DiscussionPage({ params }: { params: Promise<{ id:
       p.badge_type
     FROM discussions d
     LEFT JOIN profiles p ON d.author_id = p.id
-    WHERE d.id = ${id}
+    WHERE d.id::text = ${id} OR d.slug = ${id}
     LIMIT 1
   `;
 

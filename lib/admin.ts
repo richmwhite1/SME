@@ -9,7 +9,7 @@ import { getDb } from "@/lib/db";
 export async function isAdmin(): Promise<boolean> {
   try {
     const user = await currentUser();
-    
+
     if (!user) {
       return false;
     }
@@ -21,7 +21,7 @@ export async function isAdmin(): Promise<boolean> {
     }
 
     const sql = getDb();
-    
+
     // Check if user has admin role in profiles table
     const result = await sql`
       SELECT is_admin

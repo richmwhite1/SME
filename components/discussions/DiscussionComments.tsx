@@ -12,7 +12,7 @@ import CitationSearch from "@/components/comments/CitationSearch";
 import CitationInput from "@/components/comments/CitationInput";
 import AcceptSolutionButton from "@/components/discussions/AcceptSolutionButton";
 import Button from "@/components/ui/Button";
-import { Send, Loader2, Reply, BookOpen, ExternalLink, Award, CheckCircle2, Link2, Check, Image, UserCircle, Flag } from "lucide-react";
+import { Send, Loader2, Reply, BookOpen, ExternalLink, Award, CheckCircle2, Link2, Check, Image, UserCircle, Flag, Lightbulb, ThumbsUp } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import AvatarLink from "@/components/profile/AvatarLink";
 import { useToast } from "@/components/ui/ToastContainer";
@@ -20,6 +20,7 @@ import TrustWeight from "@/components/ui/TrustWeight";
 import SocialCard from "@/components/social/SocialCard";
 import { useShareCard } from "@/components/social/useShareCard";
 import UserBadge from "@/components/UserBadge";
+import { toggleCommentVote } from "@/app/actions/vote-actions";
 
 interface ResourceReference {
   resource_id: string;
@@ -45,6 +46,8 @@ interface Comment {
   references?: ResourceReference[];
   children?: Comment[];
   parent?: Comment | null; // Reference to parent comment for Signal Bridge
+  insight_summary?: string | null;
+  upvote_count?: number;
 }
 
 interface DiscussionCommentsProps {
@@ -386,6 +389,39 @@ function CommentThread({
   const router = useRouter();
   const { showToast } = useToast();
 
+  const [upvoteCount, setUpvoteCount] = useState(comment.upvote_count || 0);
+  const [isUpvoted, setIsUpvoted] = useState(false); // Optimistic default
+  const [isVoting, setIsVoting] = useState(false);
+
+  const handleVote = async () => {
+    if (isVoting) return;
+    setIsVoting(true);
+
+    // Optimistic update
+    const newIsUpvoted = !isUpvoted;
+    setIsUpvoted(newIsUpvoted);
+    setUpvoteCount((prev) => newIsUpvoted ? prev + 1 : prev - 1);
+
+    try {
+      const result = await toggleCommentVote(comment.id, 'discussion');
+      if (result.success) {
+        setUpvoteCount(result.upvoteCount);
+        setIsUpvoted(result.isUpvoted);
+      } else {
+        // Revert on failure
+        setIsUpvoted(!newIsUpvoted);
+        setUpvoteCount((prev) => newIsUpvoted ? prev - 1 : prev + 1);
+        console.error("Vote failed:", result.error);
+      }
+    } catch (error) {
+      setIsUpvoted(!newIsUpvoted);
+      setUpvoteCount((prev) => newIsUpvoted ? prev - 1 : prev + 1);
+      console.error("Vote error:", error);
+    } finally {
+      setIsVoting(false);
+    }
+  };
+
   // Copy link to specific comment
   const handleCopyLink = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -597,6 +633,19 @@ function CommentThread({
           </div>
         )}
 
+        {/* INSIGHT SUMMARY BLOCK */}
+        {comment.insight_summary && (
+          <div className="mb-3 p-3 bg-emerald-900/20 border-l-2 border-emerald-500 rounded-r shadow-sm">
+            <div className="flex items-start gap-2">
+              <Lightbulb size={16} className="text-emerald-400 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-emerald-100/90 font-medium leading-relaxed">
+                <span className="text-xs uppercase tracking-wider text-emerald-500/80 mr-2 font-bold block mb-1">Key Insight</span>
+                {comment.insight_summary}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Comment Content */}
         <div className="mb-2 whitespace-pre-wrap text-sm text-bone-white/90 font-mono leading-relaxed">
           <CitationText content={comment.content} />
@@ -678,6 +727,19 @@ function CommentThread({
           >
             <Image size={12} />
             <span>Generate Share Card</span>
+          </button>
+
+          {/* Upvote Button */}
+          <button
+            type="button"
+            onClick={handleVote}
+            disabled={isVoting}
+            className={`flex items-center gap-1 text-xs font-mono transition-colors active:scale-95 ${isUpvoted ? 'text-emerald-400' : 'text-bone-white/40 hover:text-emerald-400'
+              }`}
+            title="Endorse this perspective"
+          >
+            <ThumbsUp size={12} className={isUpvoted ? "fill-emerald-400/20" : ""} />
+            <span>{upvoteCount || 0}</span>
           </button>
 
           {/* Reply Button - No limit on replies, only visual indentation limit */}

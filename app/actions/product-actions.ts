@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { checkVibe } from "@/lib/vibe-check";
 import { checkUserBanned, checkKeywordBlacklist, handleBlacklistedContent } from "@/lib/trust-safety";
 import { moderateContent } from "@/lib/actions/moderate";
+import { generateInsight } from "@/lib/ai/insight-engine";
 
 /**
  * Create a comment on a product/protocol
@@ -135,6 +136,62 @@ export async function createProductComment(
                 );
                 console.log("Comment auto-flagged due to blacklisted keyword:", blacklistMatches[0].keyword);
               }
+
+              // SME Insight Trigger (Gate A)
+              // Process asynchronously (fire and forget pattern for speed)
+              try {
+                const profileResult = await sql`
+                  SELECT is_verified_expert, contributor_score 
+                  FROM profiles 
+                  WHERE id = ${authorId}
+                `;
+                const profile = profileResult[0];
+                const isSME = profile?.is_verified_expert || (profile?.contributor_score || 0) >= 100;
+
+                if (isSME && trimmedContent.length >= 50) {
+                  console.log("SME Product Comment detected, generating insight...");
+                  const insight = await generateInsight(trimmedContent);
+                  if (insight) {
+                    await sql`
+                      UPDATE product_comments
+                      SET insight_summary = ${insight}
+                      WHERE id = ${insertedComment.id}
+                    `;
+                    console.log("Insight saved for SME product comment");
+                  }
+                }
+              } catch (err) {
+                console.error("Error in SME insight generation:", err);
+              }
+
+              // Check for active SME Summons
+              const summonsResult = await sql`
+                SELECT id FROM sme_summons 
+                WHERE product_id = ${productId} 
+                  AND is_resolved = false 
+                LIMIT 1
+              `;
+
+              const isSummoned = summonsResult.length > 0;
+              let pointsAwarded = 5; // Base points for comment
+
+              if (isSummoned) {
+                pointsAwarded = 20; // Double points (assuming base 10 for "solving gap" or just bonus)
+                // Mark summons as resolved
+                await sql`
+                  UPDATE sme_summons 
+                  SET is_resolved = true 
+                  WHERE id = ${summonsResult[0].id}
+                `;
+                console.log(`Summons resolved by ${authorId} for product ${productId}`);
+              }
+
+              // Award Reputation Points
+              await sql`
+                UPDATE profiles 
+                SET contributor_score = COALESCE(contributor_score, 0) + ${pointsAwarded} 
+                WHERE id = ${authorId}
+              `;
 
               result = {
                 success: true,

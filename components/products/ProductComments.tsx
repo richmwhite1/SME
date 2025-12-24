@@ -11,6 +11,9 @@ import AvatarLink from "@/components/profile/AvatarLink";
 import TrustWeight from "@/components/ui/TrustWeight";
 import UserBadge from "@/components/UserBadge";
 
+import { toggleCommentVote } from "@/app/actions/vote-actions";
+import { Lightbulb, ThumbsUp } from "lucide-react";
+
 // Recursive comment thread component with Binary Indent Firewall
 function CommentThread({ comment, depth = 0, parentUsername }: { comment: Comment; depth?: number; parentUsername?: string | null }) {
   // HARD FIREWALL: Binary Indentation - className + inline style backup
@@ -18,6 +21,39 @@ function CommentThread({ comment, depth = 0, parentUsername }: { comment: Commen
   // No reply can ever indent more than 20px (ml-5 = 1.25rem = 20px)
   const isGuest = !comment.profiles && comment.guest_name;
   const marginLeft = depth === 0 ? '0px' : '20px';
+
+  const [upvoteCount, setUpvoteCount] = useState(comment.upvote_count || 0);
+  const [isUpvoted, setIsUpvoted] = useState(false); // We don't have initial user state yet, defaulting to false or need to fetch
+  const [isVoting, setIsVoting] = useState(false);
+
+  const handleVote = async () => {
+    if (isVoting) return;
+    setIsVoting(true);
+
+    // Optimistic update
+    const newIsUpvoted = !isUpvoted;
+    setIsUpvoted(newIsUpvoted);
+    setUpvoteCount(prev => newIsUpvoted ? prev + 1 : prev - 1);
+
+    try {
+      const result = await toggleCommentVote(comment.id, 'product');
+      if (result.success) {
+        setUpvoteCount(result.upvoteCount);
+        setIsUpvoted(result.isUpvoted);
+      } else {
+        // Revert on failure
+        setIsUpvoted(!newIsUpvoted);
+        setUpvoteCount(prev => newIsUpvoted ? prev - 1 : prev + 1);
+        console.error("Vote failed:", result.error);
+      }
+    } catch (error) {
+      setIsUpvoted(!newIsUpvoted);
+      setUpvoteCount(prev => newIsUpvoted ? prev - 1 : prev + 1);
+      console.error("Vote error:", error);
+    } finally {
+      setIsVoting(false);
+    }
+  };
 
   return (
     <div
@@ -35,7 +71,7 @@ function CommentThread({ comment, depth = 0, parentUsername }: { comment: Commen
         </span>
       )}
 
-      <div className="border border-translucent-emerald bg-muted-moss p-4">
+      <div className="border border-translucent-emerald bg-muted-moss p-4 relative group">
         <div className="mb-3 flex items-start gap-3">
           {isGuest ? (
             <div className="flex-shrink-0">
@@ -58,7 +94,7 @@ function CommentThread({ comment, depth = 0, parentUsername }: { comment: Commen
               />
             </Link>
           ) : null}
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <div className="mb-1 flex items-center gap-2 flex-wrap">
               {isGuest ? (
                 <>
@@ -75,7 +111,7 @@ function CommentThread({ comment, depth = 0, parentUsername }: { comment: Commen
                     href={comment.profiles.username
                       ? `/u/${comment.profiles.username}`
                       : `/profile/${comment.profiles.id}`}
-                    className="font-semibold text-bone-white hover:text-heart-green transition-colors"
+                    className="font-semibold text-bone-white hover:text-heart-green transition-colors truncate max-w-[150px]"
                   >
                     {comment.profiles.full_name || "Anonymous"}
                   </Link>
@@ -83,19 +119,19 @@ function CommentThread({ comment, depth = 0, parentUsername }: { comment: Commen
                   {comment.profiles.username && (
                     <Link
                       href={`/u/${comment.profiles.username}`}
-                      className="text-xs text-bone-white/70 hover:text-bone-white transition-colors"
+                      className="text-xs text-bone-white/70 hover:text-bone-white transition-colors truncate max-w-[100px]"
                     >
                       @{comment.profiles.username}
                     </Link>
                   )}
-                  {comment.profiles.contributor_score && comment.profiles.contributor_score > 0 && comment.profiles.contributor_score <= 100 && (
+                  {comment.profiles.contributor_score !== null && comment.profiles.contributor_score > 0 && (
                     <TrustWeight
                       value={comment.profiles.contributor_score}
                       className="ml-1"
                     />
                   )}
                   {comment.profiles.badge_type === "Trusted Voice" && (
-                    <span className="border border-heart-green bg-heart-green/20 px-2 py-0.5 text-xs font-medium text-heart-green font-mono uppercase">
+                    <span className="border border-heart-green bg-heart-green/20 px-2 py-0.5 text-xs font-medium text-heart-green font-mono uppercase whitespace-nowrap">
                       Trusted Voice
                     </span>
                   )}
@@ -103,12 +139,40 @@ function CommentThread({ comment, depth = 0, parentUsername }: { comment: Commen
               ) : (
                 <span className="font-semibold text-bone-white">Anonymous</span>
               )}
-              <span className="text-xs text-bone-white/50 font-mono">
+              <span className="text-xs text-bone-white/50 font-mono whitespace-nowrap">
                 {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
               </span>
             </div>
-            <div className="whitespace-pre-wrap text-bone-white/90 leading-relaxed font-mono">
+
+            {/* INSIGHT SUMMARY BLOCK */}
+            {comment.insight_summary && (
+              <div className="mb-3 p-3 bg-emerald-900/20 border-l-2 border-emerald-500 rounded-r shadow-sm">
+                <div className="flex items-start gap-2">
+                  <Lightbulb size={16} className="text-emerald-400 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-emerald-100/90 font-medium leading-relaxed">
+                    <span className="text-xs uppercase tracking-wider text-emerald-500/80 mr-2 font-bold block mb-1">Key Insight</span>
+                    {comment.insight_summary}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="whitespace-pre-wrap text-bone-white/90 leading-relaxed font-mono text-sm md:text-base">
               <CitationText content={comment.content} />
+            </div>
+
+            {/* ACTION BAR */}
+            <div className="mt-3 flex items-center gap-4">
+              <button
+                onClick={handleVote}
+                disabled={isVoting}
+                className={`flex items-center gap-1.5 text-xs font-mono transition-colors ${isUpvoted ? 'text-emerald-400' : 'text-bone-white/40 hover:text-emerald-400'
+                  }`}
+                title="Endorse this perspective"
+              >
+                <ThumbsUp size={14} className={isUpvoted ? "fill-emerald-400/20" : ""} />
+                <span>{upvoteCount || 0}</span>
+              </button>
             </div>
           </div>
         </div>
@@ -131,13 +195,15 @@ function CommentThread({ comment, depth = 0, parentUsername }: { comment: Commen
   );
 }
 
-interface Comment {
+export interface Comment {
   id: string;
   content: string;
   created_at: string;
   parent_id?: string | null;
   children?: Comment[];
   guest_name?: string | null;
+  insight_summary?: string | null;
+  upvote_count?: number;
   profiles: {
     id: string;
     full_name: string | null;
@@ -146,6 +212,8 @@ interface Comment {
     badge_type: string | null;
     contributor_score: number | null;
   } | null;
+  // Allow for extension (e.g. has_citation)
+  [key: string]: any;
 }
 
 interface ProductCommentsProps {

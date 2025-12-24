@@ -23,6 +23,7 @@ interface Product {
   slug: string;
   problem_solved: string;
   images: string[] | string | null; // Helper handles both
+  product_photos?: string[] | null; // New field
   tags: string[];
   is_sme_certified: boolean;
   created_at: string;
@@ -53,6 +54,15 @@ const parseImages = (images: string[] | string | null): string[] => {
   return [];
 };
 
+// Helper to get primary image from either source
+const getPrimaryImage = (product: Product): string | null => {
+  if (product.product_photos && product.product_photos.length > 0) {
+    return product.product_photos[0];
+  }
+  const legacyImages = parseImages(product.images);
+  return legacyImages.length > 0 ? legacyImages[0] : null;
+};
+
 async function getProducts(searchParams: { search?: string; category?: string; certified?: string }) {
   const sql = getDb();
   const { search, category, certified } = searchParams;
@@ -66,11 +76,12 @@ async function getProducts(searchParams: { search?: string; category?: string; c
         slug, 
         problem_solved, 
         images, 
+        product_photos,
         tags, 
         is_sme_certified, 
         created_at
       FROM products
-      WHERE 1=1
+      WHERE admin_status = 'approved'
       ${search ? sql`AND (title ILIKE ${'%' + search + '%'} OR problem_solved ILIKE ${'%' + search + '%'})` : sql``}
       ${category ? sql`AND ${category} = ANY(tags)` : sql``}
       ${certified === 'true' ? sql`AND is_sme_certified = true` : sql``}
@@ -94,6 +105,7 @@ async function getProducts(searchParams: { search?: string; category?: string; c
       slug: p.slug,
       problem_solved: p.problem_solved,
       images: p.images,
+      product_photos: p.product_photos,
       tags: p.tags,
       is_sme_certified: p.is_sme_certified,
       created_at: p.created_at,
@@ -233,9 +245,9 @@ export default async function ProductsPage({
                     <Link key={product.id} href={`/products/${product.slug}`} className="group">
                       <div className="h-full p-5 rounded-xl bg-white/5 border border-translucent-emerald hover:border-sme-gold/30 hover:bg-white/10 transition-all duration-300 relative overflow-hidden">
                         <div className="aspect-square mb-4 relative rounded-lg overflow-hidden bg-black/20">
-                          {parseImages(product.images)[0] ? (
+                          {getPrimaryImage(product) ? (
                             <img
-                              src={parseImages(product.images)[0]}
+                              src={getPrimaryImage(product)!}
                               alt={product.title}
                               className="object-contain w-full h-full transform group-hover:scale-105 transition-transform duration-500"
                             />
@@ -285,9 +297,9 @@ export default async function ProductsPage({
                     <div className="h-full flex flex-col p-6 rounded-xl bg-white/5 border border-translucent-emerald hover:border-sme-gold/30 hover:bg-white/10 transition-all duration-300">
                       <div className="flex items-start justify-between gap-4 mb-4">
                         <div className="w-16 h-16 rounded-lg bg-black/20 overflow-hidden flex-shrink-0">
-                          {parseImages(product.images)[0] ? (
+                          {getPrimaryImage(product) ? (
                             <img
-                              src={parseImages(product.images)[0]}
+                              src={getPrimaryImage(product)!}
                               alt={product.title}
                               className="object-contain w-full h-full"
                             />

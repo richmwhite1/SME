@@ -7,6 +7,8 @@ import ProfileFollowButton from "@/components/profile/ProfileFollowButton";
 import ProfileActivity from "@/components/profile/ProfileActivity";
 import TrustWeight from "@/components/ui/TrustWeight";
 import { getDb } from "@/lib/db";
+import { getTopSmeSummons, SmeSummons } from "@/app/actions/sme-actions";
+import SmeSummonsFeed from "@/components/profile/SmeSummonsFeed";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +43,8 @@ export default async function UserProfilePage({
   let isFollowing = false;
   let totalUpvotes = 0;
   let verifiedCitations = 0;
+  let isVerifiedSme = false;
+  let smeSummons: SmeSummons[] = [];
 
   try {
     // Fetch profile by username
@@ -69,13 +73,13 @@ export default async function UserProfilePage({
     ] = await Promise.all([
       // Follower count
       sql`SELECT count(*) as count FROM follows WHERE following_id = ${profileId}`,
-      
+
       // Following count
       sql`SELECT count(*) as count FROM follows WHERE follower_id = ${profileId}`,
-      
+
       // Is following status (if logged in)
       currentUserId ? sql`SELECT 1 FROM follows WHERE follower_id = ${currentUserId} AND following_id = ${profileId} LIMIT 1` : Promise.resolve([]),
-      
+
       // Total upvotes received on discussions
       sql`
         SELECT count(*) as count 
@@ -83,7 +87,7 @@ export default async function UserProfilePage({
         JOIN discussions d ON du.discussion_id = d.id
         WHERE d.author_id = ${profileId}
       `,
-      
+
       // Verified citations (discussions with verified links/resources)
       sql`SELECT count(*) as count FROM discussions WHERE author_id = ${profileId}`
     ]);
@@ -93,6 +97,19 @@ export default async function UserProfilePage({
     isFollowing = followStatusResult.length > 0;
     totalUpvotes = parseInt(upvotesResult[0]?.count || '0');
     verifiedCitations = parseInt(citationsResult[0]?.count || '0');
+
+    // SME Summons Logic
+    const isOwner = currentUserId === profileId;
+    // Reputation Tier 3 (Verified SME) check => Score >= 300
+    isVerifiedSme = (profile.contributor_score || 0) >= 300;
+
+    if (isOwner && isVerifiedSme) {
+      try {
+        smeSummons = await getTopSmeSummons(5);
+      } catch (e) {
+        console.error("Failed to fetch SME summons", e);
+      }
+    }
 
   } catch (error) {
     console.error("Error fetching profile data:", error);
@@ -300,6 +317,9 @@ export default async function UserProfilePage({
 
           {/* Right Column: Activity */}
           <div className="md:col-span-2">
+            {isOwner && isVerifiedSme && smeSummons.length > 0 && (
+              <SmeSummonsFeed summons={smeSummons} />
+            )}
             <ProfileActivity userId={typedProfile.id} />
           </div>
         </div>

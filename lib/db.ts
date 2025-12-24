@@ -22,7 +22,7 @@ export function getDb() {
     max: 10, // Connection pool size
     idle_timeout: 20, // Close idle connections after 20 seconds
     connect_timeout: 10, // Connection timeout
-    ssl: process.env.NODE_ENV === 'production' ? 'require' : false, // SSL in production
+    ssl: 'require', // SSL required for Railway Postgres (even in dev)
   });
 
   return sql;

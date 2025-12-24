@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { checkVibe, checkVibeForGuest } from "@/lib/vibe-check";
 import { checkUserBanned, checkKeywordBlacklist, handleBlacklistedContent } from "@/lib/trust-safety";
+import { generateInsight } from "@/lib/ai/insight-engine";
 
 /**
  * Create a new discussion
@@ -205,6 +206,34 @@ export async function createDiscussionComment(
 
       console.log("Comment successfully created:", commentData.id);
 
+      // SME Insight Trigger (Gate A)
+      // Process asynchronously (fire and forget pattern for speed)
+      // We check for SME status and content length
+      try {
+        const profileResult = await sql`
+          SELECT is_verified_expert, contributor_score 
+          FROM profiles 
+          WHERE id = ${user.id}
+        `;
+        const profile = profileResult[0];
+        const isSME = profile?.is_verified_expert || (profile?.contributor_score || 0) >= 100;
+
+        if (isSME && trimmedContent.length >= 50) {
+          console.log("SME Comment detected, generating insight...");
+          const insight = await generateInsight(trimmedContent);
+          if (insight) {
+            await sql`
+              UPDATE discussion_comments
+              SET insight_summary = ${insight}
+              WHERE id = ${commentData.id}
+            `;
+            console.log("Insight saved for SME comment");
+          }
+        }
+      } catch (err) {
+        console.error("Error in SME insight generation:", err);
+      }
+
       // If blacklisted keyword found, auto-flag and move to moderation queue
       if (shouldAutoFlag && blacklistMatches.length > 0) {
         await handleBlacklistedContent(
@@ -375,7 +404,7 @@ export async function resolveBounty(
     const discussionResult = await sql`
       SELECT id, author_id, is_bounty, bounty_status, tags
       FROM discussions
-      WHERE id = ${discussionId}
+      WHERE id::text = ${discussionId} OR slug = ${discussionId}
     `;
 
     const discussion = discussionResult[0];
@@ -506,6 +535,9 @@ export async function flagComment(commentId: string) {
  */
 export async function getDiscussionComments(discussionId: string) {
   const sql = getDb();
+  // We need to know if the current user has upvoted, but this function runs server-side 
+  // and might be cached. For now, we'll fetch global counts. 
+  // Ideally, we'd pass userId to check `comment_votes` too.
 
   try {
     const comments = await sql`
@@ -516,15 +548,18 @@ export async function getDiscussionComments(discussionId: string) {
         dc.parent_id,
         dc.guest_name,
         dc.is_flagged,
+        dc.insight_summary,
+        dc.upvote_count,
         p.id as author_id,
         p.full_name,
         p.username,
         p.avatar_url,
         p.badge_type,
-        p.contributor_score
+        p.contributor_score,
+        p.is_verified_expert
       FROM discussion_comments dc
       LEFT JOIN profiles p ON dc.author_id = p.id
-      WHERE dc.discussion_id = ${discussionId}
+      WHERE (dc.discussion_id::text = ${discussionId} OR dc.discussion_id IN (SELECT id FROM discussions WHERE slug = ${discussionId}))
         AND (dc.is_flagged IS FALSE OR dc.is_flagged IS NULL)
       ORDER BY dc.created_at ASC
     `;
@@ -537,13 +572,16 @@ export async function getDiscussionComments(discussionId: string) {
       parent_id: c.parent_id,
       guest_name: c.guest_name,
       is_flagged: c.is_flagged || false,
+      insight_summary: c.insight_summary,
+      upvote_count: c.upvote_count || 0,
       profiles: c.author_id ? {
         id: c.author_id,
         full_name: c.full_name,
         username: c.username,
         avatar_url: c.avatar_url,
         badge_type: c.badge_type,
-        contributor_score: c.contributor_score
+        contributor_score: c.contributor_score,
+        is_verified_expert: c.is_verified_expert
       } : null
     }));
   } catch (error: any) {

@@ -41,6 +41,30 @@ export default function Footer() {
               </li>
               <li>
                 <Link
+                  href="/community"
+                  className="text-sm leading-6 text-gray-400 hover:text-white"
+                >
+                  Discussions
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/leaderboard"
+                  className="text-sm leading-6 text-gray-400 hover:text-white"
+                >
+                  Leaderboard
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/onboard"
+                  className="text-sm leading-6 text-emerald-500 hover:text-emerald-400 font-semibold"
+                >
+                  List Your Product
+                </Link>
+              </li>
+              <li>
+                <Link
                   href="/resources"
                   className="text-sm text-slate-300 hover:text-white transition-colors"
                 >

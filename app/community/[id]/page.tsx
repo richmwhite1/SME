@@ -16,7 +16,7 @@ export default async function CommunityRedirect({ params }: { params: { id: stri
     const discussions = await sql<DiscussionResult[]>`
       SELECT slug
       FROM discussions
-      WHERE id = ${id}
+      WHERE id::text = ${id} OR slug = ${id}
       LIMIT 1
     `;
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import LocalSearchBar from "@/components/search/LocalSearchBar";
 
 interface ProductsClientProps {
@@ -12,6 +12,7 @@ export default function ProductsClient({
 }: ProductsClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
 
   const handleSearch = (query: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -20,7 +21,7 @@ export default function ProductsClient({
     } else {
       params.delete("search");
     }
-    router.push(`?${params.toString()}`);
+    router.push(`${pathname}?${params.toString()}`);
   };
 
   return (

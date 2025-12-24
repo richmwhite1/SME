@@ -77,7 +77,7 @@ export default function SearchBar() {
 
         // Debug: Log search results
         console.log("Search Results:", data);
-        
+
         // Sort results: exact title matches first, then by relevance
         const sortedResults = ((data || []) as SearchResult[]).sort((a, b) => {
           const aExactTitle = a.title.toLowerCase() === query.toLowerCase();
@@ -149,7 +149,7 @@ export default function SearchBar() {
       "Evidence": "EVIDENCE",
     };
     const category = categoryMap[type] || type.toUpperCase();
-    
+
     const colors: Record<string, string> = {
       "Product": "text-heart-green",
       "Discussion": "text-third-eye-indigo",
@@ -228,7 +228,8 @@ export default function SearchBar() {
 
       {/* Dropdown Results - Apothecary Terminal */}
       {isOpen && query.trim().length >= 2 && (
-        <div className="absolute top-full z-50 mt-1 w-full border border-translucent-emerald bg-muted-moss">
+        <div className="absolute top-full left-0 z-[9999] mt-2 w-full border border-translucent-emerald bg-muted-moss shadow-2xl overflow-hidden ring-1 ring-black/5">
+          {/* Debug: {results.length} results found */}
           {loading ? (
             <div className="flex items-center justify-center p-8">
               <Loader2 size={18} className="animate-spin text-bone-white/70" />
@@ -247,54 +248,54 @@ export default function SearchBar() {
               {Object.entries(groupedResults).map(([type, typeResults]) => {
                 const { category, color } = getCategoryTag(type);
                 return (
-                <div key={type} className="border-b border-translucent-emerald last:border-b-0">
-                  <div className={`bg-forest-obsidian px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider ${color}`} style={{ fontVariant: 'small-caps' }}>
-                    [{category}] ({typeResults.length})
-                  </div>
-                  {typeResults.map((result, index) => (
-                    <button
-                      key={`${result.result_id}-${index}`}
-                      onClick={() => handleResultClick(result)}
-                      className="w-full px-3 py-2.5 text-left transition-colors hover:bg-forest-obsidian border-b border-translucent-emerald last:border-b-0"
-                    >
-                      <div className="flex items-start gap-2.5">
-                        <div className="mt-0.5 flex-shrink-0">
-                          {getResultIcon(result.result_type)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-sm font-medium text-bone-white truncate">
-                              {highlightText(result.title, query)}
-                            </span>
-                            {result.is_sme_certified && result.result_type === "Product" && (
-                              <div className="flex-shrink-0">
-                                <Award size={12} className="text-sme-gold" />
-                              </div>
+                  <div key={type} className="border-b border-translucent-emerald last:border-b-0">
+                    <div className={`bg-forest-obsidian px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider ${color}`} style={{ fontVariant: 'small-caps' }}>
+                      [{category}] ({typeResults.length})
+                    </div>
+                    {typeResults.map((result, index) => (
+                      <button
+                        key={`${result.result_id}-${index}`}
+                        onClick={() => handleResultClick(result)}
+                        className="w-full px-3 py-2.5 text-left transition-colors hover:bg-forest-obsidian border-b border-translucent-emerald last:border-b-0"
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <div className="mt-0.5 flex-shrink-0">
+                            {getResultIcon(result.result_type)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-sm font-medium text-bone-white truncate">
+                                {highlightText(result.title, query)}
+                              </span>
+                              {result.is_sme_certified && result.result_type === "Product" && (
+                                <div className="flex-shrink-0">
+                                  <Award size={12} className="text-sme-gold" />
+                                </div>
+                              )}
+                            </div>
+                            {/* Display content_snippet (or snippet) below title */}
+                            {(result.content_snippet || result.snippet) ? (
+                              <p className="text-xs text-bone-white/70 line-clamp-2 font-mono leading-relaxed mb-1">
+                                {highlightText(result.content_snippet || result.snippet || "", query)}
+                              </p>
+                            ) : (
+                              <p className="text-xs text-bone-white/70 line-clamp-1 font-mono mb-1">
+                                {highlightText(result.content.substring(0, 70), query)}
+                                {result.content.length > 70 ? "..." : ""}
+                              </p>
+                            )}
+                            {result.author_name && (
+                              <p className="mt-0.5 text-[10px] text-bone-white/50 font-mono">
+                                by {result.author_name}
+                                {result.author_username && ` @${result.author_username}`}
+                              </p>
                             )}
                           </div>
-                          {/* Display content_snippet (or snippet) below title */}
-                          {(result.content_snippet || result.snippet) ? (
-                            <p className="text-xs text-bone-white/70 line-clamp-2 font-mono leading-relaxed mb-1">
-                              {highlightText(result.content_snippet || result.snippet || "", query)}
-                            </p>
-                          ) : (
-                            <p className="text-xs text-bone-white/70 line-clamp-1 font-mono mb-1">
-                              {highlightText(result.content.substring(0, 70), query)}
-                              {result.content.length > 70 ? "..." : ""}
-                            </p>
-                          )}
-                          {result.author_name && (
-                            <p className="mt-0.5 text-[10px] text-bone-white/50 font-mono">
-                              by {result.author_name}
-                              {result.author_username && ` @${result.author_username}`}
-                            </p>
-                          )}
                         </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              );
+                      </button>
+                    ))}
+                  </div>
+                );
               })}
               <div className="border-t border-translucent-emerald bg-forest-obsidian px-3 py-2">
                 <button
