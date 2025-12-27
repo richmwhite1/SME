@@ -19,7 +19,9 @@ export async function GET() {
         website_url,
         credentials,
         contributor_score,
+        reputation_score,
         is_verified_expert,
+        is_sme,
         is_admin,
         badge_type,
         created_at,
@@ -28,7 +30,7 @@ export async function GET() {
       WHERE id = ${userId}
       LIMIT 1
     `;
-    
+
     return NextResponse.json(profile[0] || null);
   } catch (error) {
     console.error('Error fetching profile:', error);

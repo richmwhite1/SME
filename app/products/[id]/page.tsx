@@ -4,7 +4,6 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import ProductImageGallery from "@/components/products/ProductImageGallery";
 import DossierHeader from "@/components/products/dossier/DossierHeader";
-import TriplePillarScores from "@/components/products/dossier/TriplePillarScores";
 import SignalGrid from "@/components/products/dossier/SignalGrid";
 import StreamSplitter from "@/components/products/dossier/StreamSplitter";
 import TheVault from "@/components/products/dossier/TheVault";
@@ -241,7 +240,7 @@ export default async function ProductDetailPage({
         LEFT JOIN profiles p ON pc.author_id = p.id
         WHERE pc.product_id:: text = ${product.id}
     AND(pc.is_flagged IS FALSE OR pc.is_flagged IS NULL)
-        ORDER BY pc.created_at DESC
+        ORDER BY pc.created_at ASC
       `;
 
       serializedComments = commentsResult.map((comment: any) => ({
@@ -354,13 +353,6 @@ export default async function ProductDetailPage({
                 <ProductImageGallery images={safeImages} />
               </div>
             )}
-
-            {/* TRIPLE PILLAR SCORES */}
-            <TriplePillarScores
-              scientific={typedProduct.score_scientific}
-              alternative={typedProduct.score_alternative}
-              esoteric={typedProduct.score_esoteric}
-            />
 
             {/* SIGNAL GRID */}
             <SignalGrid signals={signals} />

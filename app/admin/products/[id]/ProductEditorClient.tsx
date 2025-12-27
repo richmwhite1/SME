@@ -15,15 +15,16 @@ interface TechnicalSpec {
 
 interface Product {
     id: string;
-    name: string;
-    category: string;
+    name?: string;
+    category?: string;
     brand?: string;
     company_blurb?: string;
     product_photos: string[];
     youtube_link?: string;
     technical_specs: Record<string, string>;
-    created_at: string;
-    updated_at: string;
+    created_at?: string;
+    updated_at?: string;
+    title?: string;
 }
 
 interface ProductEditorClientProps {
@@ -120,8 +121,8 @@ export default function ProductEditorClient({
                                 {saveMessage && (
                                     <div
                                         className={`flex items-center gap-2 text-sm ${saveMessage.type === "success"
-                                                ? "text-emerald-400"
-                                                : "text-red-400"
+                                            ? "text-emerald-400"
+                                            : "text-red-400"
                                             }`}
                                     >
                                         <AlertCircle className="w-4 h-4" />

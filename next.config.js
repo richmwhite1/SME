@@ -1,12 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Strict checks enabled for perfect local environment
   typescript: {
-    // Temporarily ignore TypeScript errors during build for Railway deployment
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   eslint: {
-    // Ignore ESLint errors during builds
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   images: {
     remotePatterns: [

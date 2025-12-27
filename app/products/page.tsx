@@ -141,12 +141,12 @@ export default async function ProductsPage({
         <div className="container mx-auto px-4 py-16 relative">
           <div className="max-w-2xl">
             <h1 className="text-4xl md:text-5xl font-serif text-bone-white mb-6">
-              Verified <span className="text-sme-gold">Products</span>
+              Community <span className="text-sme-gold">products</span>
             </h1>
             <p className="text-lg text-bone-white/80 mb-8 leading-relaxed">
-              Explore our curated database of supplements and health products.
-              Each entry is rigorously analyzed against our 5-pillar framework
-              for safety, purity, and efficacy.
+              Explore a range of health products along with the feedback from our community.
+              Contributors that provide enough helpful feedback are promoted to SME&apos;s (Subject Matter Experts)
+              to help weigh in on products and discussions in the community.
             </p>
 
             {/* Search Bar - Client Action Needed */}

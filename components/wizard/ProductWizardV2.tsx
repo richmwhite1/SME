@@ -69,7 +69,7 @@ export default function ProductWizardV2() {
             category: storedData.category || "",
             company_blurb: storedData.company_blurb || "",
             product_photos: storedData.product_photos || [],
-            youtube_link: storedData.youtube_link || "",
+            youtube_link: storedData.video_url || "",
             technical_docs_url: storedData.technical_docs_url || "",
             target_audience: storedData.target_audience || "",
             core_value_proposition: storedData.core_value_proposition || "",

@@ -10,6 +10,7 @@ import NotificationCenter from "@/components/notifications/NotificationCenter";
 import FeedNotificationDot from "./FeedNotificationDot";
 import SMEUserButton from "./SMEUserButton";
 import PrefetchLink from "./PrefetchLink";
+import SMEDashboardLink from "./SMEDashboardLink";
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -23,6 +24,9 @@ export default function Navbar() {
         >
           <span className="font-serif text-2xl font-bold text-bone-white">
             Health SME
+          </span>
+          <span className="text-[10px] text-sme-gold/80 font-mono tracking-widest uppercase -mt-1">
+            where evidence meets experience
           </span>
         </Link>
 
@@ -60,6 +64,7 @@ export default function Navbar() {
             <span>SME Citations</span>
           </PrefetchLink>
 
+          <SMEDashboardLink />
           <AdminNavLink />
 
           <SignedIn>
@@ -127,6 +132,7 @@ export default function Navbar() {
             </PrefetchLink>
 
             <div className="pt-2 border-t border-translucent-emerald">
+              <SMEDashboardLink />
               <AdminNavLink />
               <SignedIn>
                 <div className="mt-2 flex items-center gap-2">

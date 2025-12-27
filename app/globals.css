@@ -6,13 +6,19 @@
   body {
     @apply bg-forest-obsidian text-bone-white;
   }
-  
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-serif;
   }
 }
 
 @layer utilities {
+
   /* Remove soft shadows, use hard borders instead */
   .no-shadow {
     box-shadow: none !important;
@@ -24,6 +30,7 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
@@ -31,7 +38,9 @@
 
 /* Live Pulse Animation for SME Citations */
 @keyframes ping {
-  75%, 100% {
+
+  75%,
+  100% {
     transform: scale(2);
     opacity: 0;
   }
@@ -39,12 +48,34 @@
 
 /* Pulse Glow Animation for Trust Weight */
 @keyframes pulse-glow {
-  0%, 100% {
+
+  0%,
+  100% {
     text-shadow: 0 0 8px rgba(184, 134, 11, 0.5), 0 0 12px rgba(34, 197, 94, 0.3);
   }
+
   50% {
     text-shadow: 0 0 12px rgba(184, 134, 11, 0.8), 0 0 18px rgba(34, 197, 94, 0.5);
   }
+}
+
+/* Slow Pulse Animation for Urgent SME Signals */
+@keyframes pulse-slow {
+
+  0%,
+  100% {
+    opacity: 1;
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+
+  50% {
+    opacity: 0.85;
+    border-color: rgba(239, 68, 68, 0.6);
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 /* Emerald Pulse Animation for Comment Success */
@@ -53,10 +84,12 @@
     box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
     border-color: rgba(16, 185, 129, 0.3);
   }
+
   50% {
     box-shadow: 0 0 20px 4px rgba(16, 185, 129, 0.4);
     border-color: rgba(16, 185, 129, 0.6);
   }
+
   100% {
     box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
     border-color: rgba(16, 185, 129, 0.3);
@@ -72,6 +105,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -83,10 +117,12 @@
     opacity: 0;
     background-color: rgba(10, 15, 13, 0);
   }
+
   50% {
     opacity: 1;
     background-color: rgba(10, 15, 13, 0.95);
   }
+
   100% {
     opacity: 0;
     background-color: rgba(10, 15, 13, 0);
@@ -99,6 +135,7 @@
     transform: translateY(0) rotate(0deg);
     opacity: 1;
   }
+
   100% {
     transform: translateY(100vh) rotate(720deg);
     opacity: 0;
@@ -111,13 +148,24 @@
 
 /* Shake Animation for Error States */
 @keyframes shake {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateX(0);
   }
-  10%, 30%, 50%, 70%, 90% {
+
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
     transform: translateX(-4px);
   }
-  20%, 40%, 60%, 80% {
+
+  20%,
+  40%,
+  60%,
+  80% {
     transform: translateX(4px);
   }
 }
@@ -130,7 +178,8 @@
 .signal-bridge {
   font-family: 'Geist Mono', monospace;
   font-size: 0.7rem;
-  color: #B8860B; /* SME Gold */
+  color: #B8860B;
+  /* SME Gold */
   border-left: 2px solid rgba(184, 134, 11, 0.3);
   padding-left: 8px;
   margin-bottom: 4px;
@@ -142,21 +191,29 @@
 /* The Emerald Aura: Deep-link highlight effect */
 .highlight-signal {
   animation: emeraldPulse 2s ease-out;
-  border: 1px solid #10B981 !important; /* Emerald */
+  border: 1px solid #10B981 !important;
+  /* Emerald */
 }
 
 @keyframes emeraldPulse {
-  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-  100% { box-shadow: 0 0 20px 10px rgba(16, 185, 129, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+
+  100% {
+    box-shadow: 0 0 20px 10px rgba(16, 185, 129, 0);
+  }
 }
 
 /* Hard CSS Indentation Firewall: Prevents staircase indentation regardless of JavaScript */
 .comment-container {
   margin-left: 0 !important;
 }
+
 .comment-container .comment-container {
   margin-left: 20px !important;
 }
+
 .comment-container-nested {
   border-left: 1px solid rgba(16, 185, 129, 0.4) !important;
   padding-left: 16px !important;
@@ -164,14 +221,16 @@
 }
 
 /* Legacy support for comment-thread class */
-.comment-thread { 
-  margin-left: 0 !important; 
+.comment-thread {
+  margin-left: 0 !important;
 }
-.comment-thread .comment-thread { 
-  margin-left: 20px !important; 
+
+.comment-thread .comment-thread {
+  margin-left: 20px !important;
 }
-.comment-thread .comment-thread .comment-thread { 
-  margin-left: 20px !important; 
+
+.comment-thread .comment-thread .comment-thread {
+  margin-left: 20px !important;
 }
 
 /* Hard Binary Firewall: Maximum 1 indent level - Binary classes */
@@ -188,8 +247,10 @@
 
 /* Prevent any further nesting beyond 1 level */
 .comment-nested .comment-nested {
-  margin-left: 20px !important; /* NOT 40px - stays at 20px */
-  padding-left: 0 !important; /* Remove extra padding */
+  margin-left: 20px !important;
+  /* NOT 40px - stays at 20px */
+  padding-left: 0 !important;
+  /* Remove extra padding */
 }
 
 /* Ensure Tailwind classes don't override */
@@ -198,3 +259,11 @@
 }
 
 
+
+@layer components {
+  .sme-verified {
+    border-left: 2px solid rgb(212, 175, 55);
+    background-color: rgba(212, 175, 55, 0.05);
+    box-shadow: inset 10px 0 20px -10px rgba(212, 175, 55, 0.1);
+  }
+}

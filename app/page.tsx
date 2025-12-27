@@ -166,31 +166,30 @@ export default async function Home() {
           <LiveLedger />
         </div>
 
-        {/* Homeostasis Anchor - Positioned below Recent Insights */}
+        {/* Lens of Truth Hero Section */}
         <div className="mb-16 text-center">
-          <h1 className="mb-6 font-serif text-5xl font-bold tracking-tight text-bone-white md:text-6xl lg:text-7xl">
-            Restore Your Homeostasis.
-          </h1>
-          <p className="mb-12 text-xl text-bone-white/80 md:text-2xl font-mono">
-            Community-driven products for the gut, heart, and mind.
+          <p className="mb-12 text-xl text-bone-white/80 md:text-2xl font-mono max-w-4xl mx-auto">
+            A community driven forum where evidence meets experience. Explore community vetted products and insights from the community and subject matter experts (SME's) that are willing to help.
           </p>
-          <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Link href="/products">
-              <Button variant="primary" className="text-lg px-8 py-4 border border-sme-gold bg-sme-gold text-forest-obsidian hover:bg-[#9A7209] hover:border-[#9A7209] font-mono uppercase tracking-wider">
-                Browse All
-              </Button>
-            </Link>
-            <Link href="/discussions">
-              <Button variant="outline" className="text-lg px-8 py-4 border border-translucent-emerald bg-muted-moss text-bone-white hover:bg-forest-obsidian hover:border-heart-green font-mono uppercase tracking-wider">
-                Join the Community
-              </Button>
-            </Link>
-          </div>
         </div>
 
-        {/* Lens-Aware Search */}
+        {/* Lens-Aware Search - Prioritized */}
         <div className="mb-24">
           <LensAwareSearch />
+        </div>
+
+        {/* Secondary CTAs */}
+        <div className="mb-16 flex flex-col items-center justify-center gap-4 sm:flex-row">
+          <Link href="/products">
+            <Button variant="primary" className="text-lg px-8 py-4 border border-sme-gold bg-sme-gold text-forest-obsidian hover:bg-[#9A7209] hover:border-[#9A7209] font-mono uppercase tracking-wider">
+              Browse All Products
+            </Button>
+          </Link>
+          <Link href="/discussions">
+            <Button variant="outline" className="text-lg px-8 py-4 border border-translucent-emerald bg-muted-moss text-bone-white hover:bg-forest-obsidian hover:border-heart-green font-mono uppercase tracking-wider">
+              Join the Community
+            </Button>
+          </Link>
         </div>
 
         {/* Trending Products Section */}

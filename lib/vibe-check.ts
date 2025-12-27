@@ -7,6 +7,7 @@ const openai = new OpenAI({
 export interface VibeCheckResult {
   isSafe: boolean;
   reason: string;
+  confidence?: 'high' | 'low'; // For soft moderation: low = borderline case
 }
 
 /**
@@ -19,7 +20,7 @@ export async function checkVibe(content: string): Promise<VibeCheckResult> {
     // FAIL CLOSED: If API key is missing, block content
     return { isSafe: false, reason: "Moderation system not configured - content blocked for safety" };
   }
-  
+
   console.log("Starting vibe check with API key:", process.env.OPENAI_API_KEY.substring(0, 10) + "...");
 
   try {
@@ -67,7 +68,7 @@ Respond with JSON only:
 
     const resultText = response.choices[0]?.message?.content?.trim();
     console.log("Raw OpenAI response:", resultText);
-    
+
     if (!resultText) {
       console.error("No response from OpenAI - BLOCKING for safety");
       return { isSafe: false, reason: "Moderation API did not respond - content blocked for safety" };
@@ -77,13 +78,13 @@ Respond with JSON only:
     try {
       result = JSON.parse(resultText) as VibeCheckResult;
       console.log("Parsed AI Moderation Response:", result);
-      
+
       // Validate the response structure
       if (typeof result.isSafe !== 'boolean') {
         console.error("Invalid response format - isSafe is not boolean:", result);
         return { isSafe: false, reason: "Invalid moderation response - content blocked for safety" };
       }
-      
+
       return result;
     } catch (parseError) {
       console.error("Error parsing JSON response:", parseError);
@@ -98,16 +99,16 @@ Respond with JSON only:
 }
 
 /**
- * Checks if guest comment content is constructive and relevant for technical discussions
- * Uses a stricter prompt focused on quality and relevance
- * Returns { isSafe: boolean, reason: string }
+ * Checks if guest comment content is safe and appropriate for a health science platform
+ * Context-aware moderation that allows scientific/technical terminology
+ * Returns { isSafe: boolean, reason: string, confidence?: 'high' | 'low' }
  */
 export async function checkVibeForGuest(content: string): Promise<VibeCheckResult> {
   if (!process.env.OPENAI_API_KEY) {
     console.error("OPENAI_API_KEY not set - BLOCKING for safety");
     return { isSafe: false, reason: "Moderation system not configured - content blocked for safety" };
   }
-  
+
   console.log("Starting guest vibe check with API key:", process.env.OPENAI_API_KEY.substring(0, 10) + "...");
 
   try {
@@ -116,44 +117,49 @@ export async function checkVibeForGuest(content: string): Promise<VibeCheckResul
       messages: [
         {
           role: "system",
-          content: `You are a content moderator for a technical discussion platform. Your job is to evaluate if a comment is constructive and relevant to technical discussions.
+          content: `You are a nuanced Content Moderator for a health science platform.
 
-Return JSON: { "isSafe": boolean, "reason": string }
+Your Goal: Identify hate speech, harassment, and severe profanity.
 
-MANDATORY RULES - You MUST return isSafe: false if the text:
-- Is spam, promotional, or self-promotional
-- Contains toxicity, hate speech, or harassment
-- Is low-effort or generic (e.g., "nice", "cool", "thanks", "lol", "this", "same")
-- Is off-topic or irrelevant to technical discussion
-- Contains profanity, vulgarity, or inappropriate language
-- Is a personal attack or aggressive
-- Contains health misinformation or unverified claims
-- Is too short to be meaningful (< 10 words of actual content)
+The Context: Users will discuss chemicals, lab results, potency, and physical effects. Do NOT flag technical, medical, or scientific terminology as 'harmful' or 'dangerous.'
 
-EXAMPLES OF REJECTIONS:
-- "nice product" → isSafe: false (low-effort, generic)
-- "this is spam" → isSafe: false (spam)
-- "buy my product at..." → isSafe: false (promotional)
-- "you're an idiot" → isSafe: false (personal attack)
-- "this sucks" → isSafe: false (low-effort, not constructive)
+Decision Logic:
+- If the text is a personal attack or contains slurs: Return { "isSafe": false, "reason": "Contains hate speech or personal attacks", "confidence": "high" }
+- If the text is a technical inquiry, even if it mentions sensitive topics like 'toxins' or 'side effects': Return { "isSafe": true, "reason": "Technical/scientific discussion", "confidence": "high" }
+- If the text describes personal health experiences (e.g., "I felt sick", "bad reaction"): Return { "isSafe": true, "reason": "Personal health experience", "confidence": "high" }
+- If the text is borderline (could be spam or low-effort but not harmful): Return { "isSafe": true, "reason": "Borderline quality", "confidence": "low" }
 
-EXAMPLES OF ACCEPTANCES:
-- "I've been using this protocol for 3 months and noticed improved sleep quality. The magnesium content seems well-absorbed." → isSafe: true (constructive, specific)
-- "Has anyone tested this with a different dosage? I'm curious about the bioavailability." → isSafe: true (relevant question)
-- "The study cited here shows promising results, but I'd like to see more long-term data." → isSafe: true (constructive feedback)
+EXAMPLES:
 
-ONLY return isSafe: true if the comment is:
-- Constructive and adds value to the discussion
-- Relevant to the technical topic
-- Substantive (not generic or low-effort)
-- Professional and appropriate
+APPROVED - Scientific/Technical:
+- "What is the chemical potency of this batch? I'm worried about toxicity." → { "isSafe": true, "reason": "Technical inquiry about chemistry", "confidence": "high" }
+- "Has anyone tested the bioavailability of this compound?" → { "isSafe": true, "reason": "Scientific question", "confidence": "high" }
+- "The heavy metal content concerns me based on the COA." → { "isSafe": true, "reason": "Technical safety concern", "confidence": "high" }
+
+APPROVED - Personal Experience:
+- "I had a bad reaction to this, felt very sick." → { "isSafe": true, "reason": "Personal health experience", "confidence": "high" }
+- "This gave me headaches after 3 days of use." → { "isSafe": true, "reason": "Personal adverse reaction report", "confidence": "high" }
+- "My sleep improved significantly with this protocol." → { "isSafe": true, "reason": "Personal health outcome", "confidence": "high" }
+
+APPROVED - Borderline (Low Confidence):
+- "Thanks for sharing this info" → { "isSafe": true, "reason": "Low-effort but polite", "confidence": "low" }
+- "Interesting product" → { "isSafe": true, "reason": "Generic but harmless", "confidence": "low" }
+
+REJECTED - Hate Speech/Attacks:
+- "You're all idiots, this is garbage" → { "isSafe": false, "reason": "Personal attack and harassment", "confidence": "high" }
+- "This company is run by scammers and thieves" → { "isSafe": false, "reason": "Defamatory attack", "confidence": "high" }
+- Any racial slurs, hate speech, or severe profanity → { "isSafe": false, "reason": "Contains hate speech", "confidence": "high" }
+
+REJECTED - Spam/Promotional:
+- "Buy my product at example.com" → { "isSafe": false, "reason": "Spam/promotional content", "confidence": "high" }
+- "Check out my website for better alternatives" → { "isSafe": false, "reason": "Self-promotion", "confidence": "high" }
 
 Respond with JSON only:
-{ "isSafe": true/false, "reason": "brief explanation" }`,
+{ "isSafe": true/false, "reason": "brief explanation", "confidence": "high/low" }`,
         },
         {
           role: "user",
-          content: `Is this comment constructive and relevant to a technical discussion? Review: "${content}"`,
+          content: `Review this content: "${content}"`,
         },
       ],
       temperature: 0.3,
@@ -163,7 +169,7 @@ Respond with JSON only:
 
     const resultText = response.choices[0]?.message?.content?.trim();
     console.log("Raw OpenAI guest moderation response:", resultText);
-    
+
     if (!resultText) {
       console.error("No response from OpenAI - BLOCKING for safety");
       return { isSafe: false, reason: "Moderation API did not respond - content blocked for safety" };
@@ -173,12 +179,12 @@ Respond with JSON only:
     try {
       result = JSON.parse(resultText) as VibeCheckResult;
       console.log("Parsed AI Guest Moderation Response:", result);
-      
+
       if (typeof result.isSafe !== 'boolean') {
         console.error("Invalid response format - isSafe is not boolean:", result);
         return { isSafe: false, reason: "Invalid moderation response - content blocked for safety" };
       }
-      
+
       return result;
     } catch (parseError) {
       console.error("Error parsing JSON response:", parseError);

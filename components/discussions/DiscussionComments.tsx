@@ -28,27 +28,9 @@ interface ResourceReference {
   resource_url: string | null;
 }
 
-interface Comment {
-  id: string;
-  content: string;
-  created_at: string;
-  parent_id: string | null;
-  guest_name?: string | null;
-  is_flagged: boolean;
-  profiles: {
-    id: string;
-    full_name: string | null;
-    username: string | null;
-    avatar_url: string | null;
-    badge_type: string | null;
-    contributor_score: number | null;
-  } | null;
-  references?: ResourceReference[];
-  children?: Comment[];
-  parent?: Comment | null; // Reference to parent comment for Signal Bridge
-  insight_summary?: string | null;
-  upvote_count?: number;
-}
+import WaterfallComment from "@/components/comments/WaterfallComment";
+import { Comment } from "@/types/comment";
+import OfficialResponseToggle from "@/components/sme/OfficialResponseToggle";
 
 interface DiscussionCommentsProps {
   discussionId: string;
@@ -79,13 +61,18 @@ export default function DiscussionComments({
   const { isOpen, shareData, openShareCard, closeShareCard, handleExport } = useShareCard();
   const [references, setReferences] = useState<ResourceReference[]>([]);
   const [comments, setComments] = useState<Comment[]>(initialComments);
-  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [anchorCommentId, setAnchorCommentId] = useState<string | null>(null);
+  const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyContent, setReplyContent] = useState("");
   const [replyReferences, setReplyReferences] = useState<ResourceReference[]>([]);
   const [sortMode, setSortMode] = useState<SortMode>("newest");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isOfficialResponse, setIsOfficialResponse] = useState(false);
   const replyTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Check if user is SME
+  const isSME = user?.publicMetadata?.is_verified_expert || user?.publicMetadata?.badge_type === 'Trusted Voice';
 
   // Build threaded comment tree
   const buildCommentTree = (comments: Comment[]): Comment[] => {
@@ -125,6 +112,10 @@ export default function DiscussionComments({
 
     if (sortMode === "reputation") {
       sorted.sort((a, b) => {
+        // Pin official responses to top first
+        if (a.is_official_response && !b.is_official_response) return -1;
+        if (!a.is_official_response && b.is_official_response) return 1;
+
         const aIsTrusted = a.profiles?.badge_type === "Trusted Voice" ? 1 : 0;
         const bIsTrusted = b.profiles?.badge_type === "Trusted Voice" ? 1 : 0;
         if (aIsTrusted !== bIsTrusted) {
@@ -133,9 +124,14 @@ export default function DiscussionComments({
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
     } else {
-      sorted.sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
+      sorted.sort((a, b) => {
+        // Pin official responses to top first
+        if (a.is_official_response && !b.is_official_response) return -1;
+        if (!a.is_official_response && b.is_official_response) return 1;
+
+        // ASCENDING ORDER (Oldest First) - Fix Chronology
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      });
     }
 
     // Recursively sort children
@@ -221,19 +217,28 @@ export default function DiscussionComments({
         replyContent.trim(),
         discussionSlug,
         parentId || undefined,
-        replyReferences
+        replyReferences,
+        isOfficialResponse
       );
 
       setReplyContent("");
       setReplyReferences([]);
-      setReplyingTo(null);
+      const wasOfficial = isOfficialResponse;
+      setIsOfficialResponse(false);
 
-      // Small delay to ensure database transaction has committed
-      await new Promise(resolve => setTimeout(resolve, 200));
 
       // Refresh to get real comment from server
       await fetchComments();
       router.refresh();
+
+      // Show success toast with specific message
+      if (wasOfficial) {
+        showToast("Official SME response posted! Community members will be notified.", "success");
+      } else {
+        showToast("Reply posted successfully", "success");
+      }
+
+      // Keep viewing the same anchor if exists, logic handles it as long as comment still exists
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to post reply";
       setError(errorMessage);
@@ -283,38 +288,131 @@ export default function DiscussionComments({
         }}
       />
 
+      {/* Waterfall Navigation Header */}
+      {anchorCommentId && (
+        <div className="flex items-center gap-2 mb-4">
+          <button
+            onClick={() => {
+              const current = comments.find(c => c.id === anchorCommentId);
+              if (current?.parent_id) {
+                setAnchorCommentId(current.parent_id);
+              } else {
+                setAnchorCommentId(null);
+              }
+            }}
+            className="flex items-center gap-1 text-sm text-bone-white/60 hover:text-sme-gold transition-colors font-mono"
+          >
+            Start of Thread
+          </button>
+          <span className="text-bone-white/20">/</span>
+          <span className="text-xs text-bone-white/40 font-mono">Viewing Thread</span>
+        </div>
+      )}
+
       {/* Comments Tree */}
       <div className="space-y-4">
-        {threadedComments.length === 0 ? (
-          <p className="text-center text-bone-white/70 text-sm font-mono">
-            Signal Pending: Be the first auditor to share your intuition.
-          </p>
-        ) : (
-          threadedComments.map((comment) => (
-            <CommentThread
-              key={comment.id}
-              comment={comment}
-              discussionId={discussionId}
-              discussionSlug={discussionSlug}
-              discussionTitle={discussionTitle}
-              depth={0}
-              replyingTo={replyingTo}
-              setReplyingTo={setReplyingTo}
-              replyContent={replyContent}
-              setReplyContent={setReplyContent}
-              replyReferences={replyReferences}
-              setReplyReferences={setReplyReferences}
-              onReplySubmit={(e, parentId) => handleSubmit(e, parentId)}
-              loading={loading}
-              isSignedIn={isSignedIn}
-              isBounty={isBounty}
-              bountyStatus={bountyStatus}
-              solutionCommentId={solutionCommentId}
-              isAuthor={isAuthor}
-              onGenerateShareCard={openShareCard}
-            />
-          ))
-        )}
+        {(() => {
+          // Logic to determine what to show
+          let visibleComments: Comment[] = [];
+          let anchorComment: Comment | undefined;
+
+          if (anchorCommentId) {
+            // Try to find in flattened list first to get the node
+            anchorComment = comments.find(c => c.id === anchorCommentId);
+            // But we need the node with children populated from buildCommentTree
+            // The 'threadedComments' is the root list. We need to search the tree.
+
+            // Helper to find node in tree
+            const findInTree = (nodes: Comment[], id: string): Comment | undefined => {
+              for (const node of nodes) {
+                if (node.id === id) return node;
+                if (node.children) {
+                  const found = findInTree(node.children, id);
+                  if (found) return found;
+                }
+              }
+              return undefined;
+            };
+
+            // Re-build tree to ensure all links are fresh
+            const fullTree = buildCommentTree(comments);
+            const found = findInTree(fullTree, anchorCommentId);
+
+            if (found) {
+              anchorComment = found;
+              visibleComments = found.children || [];
+            } else {
+              // Fallback if not found (shouldn't happen)
+              visibleComments = [];
+            }
+          } else {
+            visibleComments = buildCommentTree(comments);
+          }
+
+          if (comments.length === 0) {
+            return (
+              <p className="text-center text-bone-white/70 text-sm font-mono">
+                Signal Pending: Be the first auditor to share your intuition.
+              </p>
+            );
+          }
+
+          return (
+            <>
+              {/* Render Anchor if exists */}
+              {anchorComment && (
+                <div className="mb-6 border-b border-white/10 pb-6">
+                  <WaterfallComment
+                    comment={anchorComment}
+                    isAnchor={true}
+                    onFocus={setAnchorCommentId}
+                    type="discussion"
+                    onReactionUpdate={fetchComments}
+                  />
+                  {/* Inline Reply Form for Anchor */}
+                  <div className="ml-1 pl-4 border-l border-sme-gold/20 mt-4">
+                    <h4 className="text-xs font-mono text-sme-gold mb-2">Reply to this thread</h4>
+                    <form onSubmit={(e) => handleSubmit(e, anchorComment!.id)} className="space-y-2">
+                      <textarea
+                        value={replyContent}
+                        onChange={(e) => setReplyContent(e.target.value)}
+                        placeholder="Add your expert commentary..."
+                        className="w-full bg-forest-obsidian border border-translucent-emerald p-2 text-sm text-bone-white rounded focus:border-sme-gold outline-none font-mono"
+                        rows={3}
+                      />
+                      <OfficialResponseToggle
+                        value={isOfficialResponse}
+                        onChange={setIsOfficialResponse}
+                        isSME={isSME || false}
+                      />
+                      <div className="flex justify-end">
+                        <Button variant="primary" className="text-xs px-3 py-1.5 h-auto" type="submit" disabled={loading}>
+                          {loading ? <Loader2 className="animate-spin" size={14} /> : "Post Reply"}
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* Render List (Children or Roots) */}
+              <div className={anchorComment ? "" : ""}>
+                {visibleComments.map(comment => (
+                  <WaterfallComment
+                    key={comment.id}
+                    comment={comment}
+                    isAnchor={false}
+                    onFocus={setAnchorCommentId}
+                    depth={anchorComment ? 1 : 0}
+                    type="discussion"
+                    onReactionUpdate={fetchComments} // Refresh to get updated reaction counts
+                  />
+                ))}
+              </div>
+            </>
+          );
+
+        })()}
       </div>
 
       {/* Share Card Modal */}
@@ -335,563 +433,3 @@ export default function DiscussionComments({
   );
 }
 
-// Recursive Comment Thread Component
-interface CommentThreadProps {
-  comment: Comment;
-  discussionId: string;
-  discussionSlug: string;
-  discussionTitle?: string;
-  depth: number;
-  replyingTo: string | null;
-  setReplyingTo: (id: string | null) => void;
-  replyContent: string;
-  setReplyContent: (content: string) => void;
-  replyReferences: ResourceReference[];
-  setReplyReferences: (refs: ResourceReference[]) => void;
-  onReplySubmit: (e: React.FormEvent, parentId: string) => void;
-  loading: boolean;
-  isSignedIn: boolean;
-  isBounty?: boolean;
-  bountyStatus?: string | null;
-  solutionCommentId?: string | null;
-  isAuthor?: boolean;
-  onGenerateShareCard?: (data: any) => void;
-}
-
-function CommentThread({
-  comment,
-  discussionId,
-  discussionSlug,
-  discussionTitle,
-  depth,
-  replyingTo,
-  setReplyingTo,
-  replyContent,
-  setReplyContent,
-  replyReferences,
-  setReplyReferences,
-  onReplySubmit,
-  loading,
-  isSignedIn,
-  isBounty = false,
-  bountyStatus = null,
-  solutionCommentId = null,
-  isAuthor = false,
-  onGenerateShareCard,
-}: CommentThreadProps) {
-  const isReplying = replyingTo === comment.id;
-  const maxVisualDepth = 5; // Visual indentation limit (not a data limit)
-  const replyTextareaRef = useRef<HTMLTextAreaElement>(null);
-  const isSolution = solutionCommentId === comment.id;
-  const [copied, setCopied] = useState(false);
-  const [flagging, setFlagging] = useState(false);
-  const [isFlagged, setIsFlagged] = useState(comment.is_flagged ?? false);
-  const router = useRouter();
-  const { showToast } = useToast();
-
-  const [upvoteCount, setUpvoteCount] = useState(comment.upvote_count || 0);
-  const [isUpvoted, setIsUpvoted] = useState(false); // Optimistic default
-  const [isVoting, setIsVoting] = useState(false);
-
-  const handleVote = async () => {
-    if (isVoting) return;
-    setIsVoting(true);
-
-    // Optimistic update
-    const newIsUpvoted = !isUpvoted;
-    setIsUpvoted(newIsUpvoted);
-    setUpvoteCount((prev) => newIsUpvoted ? prev + 1 : prev - 1);
-
-    try {
-      const result = await toggleCommentVote(comment.id, 'discussion');
-      if (result.success) {
-        setUpvoteCount(result.upvoteCount);
-        setIsUpvoted(result.isUpvoted);
-      } else {
-        // Revert on failure
-        setIsUpvoted(!newIsUpvoted);
-        setUpvoteCount((prev) => newIsUpvoted ? prev - 1 : prev + 1);
-        console.error("Vote failed:", result.error);
-      }
-    } catch (error) {
-      setIsUpvoted(!newIsUpvoted);
-      setUpvoteCount((prev) => newIsUpvoted ? prev - 1 : prev + 1);
-      console.error("Vote error:", error);
-    } finally {
-      setIsVoting(false);
-    }
-  };
-
-  // Copy link to specific comment
-  const handleCopyLink = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    // Debug: Check if discussionId is undefined
-    console.log("Copy Link Debug - discussionId:", discussionId, "comment.id:", comment.id);
-
-    if (!discussionId) {
-      console.error("Copy Link Error: discussionId is undefined");
-      showToast("Failed to copy link: Discussion ID missing", "error");
-      return;
-    }
-
-    // Deep-link format: query param only (no hash anchor)
-    const id = discussionId; // Use discussionId as id for URL generation
-    const commentUrl = typeof window !== "undefined"
-      ? `${window.location.origin}/discussions/${id}?commentId=${comment.id}`
-      : `?commentId=${comment.id}`;
-
-    try {
-      await navigator.clipboard.writeText(commentUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-      // Show 'Link Copied to Archive' toast
-      showToast("Link Copied to Archive", "success");
-    } catch (err) {
-      console.error("Failed to copy link:", err);
-      showToast("Failed to copy link", "error");
-    }
-  };
-
-  // Generate Share Card
-  const handleGenerateShareCard = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (!onGenerateShareCard) return;
-
-    // Deep-link format: query param only (no hash anchor)
-    const id = discussionId; // Use discussionId as id for URL generation
-    const commentUrl = typeof window !== "undefined"
-      ? `${window.location.origin}/discussions/${id}?commentId=${comment.id}`
-      : `?commentId=${comment.id}`;
-
-    onGenerateShareCard({
-      type: "insight",
-      content: comment.content,
-      authorName: comment.profiles?.full_name || "Anonymous",
-      authorUsername: comment.profiles?.username,
-      trustWeight: comment.profiles?.contributor_score || null,
-      contributorScore: comment.profiles?.contributor_score || null,
-      discussionTitle: discussionTitle || "Community Discussion",
-      url: commentUrl,
-    });
-  };
-
-  // Flag comment handler
-  const handleFlag = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (!isSignedIn) {
-      showToast("Please sign in to flag comments", "error");
-      return;
-    }
-
-    setFlagging(true);
-
-    try {
-      const result = await flagComment(comment.id);
-
-      if (result.success) {
-        showToast("Signal reported. Thank you for maintaining laboratory quality.", "success");
-
-        // If comment was hidden (3+ flags), refresh the page to remove it
-        if (result.success) {
-          setIsFlagged(true);
-          // Refresh after a short delay to show the toast
-          if (result.isHidden) {
-            setTimeout(() => {
-              router.refresh();
-            }, 1000);
-          }
-        }
-      }
-    } catch (error: any) {
-      console.error("Error flagging comment:", error);
-      showToast(error.message || "Failed to flag comment", "error");
-    } finally {
-      setFlagging(false);
-    }
-  };
-
-  // Hard Firewall: Binary indentation - exactly 20px if depth > 0, 0px otherwise
-  // Zero exceptions: Even if depth is 100, margin remains exactly 20px
-  // Removed all recursive margin calculations - using exact className logic
-
-  // Signal Bridge: Show "Replying to @username" for ANY nested comment (depth > 0)
-  // Use parent username if available, otherwise use parent full_name or "user"
-  const showSignalBridge = depth > 0 && comment.parent_id !== null;
-  const parentUsername = comment.parent?.profiles?.username || comment.parent?.profiles?.full_name || "user";
-
-  // HARD FIREWALL: Binary Indentation - className + inline style backup
-  // Rule: depth === 0 ? 'ml-0' : 'ml-5 border-l border-white/10'
-  // No reply can ever indent more than 20px (ml-5 = 1.25rem = 20px)
-  const isGuest = !comment.profiles && (comment as any).guest_name;
-  const marginLeft = depth === 0 ? '0px' : '20px';
-
-  return (
-    <div
-      className={depth === 0 ? 'ml-0' : 'ml-5 border-l border-white/10'}
-      style={{ scrollMarginTop: '80px', marginLeft }}
-      data-comment-id={comment.id}
-      id={comment.id}
-    >
-      {/* Signal Bridge - Replying to @username for nested comments */}
-      {showSignalBridge && (
-        <span
-          style={{
-            fontFamily: 'var(--font-geist-mono)',
-            color: '#B8860B',
-            fontSize: '0.7rem',
-            display: 'block',
-            marginBottom: '4px'
-          }}
-        >
-          Replying to @{parentUsername}
-        </span>
-      )}
-
-      {/* Comment Card */}
-      <div
-        className={`border border-translucent-emerald p-3 transition-all ${depth === 0 ? "bg-muted-moss" : "bg-forest-obsidian"
-          }`}
-      >
-        {/* Author Info */}
-        <div className="mb-2 flex items-center gap-2">
-          {isGuest ? (
-            <>
-              <UserCircle size={20} className="text-bone-white/40 mr-1" />
-              <span className="text-xs font-semibold text-bone-white font-mono">
-                {(comment as any).guest_name}
-              </span>
-              <span className="border border-bone-white/20 bg-bone-white/5 px-1.5 py-0.5 text-[10px] font-medium text-bone-white/50 font-mono uppercase">
-                GUEST
-              </span>
-            </>
-          ) : comment.profiles ? (
-            <>
-              <Link
-                href={comment.profiles.username
-                  ? `/u/${comment.profiles.username}`
-                  : `/profile/${comment.profiles.id || ""}`}
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-              >
-                <AvatarLink
-                  userId={comment.profiles.id || ""}
-                  username={comment.profiles.username}
-                  avatarUrl={comment.profiles.avatar_url}
-                  fullName={comment.profiles.full_name}
-                  size={20}
-                  className="mr-1"
-                />
-                <span className="text-xs font-semibold text-bone-white font-mono hover:text-heart-green transition-colors">
-                  {comment.profiles.full_name || "Anonymous"}
-                </span>
-              </Link>
-              <UserBadge profile={comment.profiles} />
-              {comment.profiles.username && (
-                <Link
-                  href={`/u/${comment.profiles.username}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className="text-[10px] text-bone-white/50 font-mono hover:text-bone-white transition-colors"
-                >
-                  @{comment.profiles.username}
-                </Link>
-              )}
-            </>
-          ) : (
-            <span className="text-xs text-bone-white/70 font-mono">Anonymous</span>
-          )}
-          {comment.profiles?.contributor_score && comment.profiles.contributor_score > 0 && comment.profiles.contributor_score <= 100 && (
-            <TrustWeight
-              value={comment.profiles.contributor_score}
-              verifiedCitations={comment.references?.length || 0}
-              className="ml-1"
-            />
-          )}
-          {comment.profiles?.badge_type === "Trusted Voice" && (
-            <span className="flex items-center gap-1 border border-sme-gold/30 bg-sme-gold/10 px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider text-sme-gold">
-              <Award size={10} />
-              Trusted Voice
-            </span>
-          )}
-          <span className="text-[10px] text-bone-white/50 font-mono">
-            {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
-          </span>
-        </div>
-
-        {/* Solution Badge */}
-        {isSolution && (
-          <div className="mb-2 flex items-center gap-2 border border-heart-green bg-heart-green/20 px-2 py-1">
-            <CheckCircle2 size={14} className="text-heart-green" />
-            <span className="text-xs font-mono uppercase tracking-wider text-heart-green">
-              Accepted Solution
-            </span>
-          </div>
-        )}
-
-        {/* INSIGHT SUMMARY BLOCK */}
-        {comment.insight_summary && (
-          <div className="mb-3 p-3 bg-emerald-900/20 border-l-2 border-emerald-500 rounded-r shadow-sm">
-            <div className="flex items-start gap-2">
-              <Lightbulb size={16} className="text-emerald-400 mt-0.5 flex-shrink-0" />
-              <p className="text-sm text-emerald-100/90 font-medium leading-relaxed">
-                <span className="text-xs uppercase tracking-wider text-emerald-500/80 mr-2 font-bold block mb-1">Key Insight</span>
-                {comment.insight_summary}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Comment Content */}
-        <div className="mb-2 whitespace-pre-wrap text-sm text-bone-white/90 font-mono leading-relaxed">
-          <CitationText content={comment.content} />
-        </div>
-
-        {/* References */}
-        {comment.references && comment.references.length > 0 && (
-          <div className="mb-2 flex flex-wrap gap-1.5">
-            {comment.references.map((ref) => (
-              <div
-                key={ref.resource_id}
-                className="group flex items-center gap-1 border border-translucent-emerald bg-forest-obsidian px-2 py-0.5 text-[10px] font-mono hover:border-heart-green transition-colors"
-              >
-                <BookOpen size={8} className="text-bone-white/70" />
-                <span
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (typeof window !== "undefined") {
-                      window.location.href = "/resources";
-                    }
-                  }}
-                  className="text-bone-white/80 hover:text-bone-white transition-colors cursor-pointer"
-                >
-                  {ref.resource_title}
-                </span>
-                {ref.resource_url && (
-                  <a
-                    href={ref.resource_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="text-bone-white/50 hover:text-bone-white transition-colors"
-                  >
-                    <ExternalLink size={8} />
-                  </a>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="mt-2 flex items-center gap-2">
-          {/* Accept as Solution Button (only for author, only on bounties, only if not resolved) */}
-          {isBounty && isAuthor && bountyStatus !== "resolved" && !isSolution && (
-            <AcceptSolutionButton
-              discussionId={discussionId}
-              commentId={comment.id}
-              discussionSlug={discussionSlug}
-            />
-          )}
-
-          {/* Copy Link to Signal Button */}
-          <button
-            type="button"
-            onClick={handleCopyLink}
-            className="flex items-center gap-1 text-xs text-bone-white/70 hover:text-bone-white font-mono transition-colors active:scale-95"
-            title="Copy link to share this insight"
-          >
-            {copied ? (
-              <>
-                <Check size={12} className="text-heart-green" />
-                <span className="text-heart-green">Copied</span>
-              </>
-            ) : (
-              <>
-                <Link2 size={12} />
-                <span>Copy Link to Signal</span>
-              </>
-            )}
-          </button>
-
-          {/* Generate Share Card Button */}
-          <button
-            type="button"
-            onClick={handleGenerateShareCard}
-            className="flex items-center gap-1 text-xs text-sme-gold hover:text-[#9A7209] font-mono transition-colors active:scale-95"
-            title="Generate share card image"
-          >
-            <Image size={12} />
-            <span>Generate Share Card</span>
-          </button>
-
-          {/* Upvote Button */}
-          <button
-            type="button"
-            onClick={handleVote}
-            disabled={isVoting}
-            className={`flex items-center gap-1 text-xs font-mono transition-colors active:scale-95 ${isUpvoted ? 'text-emerald-400' : 'text-bone-white/40 hover:text-emerald-400'
-              }`}
-            title="Endorse this perspective"
-          >
-            <ThumbsUp size={12} className={isUpvoted ? "fill-emerald-400/20" : ""} />
-            <span>{upvoteCount || 0}</span>
-          </button>
-
-          {/* Reply Button - No limit on replies, only visual indentation limit */}
-          {isSignedIn && (
-            <button
-              type="button"
-              onClick={() => {
-                if (isReplying) {
-                  setReplyingTo(null);
-                  setReplyContent("");
-                  setReplyReferences([]);
-                } else {
-                  setReplyingTo(comment.id);
-                }
-              }}
-              className="flex items-center gap-1 text-xs text-bone-white/70 hover:text-bone-white font-mono transition-colors active:scale-95"
-            >
-              <Reply size={12} />
-              {isReplying ? "Cancel" : "Reply"}
-            </button>
-          )}
-
-          {/* Flag Button - Only for signed-in users */}
-          {isSignedIn && !isFlagged && (
-            <button
-              type="button"
-              onClick={handleFlag}
-              disabled={flagging}
-              className="flex items-center gap-1 text-xs text-bone-white/50 hover:text-amber-500 font-mono transition-colors active:scale-95 disabled:opacity-50"
-              title="Flag inappropriate content"
-            >
-              {flagging ? (
-                <Loader2 size={12} className="animate-spin" />
-              ) : (
-                <Flag size={12} />
-              )}
-              <span>Flag</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Reply Form */}
-      {isReplying && isSignedIn && (
-        <form
-          onSubmit={(e) => onReplySubmit(e, comment.id)}
-          className={`mt-2 pl-4 space-y-2 border border-translucent-emerald bg-forest-obsidian p-3 ${depth > 0 ? 'ml-5 border-l border-sme-gold/20' : 'ml-0'}`}
-        >
-          <div className="relative">
-            <textarea
-              ref={replyTextareaRef}
-              value={replyContent}
-              onChange={(e) => setReplyContent(e.target.value)}
-              placeholder="Write a reply... Use [[ to cite from SME Citations"
-              rows={3}
-              className="w-full bg-muted-moss border border-translucent-emerald px-2 py-1.5 text-xs text-bone-white placeholder-bone-white/50 focus:border-heart-green focus:outline-none transition-all font-mono resize-none"
-              required
-              minLength={3}
-              maxLength={2000}
-            />
-
-            {/* Citation Search for Reply */}
-            <CitationSearch
-              textareaRef={replyTextareaRef}
-              onSelect={(resourceId, resourceTitle) => {
-                console.log("Citation added to reply:", resourceId, resourceTitle);
-              }}
-              onContentChange={(newContent) => {
-                setReplyContent(newContent);
-              }}
-            />
-          </div>
-
-          <CitationInput
-            onAddReference={(ref) => {
-              if (replyReferences.length < 5) {
-                setReplyReferences([...replyReferences, ref]);
-              }
-            }}
-            onRemoveReference={(resourceId) => {
-              // 1. Calculate the new array outside the setter
-              const filteredReferences = replyReferences.filter((ref) => ref.resource_id !== resourceId);
-              // 2. Pass the fresh array directly
-              setReplyReferences(filteredReferences);
-            }}
-            references={replyReferences}
-            maxReferences={5}
-          />
-
-          <div className="flex items-center gap-2">
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={loading || !replyContent.trim()}
-              className="flex items-center gap-1 text-xs font-mono px-3 py-1 border border-sme-gold bg-sme-gold text-bone-white hover:bg-[#9A7209] hover:border-[#9A7209] hover:text-bone-white uppercase tracking-wider active:scale-95 transition-transform"
-            >
-              {loading ? (
-                <>
-                  <Loader2 size={12} className="animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <Send size={12} />
-                  Post Reply
-                </>
-              )}
-            </Button>
-            <button
-              type="button"
-              onClick={() => {
-                setReplyingTo(null);
-                setReplyContent("");
-                setReplyReferences([]);
-              }}
-              className="text-xs text-bone-white/70 hover:text-bone-white font-mono active:scale-95 transition-transform"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
-
-      {/* Recursive Children */}
-      {comment.children && comment.children.length > 0 && (
-        <div className="mt-2 space-y-2">
-          {comment.children.map((child) => (
-            <CommentThread
-              key={child.id}
-              comment={child}
-              discussionId={discussionId}
-              discussionSlug={discussionSlug}
-              discussionTitle={discussionTitle}
-              depth={1}
-              replyingTo={replyingTo}
-              setReplyingTo={setReplyingTo}
-              replyContent={replyContent}
-              setReplyContent={setReplyContent}
-              replyReferences={replyReferences}
-              setReplyReferences={setReplyReferences}
-              onReplySubmit={onReplySubmit}
-              loading={loading}
-              isSignedIn={isSignedIn}
-              isBounty={isBounty}
-              bountyStatus={bountyStatus}
-              solutionCommentId={solutionCommentId}
-              isAuthor={isAuthor}
-              onGenerateShareCard={onGenerateShareCard}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}

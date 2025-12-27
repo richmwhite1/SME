@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { SignInButton } from "@clerk/nextjs";
 import { createProductComment, createGuestProductComment } from "@/app/actions/product-actions";
@@ -8,10 +8,13 @@ import { createDiscussionComment, createGuestComment } from "@/app/actions/discu
 import Button from "@/components/ui/Button";
 import CitationSearch from "@/components/comments/CitationSearch";
 import CitationInput from "@/components/comments/CitationInput";
+import PillarSelector from "@/components/comments/PillarSelector";
+import SourcePreviewCard from "@/components/comments/SourcePreviewCard";
 import { Send, Loader2, UserCircle } from "lucide-react";
 import AvatarLink from "@/components/profile/AvatarLink";
 import { useToast } from "@/components/ui/ToastContainer";
 import { vibeCheck } from "@/app/actions/vibe-actions";
+import EmojiPicker from "@/components/ui/EmojiPicker";
 
 interface ResourceReference {
   resource_id: string;
@@ -62,10 +65,65 @@ export default function CommentForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [cursorPosition, setCursorPosition] = useState<number>(0);
+
+  // Auto-classification state
+  const [postType, setPostType] = useState<'verified_insight' | 'community_experience'>('community_experience');
+  const [pillarOfTruth, setPillarOfTruth] = useState<string | null>(null);
 
   // Discussion pages: Guests cannot comment
   const isDiscussion = type === "discussion";
   const canGuestComment = !isDiscussion; // Only products allow guest comments
+
+  // Auto-classify based on citations
+  useEffect(() => {
+    if (references.length > 0) {
+      setPostType('verified_insight');
+    } else {
+      setPostType('community_experience');
+      setPillarOfTruth(null); // Clear pillar when switching to community experience
+    }
+  }, [references]);
+
+  // Track cursor position in textarea
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setContent(e.target.value);
+    setCursorPosition(e.target.selectionStart);
+  };
+
+  const handleTextareaClick = () => {
+    if (textareaRef.current) {
+      setCursorPosition(textareaRef.current.selectionStart);
+    }
+  };
+
+  const handleTextareaKeyUp = () => {
+    if (textareaRef.current) {
+      setCursorPosition(textareaRef.current.selectionStart);
+    }
+  };
+
+  // Handle emoji selection - insert at cursor position
+  const handleEmojiSelect = (emoji: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = cursorPosition;
+    const end = cursorPosition;
+    const newContent = content.substring(0, start) + emoji + content.substring(end);
+
+    setContent(newContent);
+
+    // Set cursor position after emoji
+    const newCursorPos = start + emoji.length;
+    setCursorPosition(newCursorPos);
+
+    // Focus textarea and set cursor position
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,6 +144,13 @@ export default function CommentForm({
       }
     }
 
+    // Validate pillar requirement for verified insights
+    if (postType === 'verified_insight' && !pillarOfTruth) {
+      setError("Please select a Pillar of Truth for verified insights");
+      showToast("Pillar of Truth is required for evidence-based posts", "error");
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -93,7 +158,7 @@ export default function CommentForm({
       if (isSignedIn) {
         // Authenticated user submission
         if (type === "product" && productId && productSlug) {
-          const result = await createProductComment(productId, content.trim(), productSlug);
+          const result = await createProductComment(productId, content.trim(), productSlug, parentId);
           if (!result.success) {
             throw new Error(result.error || "Failed to post comment");
           }
@@ -103,7 +168,9 @@ export default function CommentForm({
             content.trim(),
             discussionSlug,
             parentId,
-            references
+            references,
+            postType,
+            pillarOfTruth
           );
         }
       } else {
@@ -135,6 +202,7 @@ export default function CommentForm({
       // Success
       setContent("");
       setGuestName("");
+      setPillarOfTruth(null);
       setError(null);
 
       if (onSuccess) {
@@ -244,25 +312,33 @@ export default function CommentForm({
         )}
       </div>
 
-      {/* Comment Textarea */}
-      <textarea
-        ref={textareaRef}
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        placeholder={
-          isSignedIn
-            ? type === "product"
-              ? "Share your thoughts... Use [[ to cite from SME Citations"
-              : "Write a comment... Use [[ to cite from SME Citations"
-            : "Write a comment... (Guest comments require AI moderation)"
-        }
-        rows={4}
-        className="w-full bg-forest-obsidian border border-translucent-emerald px-3 py-2 text-sm text-bone-white placeholder-bone-white/50 focus:border-heart-green focus:outline-none transition-all resize-none font-mono"
-        style={{ fontFamily: 'var(--font-geist-mono), monospace' }}
-        required
-        minLength={isSignedIn ? 3 : 10}
-        maxLength={2000}
-      />
+      {/* Comment Textarea with Emoji Picker */}
+      <div className="relative">
+        <textarea
+          ref={textareaRef}
+          value={content}
+          onChange={handleTextareaChange}
+          onClick={handleTextareaClick}
+          onKeyUp={handleTextareaKeyUp}
+          placeholder={
+            isSignedIn
+              ? type === "product"
+                ? "Share your thoughts... Use [[ to cite from SME Citations"
+                : "Write a comment... Use [[ to cite from SME Citations"
+              : "Write a comment... (Guest comments require AI moderation)"
+          }
+          rows={4}
+          className="w-full bg-forest-obsidian border border-translucent-emerald px-3 py-2 text-sm text-bone-white placeholder-bone-white/50 focus:border-heart-green focus:outline-none transition-all resize-none font-mono"
+          style={{ fontFamily: 'var(--font-geist-mono), monospace' }}
+          required
+          minLength={isSignedIn ? 3 : 10}
+          maxLength={2000}
+        />
+        {/* Emoji Picker Button */}
+        <div className="absolute bottom-2 right-2">
+          <EmojiPicker onEmojiSelect={handleEmojiSelect} />
+        </div>
+      </div>
 
       {/* Citation Search (only for discussions) */}
       {type === "discussion" && (
@@ -294,6 +370,24 @@ export default function CommentForm({
               maxReferences={5}
             />
           </div>
+
+          {/* Source Preview - Show when citations are added */}
+          {references.length > 0 && references[0].resource_url && (
+            <div className="mt-2">
+              <SourcePreviewCard url={references[0].resource_url} />
+            </div>
+          )}
+
+          {/* Pillar Selector - Required for Verified Insights */}
+          {postType === 'verified_insight' && (
+            <div className="mt-3">
+              <PillarSelector
+                value={pillarOfTruth}
+                onChange={setPillarOfTruth}
+                required={true}
+              />
+            </div>
+          )}
         </>
       )}
 

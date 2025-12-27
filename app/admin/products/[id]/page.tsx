@@ -54,7 +54,7 @@ export default async function AdminProductEditPage({ params }: PageProps) {
                     </p>
                 </div>
 
-                <ProductEditorClient product={productData} />
+                <ProductEditorClient product={productData as any} />
             </div>
         </div>
     );

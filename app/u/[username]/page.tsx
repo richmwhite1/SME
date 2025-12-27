@@ -83,8 +83,8 @@ export default async function UserProfilePage({
       // Total upvotes received on discussions
       sql`
         SELECT count(*) as count 
-        FROM discussion_upvotes du
-        JOIN discussions d ON du.discussion_id = d.id
+        FROM discussion_votes dv
+        JOIN discussions d ON dv.discussion_id = d.id
         WHERE d.author_id = ${profileId}
       `,
 
@@ -253,20 +253,21 @@ export default async function UserProfilePage({
               )}
 
               {/* Stats */}
-              <div className="mb-4 flex gap-6 text-xs font-mono justify-center">
-                <div>
-                  <span className="font-semibold text-bone-white">{followerCount || 0}</span>
-                  <span className="ml-1 text-bone-white/60 uppercase tracking-wider">Followers</span>
+              <div className="mb-4 grid grid-cols-3 gap-3 text-xs font-mono">
+                <div className="text-center">
+                  <div className="font-semibold text-bone-white text-lg">{followerCount || 0}</div>
+                  <div className="text-bone-white/60 uppercase tracking-wider text-[10px]">Followers</div>
                 </div>
-                <div>
-                  <span className="font-semibold text-bone-white">{followingCount || 0}</span>
-                  <span className="ml-1 text-bone-white/60 uppercase tracking-wider">Following</span>
+                <div className="text-center">
+                  <div className="font-semibold text-bone-white text-lg">{followingCount || 0}</div>
+                  <div className="text-bone-white/60 uppercase tracking-wider text-[10px]">Following</div>
                 </div>
-                <div>
-                  <span className="font-semibold text-heart-green">
+                <div className="text-center">
+                  <div className="font-semibold text-heart-green text-lg">
                     {typedProfile.contributor_score || 0}
-                  </span>
-                  <span className="ml-1 text-bone-white/60 uppercase tracking-wider">Contributor Score</span>
+                  </div>
+                  <div className="text-bone-white/60 uppercase tracking-wider text-[10px]">Contributor
+                    Score</div>
                 </div>
               </div>
 
@@ -287,8 +288,8 @@ export default async function UserProfilePage({
                         {totalUpvotes} / 10
                       </span>
                     </div>
-                    <div className="mt-3 border border-translucent-emerald bg-muted-moss p-2 text-[10px] text-bone-white/70 font-mono">
-                      <strong>Requirement:</strong> Need 50 Contributor Score & 10 Upvotes for Trusted Voice status
+                    <div className="mt-3 border border-translucent-emerald bg-muted-moss p-2 text-[10px] text-bone-white/70 font-mono leading-relaxed">
+                      <strong>Requirement:</strong> Need 10 Contributor Score & 10 Upvotes for Trusted Voice status
                     </div>
                   </div>
                 </div>

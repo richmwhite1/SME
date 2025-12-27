@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   bio TEXT,
   website_url TEXT,
   credentials TEXT,
+  profession TEXT,
   contributor_score INTEGER DEFAULT 0,
   badge_type TEXT DEFAULT 'Member',
   is_admin BOOLEAN DEFAULT false,
@@ -40,6 +41,7 @@ ALTER TABLE profiles DISABLE ROW LEVEL SECURITY;
 COMMENT ON TABLE profiles IS 'User profiles managed by Clerk authentication';
 COMMENT ON COLUMN profiles.id IS 'Clerk user ID (text format)';
 COMMENT ON COLUMN profiles.username IS 'Unique username for public profile URLs';
+COMMENT ON COLUMN profiles.profession IS 'User profession or role (e.g., Neuroscientist, Nutritionist, Researcher)';
 COMMENT ON COLUMN profiles.is_admin IS 'Whether the user has admin/moderator privileges';
 COMMENT ON COLUMN profiles.social_links IS 'Social media links stored as JSONB: {discord, telegram, x, instagram}';
 COMMENT ON COLUMN profiles.contributor_score IS 'Community contribution score';

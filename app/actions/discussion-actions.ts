@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { checkVibe, checkVibeForGuest } from "@/lib/vibe-check";
 import { checkUserBanned, checkKeywordBlacklist, handleBlacklistedContent } from "@/lib/trust-safety";
 import { generateInsight } from "@/lib/ai/insight-engine";
+import { createNotification } from "@/app/actions/notifications";
 
 /**
  * Create a new discussion
@@ -146,7 +147,10 @@ export async function createDiscussionComment(
   content: string,
   discussionSlug: string,
   parentId?: string,
-  references?: ResourceReference[]
+  references?: ResourceReference[],
+  postType?: 'verified_insight' | 'community_experience',
+  pillarOfTruth?: string | null,
+  isOfficialResponse?: boolean
 ) {
   const user = await currentUser();
   const sql = getDb();
@@ -184,15 +188,34 @@ export async function createDiscussionComment(
     const blacklistMatches = await checkKeywordBlacklist(trimmedContent);
     const shouldAutoFlag = blacklistMatches.length > 0;
 
+    // Verify SME status if trying to mark as official response
+    let canMarkOfficial = false;
+    if (isOfficialResponse) {
+      const profileResult = await sql`
+        SELECT is_verified_expert, badge_type FROM profiles WHERE id = ${user.id}
+      `;
+      canMarkOfficial = profileResult[0]?.is_verified_expert || profileResult[0]?.badge_type === 'Trusted Voice';
+
+      if (!canMarkOfficial) {
+        throw new Error("Only verified experts can mark responses as official");
+      }
+    }
+
     try {
+      // Determine post_type and pillar based on references
+      const finalPostType = postType || (references && references.length > 0 ? 'verified_insight' : 'community_experience');
+      const finalPillar = finalPostType === 'verified_insight' ? pillarOfTruth : null;
+
       // Insert comment using raw SQL
       const result = await sql`
         INSERT INTO discussion_comments (
-          discussion_id, author_id, content, parent_id, flag_count, is_flagged
+          discussion_id, author_id, content, parent_id, flag_count, is_flagged, is_official_response,
+          post_type, pillar_of_truth
         )
         VALUES (
           ${discussionId}, ${user.id}, ${trimmedContent}, ${parentId || null},
-          ${shouldAutoFlag ? 1 : 0}, ${shouldAutoFlag}
+          ${shouldAutoFlag ? 1 : 0}, ${shouldAutoFlag}, ${isOfficialResponse && canMarkOfficial ? true : false},
+          ${finalPostType}, ${finalPillar}
         )
         RETURNING id
       `;
@@ -268,6 +291,51 @@ export async function createDiscussionComment(
           // Don't fail the whole operation if references table doesn't exist
         }
       }
+
+      // --- NOTIFICATION LOOP: Notify users who raised their hand if an Expert replies ---
+      if (parentId) {
+        try {
+          const profileResult = await sql`
+            SELECT is_verified_expert, badge_type FROM profiles WHERE id = ${user.id}
+           `;
+          const isExpert = profileResult[0]?.is_verified_expert || profileResult[0]?.badge_type === 'Trusted Voice';
+
+          if (isExpert) {
+            console.log("Expert reply detected. Checking for signals on parent...");
+
+            // Get users who raised hand on the parent comment
+            const signalingUsers = await sql`
+               SELECT DISTINCT user_id 
+               FROM comment_signals 
+               WHERE discussion_comment_id = ${parentId} 
+               AND signal_type = 'raise_hand'
+               AND user_id != ${user.id} 
+             `;
+            // (Added check to not notify the expert themselves if they signaled, though unlikely)
+
+            if (signalingUsers.length > 0) {
+              console.log(`Notifying ${signalingUsers.length} users who raised hand on parent ${parentId}`);
+
+              const notificationTitle = "Expert Reply";
+              const notificationMessage = "An expert has weighed in on a thread you signaled!";
+              const notificationLink = `/discussions/${discussionSlug}?commentId=${commentData.id}`;
+
+              // Send notifications in parallel
+              await Promise.all(signalingUsers.map((u: any) =>
+                createNotification(
+                  u.user_id,
+                  notificationTitle,
+                  notificationMessage,
+                  'success',
+                  notificationLink
+                )
+              ));
+            }
+          }
+        } catch (notifyError) {
+          console.error("Error in Notification Loop:", notifyError);
+        }
+      }
     } catch (error: any) {
       console.error("Error creating comment:", error);
 
@@ -339,14 +407,18 @@ export async function createGuestComment(
     throw new Error("This signal does not meet laboratory standards.");
   }
 
+  // Determine status based on confidence
+  // Low confidence = borderline case, send to pending_review for admin approval
+  const commentStatus = vibeResult.confidence === 'low' ? 'pending_review' : 'approved';
+
   try {
     // Insert guest comment using raw SQL
     const result = await sql`
       INSERT INTO discussion_comments (
-        discussion_id, author_id, guest_name, content, parent_id, flag_count, is_flagged
+        discussion_id, author_id, guest_name, content, parent_id, flag_count, is_flagged, status
       )
       VALUES (
-        ${discussionId}, NULL, ${trimmedGuestName}, ${trimmedContent}, ${parentId || null}, 0, false
+        ${discussionId}, NULL, ${trimmedGuestName}, ${trimmedContent}, ${parentId || null}, 0, false, ${commentStatus}
       )
       RETURNING id
     `;
@@ -528,6 +600,59 @@ export async function flagComment(commentId: string) {
   }
 }
 
+/**
+ * Toggle an emoji reaction on a comment
+ */
+export async function toggleReaction(commentId: string, emoji: string) {
+  const user = await currentUser();
+  const sql = getDb();
+
+  if (!user) {
+    throw new Error("You must be logged in to react");
+  }
+
+  try {
+    // Check if reaction exists
+    const existing = await sql`
+      SELECT id FROM comment_reactions
+      WHERE comment_id = ${commentId} AND user_id = ${user.id} AND emoji = ${emoji}
+    `;
+
+    let isAdded = false;
+
+    if (existing.length > 0) {
+      // Remove reaction
+      await sql`
+        DELETE FROM comment_reactions
+        WHERE comment_id = ${commentId} AND user_id = ${user.id} AND emoji = ${emoji}
+      `;
+    } else {
+      // Add reaction
+      await sql`
+        INSERT INTO comment_reactions (comment_id, user_id, emoji)
+        VALUES (${commentId}, ${user.id}, ${emoji})
+      `;
+      isAdded = true;
+    }
+
+    // Get updated counts for this comment
+    const reactions = await sql`
+      SELECT emoji, COUNT(*)::int as count
+      FROM comment_reactions
+      WHERE comment_id = ${commentId}
+      GROUP BY emoji
+    `;
+
+    // Revalidate paths
+    revalidatePath("/discussions");
+
+    return { success: true, isAdded, reactions };
+  } catch (error: any) {
+    console.error("Error toggling reaction:", error);
+    throw new Error(error.message || "Failed to toggle reaction");
+  }
+}
+
 
 /**
  * Fetch comments for a discussion
@@ -535,9 +660,8 @@ export async function flagComment(commentId: string) {
  */
 export async function getDiscussionComments(discussionId: string) {
   const sql = getDb();
-  // We need to know if the current user has upvoted, but this function runs server-side 
-  // and might be cached. For now, we'll fetch global counts. 
-  // Ideally, we'd pass userId to check `comment_votes` too.
+  const user = await currentUser();
+  const currentUserId = user?.id;
 
   try {
     const comments = await sql`
@@ -556,7 +680,19 @@ export async function getDiscussionComments(discussionId: string) {
         p.avatar_url,
         p.badge_type,
         p.contributor_score,
-        p.is_verified_expert
+        p.is_verified_expert,
+        (
+          SELECT json_agg(json_build_object('emoji', r.emoji, 'count', r.count, 'user_reacted', r.user_reacted))
+          FROM (
+            SELECT 
+              emoji, 
+              COUNT(*)::int as count,
+              BOOL_OR(user_id = ${currentUserId || ''}) as user_reacted
+            FROM comment_reactions
+            WHERE comment_id = dc.id
+            GROUP BY emoji
+          ) r
+        ) as reactions
       FROM discussion_comments dc
       LEFT JOIN profiles p ON dc.author_id = p.id
       WHERE (dc.discussion_id::text = ${discussionId} OR dc.discussion_id IN (SELECT id FROM discussions WHERE slug = ${discussionId}))
@@ -582,7 +718,8 @@ export async function getDiscussionComments(discussionId: string) {
         badge_type: c.badge_type,
         contributor_score: c.contributor_score,
         is_verified_expert: c.is_verified_expert
-      } : null
+      } : null,
+      reactions: c.reactions || []
     }));
   } catch (error: any) {
     console.error("Error fetching comments:", error);

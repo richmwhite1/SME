@@ -22,10 +22,11 @@ export default function SMEUserButton() {
         if (response.ok) {
           const profile = await response.json();
           if (profile) {
-            const contributorScore = profile.contributor_score || 0;
-            const isCertifiedSME = profile.is_verified_expert || false;
+            const reputationScore = profile.reputation_score || 0;
+            const isSMEStatus = profile.is_sme || false;
             const adminStatus = profile.is_admin || false;
-            setIsSME(contributorScore > 500 || isCertifiedSME);
+            // User is SME if they have is_sme flag OR Trusted Voice badge
+            setIsSME(isSMEStatus || profile.badge_type === 'Trusted Voice');
             setIsAdmin(adminStatus);
           }
         }
@@ -69,6 +70,13 @@ export default function SMEUserButton() {
             href="/feed"
             labelIcon={<span className="text-xs">📡</span>}
           />
+          {!loading && isSME && (
+            <UserButton.Link
+              label="SME Dashboard"
+              href="/sme-dashboard"
+              labelIcon={<span className="text-xs" style={{ color: "#B8860B" }}>⭐</span>}
+            />
+          )}
           {!loading && isSME && (
             <UserButton.Link
               label="Audit Dashboard"

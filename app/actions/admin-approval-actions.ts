@@ -39,6 +39,13 @@ export async function updateProductApproval(
     admin_status: 'approved' | 'rejected' | 'pending_review';
     certification_tier: 'None' | 'Bronze' | 'Silver' | 'Gold';
     admin_notes?: string;
+    verification_flags?: any;
+    tech_docs?: { url: string };
+    target_audience?: string;
+    core_value_proposition?: string;
+    technical_specs?: Record<string, string>;
+    sme_access_note?: string;
+    video_url?: string;
   }
 ) {
   const adminStatus = await isAdmin();

@@ -3,10 +3,10 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { getDb } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { checkVibe } from "@/lib/vibe-check";
+import { checkVibe, checkVibeForGuest } from "@/lib/vibe-check";
 import { checkUserBanned, checkKeywordBlacklist, handleBlacklistedContent } from "@/lib/trust-safety";
-import { moderateContent } from "@/lib/actions/moderate";
 import { generateInsight } from "@/lib/ai/insight-engine";
+import { createNotification } from "@/app/actions/notifications";
 
 /**
  * Create a comment on a product/protocol
@@ -15,7 +15,9 @@ import { generateInsight } from "@/lib/ai/insight-engine";
 export async function createProductComment(
   productId: string,
   content: string,
-  productSlug: string
+  productSlug: string,
+  parentId?: string | null,
+  isOfficialResponse?: boolean
 ): Promise<{ success: boolean; error?: string; commentId?: string }> {
   const user = await currentUser();
   const sql = getDb();
@@ -60,12 +62,7 @@ export async function createProductComment(
       };
     } else {
       // Insert comment - handle both authenticated and guest users
-      const insertData: any = {
-        product_id: productId,
-        content: trimmedContent,
-        flag_count: 0,
-        is_flagged: false,
-      };
+      // Note: flag_count and is_flagged are handled below
 
       if (user) {
         // Check if user is banned
@@ -89,23 +86,41 @@ export async function createProductComment(
           const blacklistMatches = await checkKeywordBlacklist(trimmedContent);
           const shouldAutoFlag = blacklistMatches.length > 0;
 
+          // Verify SME status if trying to mark as official response
+          let canMarkOfficial = false;
+          if (isOfficialResponse) {
+            const profileResult = await sql`
+              SELECT is_verified_expert, badge_type FROM profiles WHERE id = ${authorId}
+            `;
+            canMarkOfficial = profileResult[0]?.is_verified_expert || profileResult[0]?.badge_type === 'Trusted Voice';
+
+            if (!canMarkOfficial) {
+              return {
+                success: false,
+                error: "Only verified experts can mark responses as official"
+              };
+            }
+          }
+
           console.log('Insert Data:', {
             product_id: productId,
             author_id: authorId,
             content: trimmedContent,
             flag_count: shouldAutoFlag ? 1 : 0,
             is_flagged: shouldAutoFlag,
+            parent_id: parentId,
+            is_official_response: isOfficialResponse && canMarkOfficial
           });
 
           try {
             // Insert comment using raw SQL
             const insertResult = await sql`
               INSERT INTO product_comments (
-                protocol_id, author_id, content, flag_count, is_flagged
+                product_id, author_id, content, flag_count, is_flagged, parent_id, is_official_response
               )
               VALUES (
                 ${productId}, ${authorId}, ${trimmedContent},
-                ${shouldAutoFlag ? 1 : 0}, ${shouldAutoFlag}
+                ${shouldAutoFlag ? 1 : 0}, ${shouldAutoFlag}, ${parentId || null}, ${isOfficialResponse && canMarkOfficial ? true : false}
               )
               RETURNING id
             `;
@@ -192,6 +207,50 @@ export async function createProductComment(
                 SET contributor_score = COALESCE(contributor_score, 0) + ${pointsAwarded} 
                 WHERE id = ${authorId}
               `;
+
+              // --- NOTIFICATION LOOP: Notify users who raised their hand if an Expert replies ---
+              if (parentId) {
+                try {
+                  const profileResult = await sql`
+                    SELECT is_verified_expert, badge_type FROM profiles WHERE id = ${String(user.id)}
+                   `;
+                  const isExpert = profileResult[0]?.is_verified_expert || profileResult[0]?.badge_type === 'Trusted Voice';
+
+                  if (isExpert) {
+                    console.log("Expert reply detected. Checking for signals on parent...");
+
+                    // Get users who raised hand on the parent comment
+                    const signalingUsers = await sql`
+                       SELECT DISTINCT user_id 
+                       FROM comment_signals 
+                       WHERE product_comment_id = ${parentId} 
+                       AND signal_type = 'raise_hand'
+                       AND user_id != ${String(user.id)} 
+                     `;
+
+                    if (signalingUsers.length > 0) {
+                      console.log(`Notifying ${signalingUsers.length} users who raised hand on parent ${parentId}`);
+
+                      const notificationTitle = "Expert Reply";
+                      const notificationMessage = "An expert has weighed in on a thread you signaled!";
+                      const notificationLink = `/products/${productSlug}?commentId=${insertedComment.id}`;
+
+                      // Send notifications in parallel
+                      await Promise.all(signalingUsers.map((u: any) =>
+                        createNotification(
+                          u.user_id,
+                          notificationTitle,
+                          notificationMessage,
+                          'success',
+                          notificationLink
+                        )
+                      ));
+                    }
+                  }
+                } catch (notifyError) {
+                  console.error("Error in Notification Loop:", notifyError);
+                }
+              }
 
               result = {
                 success: true,
@@ -287,23 +346,27 @@ export async function createGuestProductComment(
     return { success: false, error: "Comment must be less than 2000 characters" };
   }
 
-  // Guest users require AI moderation via OpenAI Moderation API
-  const moderationResult = await moderateContent(trimmedContent);
-  if (moderationResult.isFlagged) {
+  // Guest users require AI moderation via checkVibeForGuest (context-aware)
+  const vibeResult = await checkVibeForGuest(trimmedContent);
+  if (!vibeResult.isSafe) {
     return {
       success: false,
       error: "Content rejected by laboratory AI."
     };
   }
 
+  // Determine status based on confidence
+  // Low confidence = borderline case, send to pending_review for admin approval
+  const commentStatus = vibeResult.confidence === 'low' ? 'pending_review' : 'approved';
+
   try {
     // Insert guest comment using raw SQL
     const result = await sql`
       INSERT INTO product_comments (
-        protocol_id, author_id, guest_name, content, flag_count, is_flagged
+        product_id, author_id, guest_name, content, flag_count, is_flagged, status
       )
       VALUES (
-        ${productId}, NULL, ${trimmedGuestName}, ${trimmedContent}, 0, false
+        ${productId}, NULL, ${trimmedGuestName}, ${trimmedContent}, 0, false, ${commentStatus}
       )
       RETURNING id
     `;

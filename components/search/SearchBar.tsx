@@ -204,7 +204,8 @@ export default function SearchBar() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => query.trim().length >= 2 && setIsOpen(true)}
-            placeholder="Search SME Citations..."
+            placeholder="search, discussions, products or citations...."
+            suppressHydrationWarning
             className="w-full text-sm bg-muted-moss border border-translucent-emerald py-2 pl-9 pr-16 text-bone-white placeholder-bone-white/50 focus:border-heart-green focus:outline-none transition-all font-mono"
           />
           {query && (

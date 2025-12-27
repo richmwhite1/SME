@@ -11,7 +11,7 @@ import { generateInsight } from "@/lib/ai/insight-engine";
  */
 export async function toggleCommentVote(
     commentId: string,
-    commentType: 'discussion' | 'product',
+    commentType: 'discussion' | 'product' | 'review',
     path_to_revalidate?: string
 ) {
     const user = await currentUser();
@@ -20,7 +20,11 @@ export async function toggleCommentVote(
     }
 
     const sql = getDb();
-    const table = commentType === 'discussion' ? 'discussion_comments' : 'product_comments';
+
+    // Determine table name based on type
+    let table = 'discussion_comments';
+    if (commentType === 'product') table = 'product_comments';
+    if (commentType === 'review') table = 'reviews';
 
     try {
         // Check if vote exists
@@ -41,8 +45,7 @@ export async function toggleCommentVote(
         WHERE id = ${existingVote[0].id}
       `;
 
-            // Decrement count in comment table
-            // Use dynamic table name in query builder if possible, but for raw SQL we handle safely
+            // Decrement count in appropriate table
             if (commentType === 'discussion') {
                 const result = await sql`
           UPDATE discussion_comments
@@ -51,9 +54,17 @@ export async function toggleCommentVote(
           RETURNING upvote_count
         `;
                 newUpvoteCount = result[0]?.upvote_count ?? 0;
-            } else {
+            } else if (commentType === 'product') {
                 const result = await sql`
           UPDATE product_comments
+          SET upvote_count = GREATEST(upvote_count - 1, 0)
+          WHERE id = ${commentId}
+          RETURNING upvote_count
+        `;
+                newUpvoteCount = result[0]?.upvote_count ?? 0;
+            } else if (commentType === 'review') {
+                const result = await sql`
+          UPDATE reviews
           SET upvote_count = GREATEST(upvote_count - 1, 0)
           WHERE id = ${commentId}
           RETURNING upvote_count
@@ -79,7 +90,7 @@ export async function toggleCommentVote(
           RETURNING upvote_count, content, insight_summary
         `;
                 comment = result[0];
-            } else {
+            } else if (commentType === 'product') {
                 const result = await sql`
           UPDATE product_comments
           SET upvote_count = upvote_count + 1
@@ -87,21 +98,43 @@ export async function toggleCommentVote(
           RETURNING upvote_count, content, insight_summary
         `;
                 comment = result[0];
+            } else if (commentType === 'review') {
+                const result = await sql`
+          UPDATE reviews
+          SET upvote_count = upvote_count + 1
+          WHERE id = ${commentId}
+          RETURNING upvote_count, content, NULL as insight_summary
+        `;
+                // Reviews might specifically lack insight_summary - verify if needed?
+                // For now, assuming reviews don't trigger insight generation in the same way or simplified.
+                // Assuming reviews table *doesn't* have insight_summary column unless I check?
+                // Check schema: reviews has id, rating, content... NO insight_summary. 
+                // So returning NULL alias is safe.
+                comment = { ...result[0], insight_summary: null };
+            }
+
+            if (!comment) {
+                throw new Error("Target content not found");
             }
 
             newUpvoteCount = comment?.upvote_count ?? 0;
             isUpvoted = true;
 
             // Trigger Insight Generator if threshold reached (Gate B)
-            // Threshold is 5 upvotes, and only if no insight exists yet and content is long enough
-            if (newUpvoteCount >= 5 && !comment.insight_summary && comment.content.length > 50) {
-                console.log(`Triggering Insight Engine for ${commentType} comment ${commentId} (Upvotes: ${newUpvoteCount})`);
+            // (Only for discussions/products for now as reviews don't have insight_summary column usually)
+            // But if we want it for reviews, we'd need to add the column. 
+            // The code below checks `!comment.insight_summary`. Since I return NULL for review, it evaluates true.
+            // But checking `comment.content` is fine.
+            // Wait, if I return null for insight_summary, `!null` is true. `!undefined` is true.
+            // So logic `!comment.insight_summary` is effectively true for reviews.
+            // But we can't SAVE it because reviews table lacks the column.
 
-                // Run asynchronously - don't block the UI response
-                // In Vercel serverless, this might be cut off, but for quick OpenAI calls it often works.
-                // Ideally use a queue, but for this implementation we'll try direct await or fire-and-forget.
-                // We'll await it to ensure it runs, but this adds latency to the vote. 
-                // Given the requirement "Near Real-Time", this is acceptable.
+            if (commentType !== 'review' && newUpvoteCount >= 5 && !comment.insight_summary && comment.content?.length > 50) {
+                // ... insight generation logic (which updates table) ...
+                // Kept logic same but wrapped in check.
+                // Actually I'll just conditionally execute the insight block.
+
+                console.log(`Triggering Insight Engine for ${commentType} comment ${commentId} (Upvotes: ${newUpvoteCount})`);
 
                 try {
                     const insight = await generateInsight(comment.content);
@@ -112,7 +145,7 @@ export async function toggleCommentVote(
                 SET insight_summary = ${insight}
                 WHERE id = ${commentId}
               `;
-                        } else {
+                        } else if (commentType === 'product') {
                             await sql`
                 UPDATE product_comments
                 SET insight_summary = ${insight}

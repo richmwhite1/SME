@@ -460,7 +460,7 @@ export default function ProductReviewModal({
     );
 }
 
-import { Trash2 } from 'lucide-react';
+
 
 function SignalItem({ label, verified, onRemove }: { label: string; verified: boolean; onRemove: () => void }) {
     if (!verified) return null; // Don't show if already removed/false (User request: "remove that signal from the local selectedSignals state") -> Implies visual removal

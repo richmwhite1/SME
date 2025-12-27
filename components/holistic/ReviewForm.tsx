@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { submitReview } from "@/app/actions/review-actions";
 import StarRating from "@/components/ui/StarRating";
 import Button from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastContainer";
+import EmojiPicker from "@/components/ui/EmojiPicker";
 
 interface ReviewFormProps {
   productId: string;
@@ -31,6 +32,48 @@ export default function ReviewForm({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [cursorPosition, setCursorPosition] = useState<number>(0);
+
+  // Track cursor position in textarea
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setContent(e.target.value);
+    setCursorPosition(e.target.selectionStart);
+  };
+
+  const handleTextareaClick = () => {
+    if (textareaRef.current) {
+      setCursorPosition(textareaRef.current.selectionStart);
+    }
+  };
+
+  const handleTextareaKeyUp = () => {
+    if (textareaRef.current) {
+      setCursorPosition(textareaRef.current.selectionStart);
+    }
+  };
+
+  // Handle emoji selection - insert at cursor position
+  const handleEmojiSelect = (emoji: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = cursorPosition;
+    const end = cursorPosition;
+    const newContent = content.substring(0, start) + emoji + content.substring(end);
+
+    setContent(newContent);
+
+    // Set cursor position after emoji
+    const newCursorPos = start + emoji.length;
+    setCursorPosition(newCursorPos);
+
+    // Focus textarea and set cursor position
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -126,15 +169,24 @@ export default function ReviewForm({
         >
           Your Review
         </label>
-        <textarea
-          id="review-content"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          disabled={isPending}
-          rows={4}
-          className="w-full border border-translucent-emerald bg-forest-obsidian px-4 py-3 text-slate-100 placeholder-slate-100/50 focus:border-heart-green focus:outline-none transition-all font-mono"
-          placeholder="Share your experience with this product..."
-        />
+        <div className="relative">
+          <textarea
+            ref={textareaRef}
+            id="review-content"
+            value={content}
+            onChange={handleTextareaChange}
+            onClick={handleTextareaClick}
+            onKeyUp={handleTextareaKeyUp}
+            disabled={isPending}
+            rows={4}
+            className="w-full border border-translucent-emerald bg-forest-obsidian px-4 py-3 text-slate-100 placeholder-slate-100/50 focus:border-heart-green focus:outline-none transition-all font-mono"
+            placeholder="Share your experience with this product..."
+          />
+          {/* Emoji Picker Button */}
+          <div className="absolute bottom-2 right-2">
+            <EmojiPicker onEmojiSelect={handleEmojiSelect} />
+          </div>
+        </div>
       </div>
 
       {error && (
