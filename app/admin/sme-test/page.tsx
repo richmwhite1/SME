@@ -112,7 +112,7 @@ export default async function SMETestPage() {
                             <li>
                                 <strong>Test Demotion:</strong> Run this in browser console:
                                 <code className="block mt-2 p-2 bg-forest-obsidian text-sme-gold">
-                                    fetch(&apos;/api/admin/demote-test-user&apos;, {& apos;{& apos;} method: &apos;POST&apos; {& apos;}&apos;}).then(r =&gt; r.json()).then(console.log)
+                                    fetch(&apos;/api/admin/demote-test-user&apos;, {'{'} method: &apos;POST&apos; {'}'}).then(r =&gt; r.json()).then(console.log)
                                 </code>
                             </li>
                             <li>Refresh page - SME Dashboard link should disappear</li>
@@ -133,7 +133,7 @@ export default async function SMETestPage() {
                             <div>
                                 <p className="text-bone-white/60 mb-1">Seed user (alternative method):</p>
                                 <code className="block p-2 bg-forest-obsidian text-sme-gold">
-                                    fetch(&apos;/api/admin/seed-test-user&apos;, {& apos;{& apos;} method: &apos;POST&apos;, headers: {& apos;{& apos;} &apos;Content-Type&apos;: &apos;application/json&apos; {& apos;}&apos;}, body: JSON.stringify({& apos;{& apos;} email: &apos;richmwhite@gmail.com&apos;, targetScore: 100 {& apos;}&apos;}) {& apos;}&apos;}).then(r =&gt; r.json()).then(console.log)
+                                    fetch(&apos;/api/admin/seed-test-user&apos;, {'{'} method: &apos;POST&apos;, headers: {'{'} &apos;Content-Type&apos;: &apos;application/json&apos; {'}'}, body: JSON.stringify({'{'} email: &apos;richmwhite@gmail.com&apos;, targetScore: 100 {'}'}) {'}'}).then(r =&gt; r.json()).then(console.log)
                                 </code>
                             </div>
                         </div>
