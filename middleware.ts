@@ -32,13 +32,9 @@ export default clerkMiddleware(async (auth, req) => {
 
   // Allow public routes without authentication
   if (!isPublicRoute(req)) {
-    const { userId } = await auth();
-    
-    // If user is not authenticated, redirect to home
-    if (!userId) {
-      const signInUrl = new URL("/", req.url);
-      return NextResponse.redirect(signInUrl);
-    }
+    // Protect routes that are not public
+    // This will automatically redirect to the sign-in page if the user is not authenticated
+    (await auth()).protect();
   }
 });
 
