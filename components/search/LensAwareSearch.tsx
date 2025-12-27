@@ -171,6 +171,9 @@ function mapResultToCardProps(item: any) {
         images: null,
         relevance_score: item.relevance_score,
         result_type: item.result_type, // Pass the type explicitly
-        slug: item.result_slug || item.slug // Map result_slug to slug, fallback to slug
+        slug: item.result_slug || item.slug, // Map result_slug to slug, fallback to slug
+        third_party_lab_verified: false,
+        source_transparency: false,
+        rank: item.relevance_score || 0
     };
 }
