@@ -72,7 +72,7 @@ export default function DiscussionComments({
   const replyTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Check if user is SME
-  const isSME = user?.publicMetadata?.is_verified_expert || user?.publicMetadata?.badge_type === 'Trusted Voice';
+  const isSME = (user?.publicMetadata?.is_verified_expert as boolean) || user?.publicMetadata?.badge_type === 'Trusted Voice';
 
   // Build threaded comment tree
   const buildCommentTree = (comments: Comment[]): Comment[] => {
