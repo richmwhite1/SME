@@ -238,7 +238,7 @@ export default function ProductOnboardingWizard() {
                         <div className={step === 4 ? "block animate-in fade-in slide-in-from-right-4 duration-300" : "hidden"}>
                             <h2 className="text-xl font-semibold text-white uppercase tracking-wider mb-4 border-l-2 border-emerald-500 pl-4">IV. Truth Signals <span className="text-red-500">*</span></h2>
                             <div className="mb-4">
-                                <p className="text-xs text-gray-600 mb-4">Select at least one truth signal. Tag the product's strengths and weaknesses objectively.</p>
+                                <p className="text-xs text-gray-600 mb-4">Select at least one truth signal. Tag the product&apos;s strengths and weaknesses objectively.</p>
                             </div>
                             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                                 {SIGNALS.map((signal) => {

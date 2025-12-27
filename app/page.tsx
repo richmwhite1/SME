@@ -168,9 +168,7 @@ export default async function Home() {
 
         {/* Lens of Truth Hero Section */}
         <div className="mb-16 text-center">
-          <p className="mb-12 text-xl text-bone-white/80 md:text-2xl font-mono max-w-4xl mx-auto">
-            A community driven forum where evidence meets experience. Explore community vetted products and insights from the community and subject matter experts (SME's) that are willing to help.
-          </p>
+          A community driven forum where evidence meets experience. Explore community vetted products and insights from the community and subject matter experts (SME&apos;s) that are willing to help.
         </div>
 
         {/* Lens-Aware Search - Prioritized */}

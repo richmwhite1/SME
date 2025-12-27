@@ -147,9 +147,7 @@ export default function ExpertProfileWizard() {
                                     <h2 className="text-3xl font-bold text-white uppercase tracking-wider mb-4">
                                         Congratulations!
                                     </h2>
-                                    <p className="text-lg text-gray-400 max-w-2xl">
-                                        You've reached <span className="text-emerald-400 font-bold">100+ reputation</span> and are now eligible for Subject Matter Expert (SME) status.
-                                    </p>
+                                    You&apos;ve reached <span className="text-emerald-400 font-bold">100+ reputation</span> and are now eligible for Subject Matter Expert (SME) status.
                                 </div>
                                 <div className="border border-[#333] bg-[#0a0a0a] p-6 rounded space-y-4 max-w-2xl">
                                     <h3 className="text-sm uppercase tracking-wider text-emerald-500 font-semibold">SME Benefits</h3>
@@ -183,9 +181,7 @@ export default function ExpertProfileWizard() {
                             <h2 className="text-xl font-semibold text-white uppercase tracking-wider mb-4 border-l-2 border-emerald-500 pl-4">
                                 I. Areas of Expertise
                             </h2>
-                            <p className="text-sm text-gray-500 mb-6">
-                                Select the topics you want to be "summoned" for when your expertise is needed. Choose at least one.
-                            </p>
+                            Select the topics you want to be &quot;summoned&quot; for when your expertise is needed. Choose at least one.
 
                             {loadingTopics ? (
                                 <div className="flex items-center justify-center py-12">
@@ -238,8 +234,8 @@ export default function ExpertProfileWizard() {
                                     type="button"
                                     onClick={() => setExpertiseType("Scientific")}
                                     className={`w-full border p-6 flex items-start gap-4 transition-all duration-200 text-left ${expertiseType === "Scientific"
-                                            ? "border-blue-500 bg-blue-900/10"
-                                            : "border-[#333] hover:border-gray-500"
+                                        ? "border-blue-500 bg-blue-900/10"
+                                        : "border-[#333] hover:border-gray-500"
                                         }`}
                                 >
                                     <div className={`w-12 h-12 rounded-full border flex items-center justify-center flex-shrink-0 ${expertiseType === "Scientific" ? "border-blue-500 bg-blue-500/20" : "border-[#333] bg-[#0a0a0a]"
@@ -264,8 +260,8 @@ export default function ExpertProfileWizard() {
                                     type="button"
                                     onClick={() => setExpertiseType("Alternative")}
                                     className={`w-full border p-6 flex items-start gap-4 transition-all duration-200 text-left ${expertiseType === "Alternative"
-                                            ? "border-green-500 bg-green-900/10"
-                                            : "border-[#333] hover:border-gray-500"
+                                        ? "border-green-500 bg-green-900/10"
+                                        : "border-[#333] hover:border-gray-500"
                                         }`}
                                 >
                                     <div className={`w-12 h-12 rounded-full border flex items-center justify-center flex-shrink-0 ${expertiseType === "Alternative" ? "border-green-500 bg-green-500/20" : "border-[#333] bg-[#0a0a0a]"
@@ -290,8 +286,8 @@ export default function ExpertProfileWizard() {
                                     type="button"
                                     onClick={() => setExpertiseType("Esoteric")}
                                     className={`w-full border p-6 flex items-start gap-4 transition-all duration-200 text-left ${expertiseType === "Esoteric"
-                                            ? "border-purple-500 bg-purple-900/10"
-                                            : "border-[#333] hover:border-gray-500"
+                                        ? "border-purple-500 bg-purple-900/10"
+                                        : "border-[#333] hover:border-gray-500"
                                         }`}
                                 >
                                     <div className={`w-12 h-12 rounded-full border flex items-center justify-center flex-shrink-0 ${expertiseType === "Esoteric" ? "border-purple-500 bg-purple-500/20" : "border-[#333] bg-[#0a0a0a]"
@@ -337,9 +333,7 @@ export default function ExpertProfileWizard() {
                                         className="w-full bg-[#0a0a0a] border border-[#333] p-4 text-sm focus:border-emerald-500 focus:outline-none transition-colors placeholder:text-gray-700 min-h-[200px]"
                                         placeholder="Describe your background, training, certifications, years of practice, notable achievements, or lineage in your field. Be specific about your qualifications and experience..."
                                     />
-                                    <p className="text-xs text-gray-600">
-                                        Examples: "10+ years as a functional medicine practitioner...", "Studied under Master herbalist...", "PhD in Neuroscience with focus on..."
-                                    </p>
+                                    Examples: &quot;10+ years as a functional medicine practitioner...&quot;, &quot;Studied under Master herbalist...&quot;, &quot;PhD in Neuroscience with focus on...&quot;
                                 </div>
 
                                 <div className="space-y-2">
@@ -449,10 +443,7 @@ export default function ExpertProfileWizard() {
                             </div>
 
                             <div className="mt-6 p-4 border border-yellow-500/30 bg-yellow-500/5">
-                                <p className="text-xs text-yellow-400">
-                                    <Sparkles className="w-4 h-4 inline mr-2" />
-                                    Your application will be reviewed by an admin. You'll be notified once your SME status is approved.
-                                </p>
+                                Your application will be reviewed by an admin. You&apos;ll be notified once your SME status is approved.
                             </div>
                         </div>
 

@@ -103,16 +103,16 @@ export default async function SMETestPage() {
                     <div className="border border-translucent-emerald bg-muted-moss/20 p-6 rounded-lg">
                         <h3 className="text-lg font-serif text-bone-white mb-3">Manual Testing Steps</h3>
                         <ol className="space-y-3 text-bone-white/80 font-mono text-sm list-decimal list-inside">
-                            <li>Click "Seed Test User" button above</li>
+                            <li>Click &quot;Seed Test User&quot; button above</li>
                             <li>Wait for success message and page reload</li>
                             <li>Verify reputation score is now ≥100 and SME Status is ACTIVE</li>
                             <li>Sign out and sign in as richmwhite@gmail.com</li>
-                            <li>Check user dropdown - should see "SME Dashboard" link</li>
-                            <li>Click "SME Dashboard" - should load successfully</li>
+                            <li>Check user dropdown - should see &quot;SME Dashboard&quot; link</li>
+                            <li>Click &quot;SME Dashboard&quot; - should load successfully</li>
                             <li>
                                 <strong>Test Demotion:</strong> Run this in browser console:
                                 <code className="block mt-2 p-2 bg-forest-obsidian text-sme-gold">
-                                    fetch('/api/admin/demote-test-user', {'{'} method: 'POST' {'}'}).then(r =&gt; r.json()).then(console.log)
+                                    fetch(&apos;/api/admin/demote-test-user&apos;, {& apos;{& apos;} method: &apos;POST&apos; {& apos;}&apos;}).then(r =&gt; r.json()).then(console.log)
                                 </code>
                             </li>
                             <li>Refresh page - SME Dashboard link should disappear</li>
@@ -127,13 +127,13 @@ export default async function SMETestPage() {
                             <div>
                                 <p className="text-bone-white/60 mb-1">Check current reputation:</p>
                                 <code className="block p-2 bg-forest-obsidian text-sme-gold">
-                                    fetch('/api/profile').then(r =&gt; r.json()).then(p =&gt; console.log('Reputation:', p.reputation_score, 'SME:', p.is_sme))
+                                    fetch(&apos;/api/profile&apos;).then(r =&gt; r.json()).then(p =&gt; console.log(&apos;Reputation:&apos;, p.reputation_score, &apos;SME:&apos;, p.is_sme))
                                 </code>
                             </div>
                             <div>
                                 <p className="text-bone-white/60 mb-1">Seed user (alternative method):</p>
                                 <code className="block p-2 bg-forest-obsidian text-sme-gold">
-                                    fetch('/api/admin/seed-test-user', {'{'} method: 'POST', headers: {'{'} 'Content-Type': 'application/json' {'}'}, body: JSON.stringify({'{'} email: 'richmwhite@gmail.com', targetScore: 100 {'}'}) {'}'}).then(r =&gt; r.json()).then(console.log)
+                                    fetch(&apos;/api/admin/seed-test-user&apos;, {& apos;{& apos;} method: &apos;POST&apos;, headers: {& apos;{& apos;} &apos;Content-Type&apos;: &apos;application/json&apos; {& apos;}&apos;}, body: JSON.stringify({& apos;{& apos;} email: &apos;richmwhite@gmail.com&apos;, targetScore: 100 {& apos;}&apos;}) {& apos;}&apos;}).then(r =&gt; r.json()).then(console.log)
                                 </code>
                             </div>
                         </div>
