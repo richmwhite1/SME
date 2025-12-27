@@ -41,7 +41,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="/community"
+                  href="/discussions"
                   className="text-sm leading-6 text-gray-400 hover:text-white"
                 >
                   Discussions
