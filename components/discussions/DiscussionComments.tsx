@@ -218,6 +218,8 @@ export default function DiscussionComments({
         discussionSlug,
         parentId || undefined,
         replyReferences,
+        undefined, // postType
+        undefined, // pillarOfTruth
         isOfficialResponse
       );
 
