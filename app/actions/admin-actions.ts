@@ -707,3 +707,168 @@ export async function updateProductDetails(
     return { success: false, error: 'Failed to update product' };
   }
 }
+
+/**
+ * Permanently delete flagged content (discussions, reviews, comments)
+ * Admin only
+ */
+export async function deleteFlaggedContent(id: string, type: "discussion" | "review" | "discussion_comment" | "product_comment") {
+  const adminStatus = await isAdmin();
+  if (!adminStatus) {
+    throw new Error("Only administrators can delete content");
+  }
+
+  const sql = getDb();
+
+  try {
+    if (type === "discussion") {
+      await sql`DELETE FROM discussions WHERE id = ${id}`;
+    } else if (type === "review") {
+      await sql`DELETE FROM reviews WHERE id = ${id}`;
+    } else if (type === "discussion_comment") {
+      await sql`DELETE FROM discussion_comments WHERE id = ${id}`;
+    } else if (type === "product_comment") {
+      await sql`DELETE FROM product_comments WHERE id = ${id}`;
+    }
+
+    // Log admin action
+    const user = await currentUser();
+    if (user) {
+      await logAdminAction(
+        user.id,
+        "delete",
+        type,
+        id,
+        "Flagged content deletion",
+        { type }
+      );
+    }
+
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting content:", error);
+    throw new Error(`Failed to delete content: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+/**
+ * Clear flags from content
+ * Admin only
+ */
+export async function clearContentFlag(id: string, type: "discussion" | "review" | "discussion_comment" | "product_comment") {
+  const adminStatus = await isAdmin();
+  if (!adminStatus) {
+    throw new Error("Only administrators can clear flags");
+  }
+
+  const sql = getDb();
+  const tableMap = {
+    discussion: "discussions",
+    review: "reviews",
+    discussion_comment: "discussion_comments",
+    product_comment: "product_comments"
+  };
+
+  const tableName = tableMap[type];
+  if (!tableName) throw new Error("Invalid content type");
+
+  try {
+    // We use unsafe here because the table name is from a trusted map, not user input
+    await sql.unsafe(`
+      UPDATE ${tableName} 
+      SET is_flagged = false, flag_count = 0 
+      WHERE id = $1
+    `, [id]);
+
+    // Log admin action
+    const user = await currentUser();
+    if (user) {
+      await logAdminAction(
+        user.id,
+        "clear_flags",
+        type,
+        id,
+        "Flags cleared by admin"
+      );
+    }
+
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (error) {
+    console.error("Error clearing flags:", error);
+    throw new Error(`Failed to clear flags: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+/**
+ * Toggle SME status for a user
+ * Admin only
+ */
+export async function toggleSME(userId: string, isSme: boolean) {
+  const adminStatus = await isAdmin();
+  if (!adminStatus) {
+    throw new Error("Only administrators can manage SME status");
+  }
+
+  const sql = getDb();
+
+  try {
+    await sql`UPDATE profiles SET is_sme = ${isSme} WHERE id = ${userId}`;
+
+    // Log admin action
+    const user = await currentUser();
+    if (user) {
+      await logAdminAction(
+        user.id,
+        isSme ? "grant_sme" : "revoke_sme",
+        "user",
+        userId,
+        undefined,
+        { is_sme: isSme }
+      );
+    }
+
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (error) {
+    console.error("Error toggling SME:", error);
+    throw new Error(`Failed to toggle SME status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+/**
+ * Reset user reputation
+ * Admin only
+ */
+export async function resetReputation(userId: string, reason?: string) {
+  const adminStatus = await isAdmin();
+  if (!adminStatus) {
+    throw new Error("Only administrators can reset reputation");
+  }
+
+  const sql = getDb();
+
+  try {
+    await sql`UPDATE profiles SET reputation_score = 0 WHERE id = ${userId}`;
+
+    // Log admin action
+    const user = await currentUser();
+    if (user) {
+      await logAdminAction(
+        user.id,
+        "reset_reputation",
+        "user",
+        userId,
+        reason,
+        { previous_score: "unknown" }
+      );
+    }
+
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (error) {
+    console.error("Error resetting reputation:", error);
+    throw new Error(`Failed to reset reputation: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
