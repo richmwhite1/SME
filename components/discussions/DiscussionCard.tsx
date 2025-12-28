@@ -5,6 +5,7 @@ import Link from "next/link";
 import TopicBadge from "@/components/topics/TopicBadge";
 import { MessageSquare, Clock, ArrowUp } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import VoteControl from "@/components/ui/VoteControl";
 
 interface DiscussionCardProps {
   discussion: {
@@ -103,11 +104,6 @@ export default function DiscussionCard({ discussion }: DiscussionCardProps) {
             <span>
               {new Date(discussion.created_at).toLocaleDateString()}
             </span>
-            {discussion.upvote_count > 0 && (
-              <span className="text-sme-gold">
-                {discussion.upvote_count} upvote{discussion.upvote_count !== 1 ? "s" : ""}
-              </span>
-            )}
           </div>
 
           {discussion.tags && discussion.tags.length > 0 && (
@@ -121,10 +117,22 @@ export default function DiscussionCard({ discussion }: DiscussionCardProps) {
 
         {/* Bottom Row: Engagement Metrics */}
         <div className="flex items-center gap-4 text-[10px] text-bone-white/60 font-mono border-t border-white/5 pt-2 mt-1">
+          {/* Vote Control */}
+          <div onClick={(e) => e.stopPropagation()}>
+            <VoteControl
+              resourceId={discussion.id}
+              resourceType="discussion"
+              initialUpvoteCount={discussion.upvote_count}
+              // initialUserVote={/* fetch me? */}
+              orientation="horizontal"
+              size="sm"
+            />
+          </div>
+
           {/* Message Count */}
           <div className="flex items-center gap-1.5" title="Comments">
-            <MessageSquare size={12} className="text-bone-white/40" />
-            <span>{discussion.message_count || 0} comments</span>
+            <MessageSquare size={14} className="text-bone-white/40" />
+            <span>{discussion.message_count || 0}</span>
           </div>
 
           {/* Last Activity */}

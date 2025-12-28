@@ -1,22 +1,15 @@
-"use client";
-
-import { useState } from "react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import {
-    Heart,
     MessageCircle,
-    Smile,
     Hand,
     UserCircle,
     Award,
-    CheckCircle2,
+    ShieldCheck,
     Lightbulb,
     BookOpen,
     ExternalLink,
-    MoreHorizontal,
-    CornerDownRight,
-    ShieldCheck
+    CornerDownRight
 } from "lucide-react";
 import { Comment } from "@/types/comment";
 import AvatarLink from "@/components/profile/AvatarLink";
@@ -24,11 +17,11 @@ import UserBadge from "@/components/UserBadge";
 import TrustWeight from "@/components/ui/TrustWeight";
 import CitationText from "@/components/comments/CitationText";
 import { useUser } from "@clerk/nextjs";
-import { toggleCommentVote } from "@/app/actions/vote-actions";
 import { toggleCommentSignal } from "@/app/actions/signal-actions";
-import { toggleReaction } from "@/app/actions/discussion-actions";
 import { useToast } from "@/components/ui/ToastContainer";
-import EmojiPicker from "@/components/ui/EmojiPicker";
+import VoteControl from "@/components/ui/VoteControl";
+import ReactionBar from "@/components/ui/ReactionBar";
+import SentimentSummary from "@/components/ui/SentimentSummary";
 
 interface WaterfallCommentProps {
     comment: Comment;
@@ -52,9 +45,16 @@ export default function WaterfallComment({
     const { user, isSignedIn } = useUser();
     const { showToast } = useToast();
 
-    const [upvoteCount, setUpvoteCount] = useState(comment.upvote_count || 0);
-    const [isUpvoted, setIsUpvoted] = useState(false); // ToDo: fetch initial state
-    const [isVoting, setIsVoting] = useState(false);
+    // Mapping 'type' to ResourceType
+    // WaterfallComment 'type' prop is usually 'product' or 'discussion' (which matches ResourceType 'product' | 'discussion').
+    // BUT this component IS a comment. So the resourceType passed to VoteControl should be 'comment'?
+    // Wait, the comment itself is the resource being voted on.
+    // So resourceType="comment".
+    // AND we probably need to distinguish if it's a product comment or discussion comment?
+    // In `vote-actions.ts`, I handled `resourceType='comment'` by trying both tables.
+    // Ideally we should pass specific type, but let's stick to 'comment' if that's what backend expects or handle generic 'comment'.
+    // `VoteControl` expects `ResourceType`.
+    // Let's us "comment" as the resource type.
 
     const [signalCount, setSignalCount] = useState(comment.raise_hand_count || 0);
     const [isSignaled, setIsSignaled] = useState(false); // ToDo: fetch initial state
@@ -63,41 +63,7 @@ export default function WaterfallComment({
     const isGuest = !comment.profiles && comment.guest_name;
     const replyCount = comment.children?.length || 0;
 
-    // Vote Handler
     const isVerifiedSME = isSME || (comment.profiles?.badge_type === 'Trusted Voice') || (comment.profiles?.is_verified_expert === true);
-
-    const handleVote = async (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (isVoting) return;
-        if (!isSignedIn) {
-            showToast("Please sign in to vote", "error");
-            return;
-        }
-
-        setIsVoting(true);
-        const newIsUpvoted = !isUpvoted;
-        // Optimistic
-        setIsUpvoted(newIsUpvoted);
-        setUpvoteCount(prev => newIsUpvoted ? prev + 1 : prev - 1);
-
-        try {
-            const result = await toggleCommentVote(comment.id, type);
-            if (result.success) {
-                setUpvoteCount(result.upvoteCount);
-                setIsUpvoted(result.isUpvoted);
-            } else {
-                // Revert
-                setIsUpvoted(!newIsUpvoted);
-                setUpvoteCount(prev => newIsUpvoted ? prev - 1 : prev + 1);
-                showToast(result.error || "Vote failed", "error");
-            }
-        } catch (err) {
-            setIsUpvoted(!newIsUpvoted);
-            setUpvoteCount(prev => newIsUpvoted ? prev - 1 : prev + 1);
-        } finally {
-            setIsVoting(false);
-        }
-    };
 
     // Signal (Raise Hand) Handler
     const handleSignal = async (e: React.MouseEvent) => {
@@ -133,24 +99,6 @@ export default function WaterfallComment({
             setSignalCount(prev => newIsSignaled ? prev - 1 : prev + 1);
         } finally {
             setIsSignaling(false);
-        }
-    };
-
-
-
-    const handleReaction = async (emoji: string) => {
-        if (!isSignedIn) {
-            showToast("Please sign in to react", "error");
-            return;
-        }
-
-        // Optimistic update (handled by parent refresh mostly, but we could do local state)
-        // For now, rely on parent refresh via onReactionUpdate
-        try {
-            await toggleReaction(comment.id, emoji);
-            if (onReactionUpdate) onReactionUpdate();
-        } catch (err: any) {
-            showToast(err.message, "error");
         }
     };
 
@@ -262,18 +210,32 @@ export default function WaterfallComment({
                     </div>
                 )}
 
+                {/* Reaction Summary */}
+                {/* Note: comment.reactions matches the format needed? array of {emoji_type, count}? 
+                    Current type uses {emoji, count, user_reacted}. SentimentSummary expects {emoji_type, count}.
+                    We need to map it or update SentimentSummary. 
+                    SentimentSummary expects `emoji_type` key.
+                */}
+                {comment.reactions && comment.reactions.length > 0 && (
+                    <div className="mt-3">
+                        <SentimentSummary reactions={comment.reactions.map(r => ({ emoji_type: r.emoji as any, count: r.count }))} />
+                    </div>
+                )}
+
+
                 {/* Action Bar (Engagement Bar) */}
                 <div className="mt-4 flex items-center justify-between border-t border-white/5 pt-3">
                     <div className="flex items-center gap-4">
                         {/* Vote */}
-                        <button
-                            onClick={handleVote}
-                            className={`flex items-center gap-1.5 group/btn transition-colors ${isUpvoted ? 'text-heart-green' : 'text-bone-white/40 hover:text-heart-green'}`}
-                            title="Upvote"
-                        >
-                            <Heart size={16} className={`transition-transform group-active/btn:scale-95 ${isUpvoted ? 'fill-heart-green' : ''}`} />
-                            <span className="text-xs font-mono">{upvoteCount}</span>
-                        </button>
+                        <div onClick={(e) => e.stopPropagation()}>
+                            <VoteControl
+                                resourceId={comment.id}
+                                resourceType="comment"
+                                initialUpvoteCount={comment.upvote_count || 0}
+                                // initialUserVote={comment.user_vote} 
+                                size="sm"
+                            />
+                        </div>
 
                         {/* Reply / Drill Down */}
                         <button
@@ -295,33 +257,15 @@ export default function WaterfallComment({
                             {signalCount > 0 && <span className="text-xs font-mono">{signalCount}</span>}
                         </button>
 
-                        {/* Emoji Picker */}
-                        <div className="relative">
-                            <EmojiPicker
-                                onEmojiSelect={handleReaction}
-                                buttonClassName="text-bone-white/40 hover:text-yellow-400 transition-colors"
+                        {/* Reaction Bar */}
+                        <div onClick={(e) => e.stopPropagation()}>
+                            <ReactionBar
+                                resourceId={comment.id}
+                                resourceType="comment"
+                            // initialUserReactions={comment.user_reactions}
                             />
                         </div>
 
-                        {/* Existing Reactions */}
-                        {comment.reactions && comment.reactions.length > 0 && (
-                            <div className="flex flex-wrap gap-1 ml-2">
-                                {comment.reactions.map((r, i) => (
-                                    <button
-                                        key={i}
-                                        onClick={() => handleReaction(r.emoji)}
-                                        className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] border transition-all ${r.user_reacted
-                                            ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-200'
-                                            : 'bg-white/5 border-transparent text-bone-white/60 hover:bg-white/10'
-                                            }`}
-                                        title={`${r.count} people reacted with ${r.emoji}`}
-                                    >
-                                        <span>{r.emoji}</span>
-                                        <span className="font-mono">{r.count}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
                     </div>
 
                     {/* SME Tools */}

@@ -3,45 +3,13 @@
 import { useState } from 'react';
 import { useUser } from '@clerk/nextjs';
 import Link from 'next/link';
-import { Lightbulb, ThumbsUp } from 'lucide-react';
-import { toggleCommentVote } from '@/app/actions/vote-actions';
+import { Lightbulb } from 'lucide-react';
+import VoteControl from '@/components/ui/VoteControl';
+import ReactionBar from '@/components/ui/ReactionBar';
+import SentimentSummary from '@/components/ui/SentimentSummary';
 
 export default function CommentItem({ comment, depth, discussionId, parentUsername }: any) {
   const { user } = useUser();
-  const [isHighlighting, setIsHighlighting] = useState(false);
-
-  const [upvoteCount, setUpvoteCount] = useState(comment.upvote_count || 0);
-  const [isUpvoted, setIsUpvoted] = useState(false); // ToDo: fetch initial state if possible
-  const [isVoting, setIsVoting] = useState(false);
-
-  const handleVote = async () => {
-    if (isVoting) return;
-    setIsVoting(true);
-
-    // Optimistic update
-    const newIsUpvoted = !isUpvoted;
-    setIsUpvoted(newIsUpvoted);
-    setUpvoteCount((prev: number) => newIsUpvoted ? prev + 1 : prev - 1);
-
-    try {
-      const result = await toggleCommentVote(comment.id, 'discussion');
-      if (result.success) {
-        setUpvoteCount(result.upvoteCount);
-        setIsUpvoted(result.isUpvoted);
-      } else {
-        // Revert on failure
-        setIsUpvoted(!newIsUpvoted);
-        setUpvoteCount((prev: number) => newIsUpvoted ? prev - 1 : prev + 1);
-        console.error("Vote failed:", result.error);
-      }
-    } catch (error) {
-      setIsUpvoted(!newIsUpvoted);
-      setUpvoteCount((prev: number) => newIsUpvoted ? prev - 1 : prev + 1);
-      console.error("Vote error:", error);
-    } finally {
-      setIsVoting(false);
-    }
-  };
 
   // HARD FIREWALL: Binary Indentation (0 or 20px) - className + inline style backup
   // Rule: depth === 0 ? 'ml-0' : 'ml-5 border-l border-white/10'
@@ -103,20 +71,31 @@ export default function CommentItem({ comment, depth, discussionId, parentUserna
           {comment.content}
         </p>
 
+        {/* REACTION SUMMARY */}
+        {comment.recent_reactions && comment.recent_reactions.length > 0 && (
+          <div className="mt-2">
+            <SentimentSummary reactions={comment.recent_reactions} />
+          </div>
+        )}
+
         <div className="flex gap-4 mt-3 text-[10px] text-white/30 uppercase tracking-tighter items-center">
-          <button
-            onClick={handleVote}
-            disabled={isVoting}
-            className={`flex items-center gap-1.5 text-xs font-mono transition-colors ${isUpvoted ? 'text-emerald-400' : 'hover:text-emerald-400'
-              }`}
-            title="Endorse this perspective"
-          >
-            <ThumbsUp size={12} className={isUpvoted ? "fill-emerald-400/20" : ""} />
-            <span>{upvoteCount || 0}</span>
-          </button>
+
+          <VoteControl
+            resourceId={comment.id}
+            resourceType="comment"
+            initialUpvoteCount={comment.upvote_count || 0}
+          // initialUserVote={comment.user_vote} // Passing if available, else null
+          />
+
+          <ReactionBar
+            resourceId={comment.id}
+            resourceType="comment"
+          // initialUserReactions={comment.user_reactions}
+          />
+
+          <button className="hover:text-sme-gold transition-colors ml-2">Reply</button>
           <button className="hover:text-sme-gold transition-colors">Copy Link</button>
           <button className="hover:text-sme-gold transition-colors">Share Card</button>
-          <button className="hover:text-sme-gold transition-colors">Reply</button>
         </div>
       </div>
 

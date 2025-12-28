@@ -1,0 +1,6 @@
+
+-- Add ban tracking columns to profiles
+ALTER TABLE profiles 
+ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS banned_at TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+ADD COLUMN IF NOT EXISTS ban_reason TEXT DEFAULT NULL;

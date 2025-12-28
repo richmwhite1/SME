@@ -1,19 +1,24 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import Image from "next/image";
+import VoteControl from "@/components/ui/VoteControl";
 
 interface DossierHeaderProps {
     title: string;
     brand: string;
     consensusScore: number;
     image?: string;
+    productId: string; // New prop
+    upvoteCount?: number; // New prop
 }
 
 export default function DossierHeader({
     title,
     brand,
     consensusScore,
-    image
+    image,
+    productId,
+    upvoteCount = 0
 }: DossierHeaderProps) {
     // Determine score color
     const getScoreColor = (score: number) => {
@@ -29,6 +34,15 @@ export default function DossierHeader({
         <div className="w-full mb-8">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                 <div className="flex items-center gap-6">
+                    {/* Vote Control - Placed prominently */}
+                    <VoteControl
+                        resourceId={productId}
+                        resourceType="product"
+                        initialUpvoteCount={upvoteCount}
+                        orientation="vertical"
+                        size="md"
+                    />
+
                     {/* Product Image Thumbnail if available */}
                     {image && (
                         <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-white/5">

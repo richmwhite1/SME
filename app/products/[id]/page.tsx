@@ -128,6 +128,7 @@ interface Product {
   // Optional Fields
   founder_video_url?: string | null;
   ingredients?: string | null;
+  upvote_count?: number; // New field
 }
 
 interface Signal {
@@ -157,7 +158,8 @@ export default async function ProductDetailPage({
       COALESCE(score_esoteric, 0) as score_esoteric,
       COALESCE(certification_vault_urls, '[]':: jsonb) as certification_vault_urls,
       founder_video_url,
-      ingredients
+      ingredients,
+      upvote_count
       FROM products
     WHERE(id:: text = ${id} OR slug = ${id})
         AND admin_status = 'approved'
@@ -327,6 +329,8 @@ export default async function ProductDetailPage({
               brand={typedProduct.brand}
               consensusScore={typedProduct.community_consensus_score}
               image={safeImages[0]}
+              productId={typedProduct.id}
+              upvoteCount={typedProduct.upvote_count || 0}
             />
 
             {/* FOUNDER VIDEO (Optional) */}
