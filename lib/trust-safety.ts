@@ -6,7 +6,7 @@ import { currentUser } from "@clerk/nextjs/server";
  */
 export async function checkUserBanned(userId: string): Promise<boolean> {
   const sql = getDb();
-  
+
   try {
     const result = await sql`
       SELECT is_banned
@@ -27,7 +27,7 @@ export async function checkUserBanned(userId: string): Promise<boolean> {
  */
 export async function checkKeywordBlacklist(content: string): Promise<Array<{ keyword: string; reason: string | null }>> {
   const sql = getDb();
-  
+
   try {
     // Fetch all active keywords
     const allKeywords = await sql`
@@ -38,7 +38,7 @@ export async function checkKeywordBlacklist(content: string): Promise<Array<{ ke
 
     // Check for matches (case-insensitive)
     const lowerContent = content.toLowerCase();
-    const matches = allKeywords.filter((kw: any) => 
+    const matches = allKeywords.filter((kw: any) =>
       lowerContent.includes(kw.keyword.toLowerCase())
     );
 
@@ -129,14 +129,14 @@ export async function handleBlacklistedContent(
  */
 export async function logAdminAction(
   adminId: string,
-  actionType: "restore" | "purge" | "ban" | "unban" | "add_blacklist" | "remove_blacklist",
-  targetType: "comment" | "user" | "keyword",
+  actionType: "restore" | "purge" | "ban" | "unban" | "add_blacklist" | "remove_blacklist" | "delete" | "clear_flags" | "grant_sme" | "revoke_sme" | "reset_reputation",
+  targetType: "comment" | "user" | "keyword" | "discussion" | "review" | "discussion_comment" | "product_comment",
   targetId: string,
   reason?: string,
   metadata?: Record<string, any>
 ): Promise<void> {
   const sql = getDb();
-  
+
   try {
     await sql`
       INSERT INTO admin_logs (
