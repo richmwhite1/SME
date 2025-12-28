@@ -19,6 +19,7 @@ interface ProfileSettingsFormProps {
       x?: string | null;
       instagram?: string | null;
     } | null;
+    allows_guest_messages?: boolean | null;
   };
 }
 
@@ -33,6 +34,9 @@ export default function ProfileSettingsForm({ initialProfile }: ProfileSettingsF
   const [telegram, setTelegram] = useState(initialProfile.social_links?.telegram || "");
   const [x, setX] = useState(initialProfile.social_links?.x || "");
   const [instagram, setInstagram] = useState(initialProfile.social_links?.instagram || "");
+
+  // Default to true if null/undefined
+  const [allowsGuestMessages, setAllowsGuestMessages] = useState(initialProfile.allows_guest_messages ?? true);
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(
@@ -57,7 +61,8 @@ export default function ProfileSettingsForm({ initialProfile }: ProfileSettingsF
           telegram: telegram || undefined,
           x: x || undefined,
           instagram: instagram || undefined,
-        }
+        },
+        allowsGuestMessages
       );
 
       setMessage({
@@ -232,17 +237,51 @@ export default function ProfileSettingsForm({ initialProfile }: ProfileSettingsF
         </div>
       </div>
 
-      {message && (
-        <div
-          className={`rounded-lg p-4 ${
-            message.type === "success"
+      <div className="rounded-xl bg-white/50 p-6 backdrop-blur-sm">
+        <h2 className="mb-4 text-xl font-semibold text-deep-stone">Messaging Preferences</h2>
+        <div className="flex items-center justify-between">
+          <div>
+            <label htmlFor="guestMessages" className="font-medium text-deep-stone">
+              Allow Messages from Everyone
+            </label>
+            <p className="text-sm text-deep-stone/60">
+              If disabled, only Verified SMEs, Connections, and High-Reputation users can message you.
+            </p>
+          </div>
+          <div className="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+            <input
+              type="checkbox"
+              name="guestMessages"
+              id="guestMessages"
+              checked={allowsGuestMessages}
+              onChange={(e) => setAllowsGuestMessages(e.target.checked)}
+              className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer peer checked:right-0 right-6"
+            />
+            <label htmlFor="guestMessages" className={`toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer ${allowsGuestMessages ? 'bg-earth-green' : 'bg-gray-300'}`}></label>
+            {/* Using simple checkbox for now if no toggle component exists, or custom styling */}
+            <input
+              type="checkbox"
+              id="guestMessages"
+              checked={allowsGuestMessages}
+              onChange={(e) => setAllowsGuestMessages(e.target.checked)}
+              className="h-6 w-6 rounded border-gray-300 text-earth-green focus:ring-earth-green"
+            />
+          </div>
+        </div>
+      </div>
+
+      {
+        message && (
+          <div
+            className={`rounded-lg p-4 ${message.type === "success"
               ? "bg-earth-green/10 text-earth-green"
               : "bg-red-50 text-red-700"
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
+              }`}
+          >
+            {message.text}
+          </div>
+        )
+      }
 
       <Button type="submit" variant="primary" disabled={loading} className="flex items-center gap-2">
         {loading ? (
@@ -257,7 +296,7 @@ export default function ProfileSettingsForm({ initialProfile }: ProfileSettingsF
           </>
         )}
       </Button>
-    </form>
+    </form >
   );
 }
 

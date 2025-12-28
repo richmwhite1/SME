@@ -9,6 +9,8 @@ import FloatingCompareButton from "@/components/products/FloatingCompareButton";
 import { ToastProvider } from "@/components/ui/ToastContainer";
 import { SignalProvider } from "@/components/ui/SignalReceivedContainer";
 import ReputationListener from "@/components/ui/ReputationListener";
+import { ChatProvider } from "@/components/messages/ChatContext";
+import GlobalChatDrawer from "@/components/messages/GlobalChatDrawer";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -82,15 +84,18 @@ export default function RootLayout({
           signUpFallbackRedirectUrl="/"
         >
           <ToastProvider>
-            <SignalProvider>
-              <ReputationListener />
-              <Navbar />
-              <main className="flex-1">
-                {children}
-              </main>
-              <FloatingCompareButton />
-              <Footer />
-            </SignalProvider>
+            <ChatProvider>
+              <SignalProvider>
+                <ReputationListener />
+                <Navbar />
+                <main className="flex-1">
+                  {children}
+                </main>
+                <FloatingCompareButton />
+                <Footer />
+                <GlobalChatDrawer />
+              </SignalProvider>
+            </ChatProvider>
           </ToastProvider>
         </ClerkProvider>
       </body>

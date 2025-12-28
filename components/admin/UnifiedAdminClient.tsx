@@ -7,7 +7,6 @@ import ModerationClient from "./ModerationClient";
 import SafetyUsersTab from "./SafetyUsersTab";
 import IntakeTab from "./IntakeTab";
 import { restoreFromQueue, purgeFromQueue } from "@/app/actions/admin-actions";
-import SeedMasterTopicsButton from "./SeedMasterTopicsButton";
 
 interface Product {
   id: string;
@@ -25,6 +24,17 @@ interface Product {
   operational_legitimacy?: boolean;
   coa_url?: string | null;
   review_count: number;
+  admin_status?: 'approved' | 'rejected' | 'pending_review';
+  certification_tier?: 'None' | 'Bronze' | 'Silver' | 'Gold';
+  admin_notes?: string;
+  sme_signals?: any;
+  technical_specs?: any;
+  tech_docs?: any;
+  target_audience?: string;
+  core_value_proposition?: string;
+  sme_access_note?: string;
+  video_url?: string;
+  citation_url?: string;
 }
 
 interface FlaggedContent {
@@ -163,10 +173,9 @@ export default function UnifiedAdminClient({
                 className={`
                   flex items-center gap-2 px-4 py-3 text-sm font-mono uppercase tracking-wider
                   border-b-2 transition-colors whitespace-nowrap
-                  ${
-                    isActive
-                      ? "border-emerald-400 text-emerald-400"
-                      : "border-transparent text-bone-white/70 hover:text-bone-white hover:border-bone-white/30"
+                  ${isActive
+                    ? "border-emerald-400 text-emerald-400"
+                    : "border-transparent text-bone-white/70 hover:text-bone-white hover:border-bone-white/30"
                   }
                 `}
               >
@@ -182,22 +191,6 @@ export default function UnifiedAdminClient({
       <div className="min-h-[400px]">
         {activeTab === "products" && (
           <div className="space-y-6">
-            {/* Content Seeding Tool */}
-            <div className="border border-bone-white/20 bg-bone-white/5 p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="mb-2 font-mono text-xl font-semibold text-bone-white">
-                    Content Seeding
-                  </h2>
-                  <p className="text-sm text-bone-white/70 font-mono">
-                    Seed introductory discussions for all 12 Master Topics to launch the community
-                    hubs.
-                  </p>
-                </div>
-                <SeedMasterTopicsButton />
-              </div>
-            </div>
-
             {/* Product Management */}
             <AdminDashboardClient products={products} flaggedContent={flaggedContent} />
           </div>
@@ -252,6 +245,7 @@ export default function UnifiedAdminClient({
             ) : (
               <ModerationClient
                 queueItems={queueItems}
+                flaggedContent={flaggedContent}
                 restoreAction={restoreFromQueue}
                 purgeAction={purgeFromQueue}
               />

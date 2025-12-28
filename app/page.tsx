@@ -156,6 +156,16 @@ export default async function Home() {
   return (
     <main className="min-h-[calc(100vh-4rem)] bg-forest-obsidian px-6 py-16">
       <div className="mx-auto max-w-6xl">
+        {/* Header Section */}
+        <div className="mb-8 text-center max-w-4xl mx-auto">
+          <h1 className="mb-4 text-3xl md:text-4xl font-serif font-semibold text-bone-white tracking-tight">
+            A community driven forum where evidence meets experience.
+          </h1>
+          <p className="text-base text-bone-white/70 font-mono max-w-2xl mx-auto">
+            Explore community vetted products and insights from the community and subject matter experts (SME&apos;s) that are willing to help.
+          </p>
+        </div>
+
         {/* Recent Insights Section */}
         <div className="mb-12">
           <LatestIntelligence className="max-w-2xl mx-auto" />
@@ -166,10 +176,8 @@ export default async function Home() {
           <LiveLedger />
         </div>
 
-        {/* Lens of Truth Hero Section */}
-        <div className="mb-16 text-center">
-          A community driven forum where evidence meets experience. Explore community vetted products and insights from the community and subject matter experts (SME&apos;s) that are willing to help.
-        </div>
+        {/* Lens of Truth Hero Section - REMOVED */}
+
 
         {/* Lens-Aware Search - Prioritized */}
         <div className="mb-24">

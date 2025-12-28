@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { Library, Menu, X } from "lucide-react";
@@ -14,6 +15,16 @@ import SMEDashboardLink from "./SMEDashboardLink";
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
+
+  const isLinkActive = (path: string) => {
+    return pathname === path || pathname?.startsWith(`${path}/`);
+  };
+
+  const getLinkStyles = (path: string) =>
+    isLinkActive(path)
+      ? "text-bone-white font-bold"
+      : "text-bone-white/70 hover:text-bone-white";
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-translucent-emerald bg-muted-moss/80 backdrop-blur-md overflow-x-hidden">
@@ -39,29 +50,35 @@ export default function Navbar() {
         <div className="hidden lg:flex items-center gap-5 flex-shrink-0 text-sm">
           <PrefetchLink
             href="/products"
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-bone-white/70 hover:text-bone-white transition-colors font-mono text-xs uppercase tracking-wider active:scale-95"
+            className={`min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors font-mono text-xs uppercase tracking-wider active:scale-95 ${getLinkStyles('/products')}`}
           >
             Products
           </PrefetchLink>
           <PrefetchLink
             href="/discussions"
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-bone-white/70 hover:text-bone-white transition-colors font-mono text-xs uppercase tracking-wider active:scale-95"
+            className={`min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors font-mono text-xs uppercase tracking-wider active:scale-95 ${getLinkStyles('/discussions')}`}
           >
             Discussions
           </PrefetchLink>
           <PrefetchLink
             href="/feed"
-            className="relative min-h-[44px] min-w-[44px] flex items-center justify-center text-bone-white hover:text-bone-white transition-colors font-mono text-xs uppercase tracking-wider active:scale-95"
+            className={`relative min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors font-mono text-xs uppercase tracking-wider active:scale-95 ${getLinkStyles('/feed')}`}
           >
             My Feed
             <FeedNotificationDot />
           </PrefetchLink>
           <PrefetchLink
             href="/resources"
-            className="flex items-center gap-1.5 min-h-[44px] min-w-[44px] justify-center text-bone-white/70 hover:text-bone-white transition-colors font-mono text-xs uppercase tracking-wider relative active:scale-95"
+            className={`flex items-center gap-1.5 min-h-[44px] min-w-[44px] justify-center transition-colors font-mono text-xs uppercase tracking-wider relative active:scale-95 ${getLinkStyles('/resources')}`}
           >
             <Library size={12} />
             <span>SME Citations</span>
+          </PrefetchLink>
+          <PrefetchLink
+            href="/community"
+            className={`min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors font-mono text-xs uppercase tracking-wider active:scale-95 ${getLinkStyles('/community')}`}
+          >
+            Community
           </PrefetchLink>
 
           <SMEDashboardLink />
@@ -103,21 +120,21 @@ export default function Navbar() {
             <PrefetchLink
               href="/products"
               onClick={() => setMobileMenuOpen(false)}
-              className="block text-bone-white/70 hover:text-bone-white transition-colors font-mono text-xs uppercase tracking-wider py-2 active:scale-95"
+              className={`block transition-colors font-mono text-xs uppercase tracking-wider py-2 active:scale-95 ${getLinkStyles('/products')}`}
             >
               Products
             </PrefetchLink>
             <PrefetchLink
               href="/discussions"
               onClick={() => setMobileMenuOpen(false)}
-              className="block text-bone-white/70 hover:text-bone-white transition-colors font-mono text-xs uppercase tracking-wider py-2 active:scale-95"
+              className={`block transition-colors font-mono text-xs uppercase tracking-wider py-2 active:scale-95 ${getLinkStyles('/discussions')}`}
             >
               Discussions
             </PrefetchLink>
             <PrefetchLink
               href="/feed"
               onClick={() => setMobileMenuOpen(false)}
-              className="relative block text-bone-white hover:text-bone-white transition-colors font-mono text-xs uppercase tracking-wider py-2 active:scale-95"
+              className={`relative block transition-colors font-mono text-xs uppercase tracking-wider py-2 active:scale-95 ${getLinkStyles('/feed')}`}
             >
               My Feed
               <FeedNotificationDot />
@@ -125,10 +142,17 @@ export default function Navbar() {
             <PrefetchLink
               href="/resources"
               onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-1.5 text-bone-white/70 hover:text-bone-white transition-colors font-mono text-xs uppercase tracking-wider py-2 active:scale-95"
+              className={`flex items-center gap-1.5 transition-colors font-mono text-xs uppercase tracking-wider py-2 active:scale-95 ${getLinkStyles('/resources')}`}
             >
               <Library size={12} />
               <span>SME Citations</span>
+            </PrefetchLink>
+            <PrefetchLink
+              href="/community"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block transition-colors font-mono text-xs uppercase tracking-wider py-2 active:scale-95 ${getLinkStyles('/community')}`}
+            >
+              Community
             </PrefetchLink>
 
             <div className="pt-2 border-t border-translucent-emerald">

@@ -548,7 +548,7 @@ export async function getAllUsers() {
 
   try {
     const data = await sql`
-      SELECT id, full_name, username, is_banned, banned_at, ban_reason, created_at
+      SELECT id, full_name, username, is_banned, banned_at, ban_reason, created_at, reputation_score, is_sme
       FROM profiles
       ORDER BY created_at DESC
       LIMIT 100
@@ -656,5 +656,54 @@ export async function updateSubmissionStatus(submissionId: string, status: strin
   } catch (error) {
     console.error("Error updating submission status:", error);
     throw new Error(`Failed to update status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+/**
+ * Update general product details
+ * Admin only
+ */
+export async function updateProductDetails(
+  productId: string,
+  data: {
+    title: string;
+    brand: string;
+    slug: string;
+    description: string;
+    buy_url?: string;
+    product_photos?: string[];
+    ingredients?: string;
+    tech_docs?: string; // Storing as JSON string or URL depending on schema
+  }
+) {
+  const adminStatus = await isAdmin();
+  if (!adminStatus) {
+    throw new Error("Only administrators can update products");
+  }
+
+  const sql = getDb();
+
+  try {
+    await sql`
+      UPDATE products
+      SET 
+        title = ${data.title},
+        brand = ${data.brand},
+        slug = ${data.slug},
+        description = ${data.description},
+        buy_url = ${data.buy_url || null},
+        product_photos = ${data.product_photos ? sql.array(data.product_photos) : null},
+        ingredients = ${data.ingredients || null},
+        technical_docs_url = ${data.tech_docs || null},
+        updated_at = NOW()
+      WHERE id = ${productId}
+    `;
+
+    revalidatePath('/admin');
+    revalidatePath(`/products/${data.slug}`);
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to update product details:', error);
+    return { success: false, error: 'Failed to update product' };
   }
 }

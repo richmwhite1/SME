@@ -7,8 +7,10 @@ import {
   addBlacklistKeyword,
   removeBlacklistKeyword,
   toggleUserBan,
+  toggleSME,
+  resetReputation,
 } from "@/app/actions/admin-actions";
-import { Shield, X, Plus, Ban, UserCheck, Search } from "lucide-react";
+import { Shield, X, Plus, Ban, UserCheck, Search, Award, RefreshCcw } from "lucide-react";
 import Button from "@/components/ui/Button";
 
 interface Keyword {
@@ -26,6 +28,8 @@ interface User {
   banned_at: string | null;
   ban_reason: string | null;
   created_at: string;
+  reputation_score: number;
+  is_sme: boolean;
 }
 
 interface SafetyUsersTabProps {
@@ -44,6 +48,8 @@ export default function SafetyUsersTab({ keywords, users }: SafetyUsersTabProps)
   const [addingKeyword, setAddingKeyword] = useState(false);
   const [removingKeyword, setRemovingKeyword] = useState<Record<string, boolean>>({});
   const [banningUser, setBanningUser] = useState<Record<string, boolean>>({});
+  const [togglingSME, setTogglingSME] = useState<Record<string, boolean>>({});
+  const [resettingRep, setResettingRep] = useState<Record<string, boolean>>({});
   const [searchTerm, setSearchTerm] = useState("");
 
   const handleAddKeyword = async () => {
@@ -95,6 +101,34 @@ export default function SafetyUsersTab({ keywords, users }: SafetyUsersTabProps)
     }
   };
 
+  const handleToggleSME = async (userId: string, isSme: boolean) => {
+    setTogglingSME((prev) => ({ ...prev, [userId]: true }));
+    try {
+      await toggleSME(userId, !isSme);
+      showToast(`User SME status ${!isSme ? "granted" : "revoked"}`, "success");
+      router.refresh();
+    } catch (error: any) {
+      showToast(error.message || "Failed to update SME status", "error");
+    } finally {
+      setTogglingSME((prev) => ({ ...prev, [userId]: false }));
+    }
+  };
+
+  const handleResetReputation = async (userId: string) => {
+    if (!confirm("Are you sure you want to reset this user's reputation to 0?")) return;
+    setResettingRep((prev) => ({ ...prev, [userId]: true }));
+    try {
+      const reason = prompt("Enter reason for reset (optional):");
+      await resetReputation(userId, reason || undefined);
+      showToast("User reputation reset to 0", "success");
+      router.refresh();
+    } catch (error: any) {
+      showToast(error.message || "Failed to reset reputation", "error");
+    } finally {
+      setResettingRep((prev) => ({ ...prev, [userId]: false }));
+    }
+  };
+
   const filteredUsers = users.filter((user) => {
     if (!searchTerm) return true;
     const search = searchTerm.toLowerCase();
@@ -115,10 +149,9 @@ export default function SafetyUsersTab({ keywords, users }: SafetyUsersTabProps)
             className={`
               flex items-center gap-2 px-4 py-2 text-sm font-mono uppercase tracking-wider
               border-b-2 transition-colors
-              ${
-                activeSection === "blacklist"
-                  ? "border-emerald-400 text-emerald-400"
-                  : "border-transparent text-bone-white/70 hover:text-bone-white hover:border-bone-white/30"
+              ${activeSection === "blacklist"
+                ? "border-emerald-400 text-emerald-400"
+                : "border-transparent text-bone-white/70 hover:text-bone-white hover:border-bone-white/30"
               }
             `}
           >
@@ -130,10 +163,9 @@ export default function SafetyUsersTab({ keywords, users }: SafetyUsersTabProps)
             className={`
               flex items-center gap-2 px-4 py-2 text-sm font-mono uppercase tracking-wider
               border-b-2 transition-colors
-              ${
-                activeSection === "users"
-                  ? "border-emerald-400 text-emerald-400"
-                  : "border-transparent text-bone-white/70 hover:text-bone-white hover:border-bone-white/30"
+              ${activeSection === "users"
+                ? "border-emerald-400 text-emerald-400"
+                : "border-transparent text-bone-white/70 hover:text-bone-white hover:border-bone-white/30"
               }
             `}
           >
@@ -275,14 +307,19 @@ export default function SafetyUsersTab({ keywords, users }: SafetyUsersTabProps)
                   key={user.id}
                   className="border border-bone-white/20 bg-bone-white/5 p-4 font-mono"
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-semibold text-bone-white">
                           {user.full_name || "Anonymous"}
                         </p>
                         {user.username && (
                           <span className="text-xs text-bone-white/50">@{user.username}</span>
+                        )}
+                        {user.is_sme && (
+                          <span className="border border-emerald-400/50 bg-emerald-400/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+                            <Award className="h-3 w-3" /> SME
+                          </span>
                         )}
                         {user.is_banned && (
                           <span className="border border-red-500/50 bg-red-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-red-400">
@@ -293,40 +330,71 @@ export default function SafetyUsersTab({ keywords, users }: SafetyUsersTabProps)
                       <p className="text-xs text-bone-white/40 font-mono mt-1">
                         ID: {user.id.slice(0, 8)}...
                       </p>
+                      <p className="text-xs text-bone-white/50 mt-1">
+                        Reputation: <span className="text-bone-white">{user.reputation_score || 0}</span>
+                      </p>
                       {user.is_banned && user.ban_reason && (
                         <p className="text-xs text-red-400/70 mt-1">Reason: {user.ban_reason}</p>
                       )}
                     </div>
-                    <Button
-                      onClick={() => handleToggleBan(user.id, user.is_banned)}
-                      disabled={banningUser[user.id]}
-                      className={`flex items-center gap-2 text-xs font-mono px-4 py-2 transition-colors disabled:opacity-50 ${
-                        user.is_banned
-                          ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-400 hover:bg-emerald-400/20"
-                          : "border-red-500/50 bg-red-500/10 text-red-400 hover:bg-red-500/20"
-                      }`}
-                    >
-                      {banningUser[user.id] ? (
-                        <>
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={() => handleToggleSME(user.id, user.is_sme)}
+                        disabled={togglingSME[user.id] || user.is_banned}
+                        className={`flex items-center gap-2 text-xs font-mono px-3 py-1.5 transition-colors disabled:opacity-50 border border-bone-white/20 bg-bone-white/5 text-bone-white/70 hover:bg-bone-white/10`}
+                        title={user.is_sme ? "Revoke SME Status" : "Grant SME Status"}
+                      >
+                        {togglingSME[user.id] ? (
                           <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                          {user.is_banned ? "Unbanning..." : "Banning..."}
-                        </>
-                      ) : (
-                        <>
-                          {user.is_banned ? (
-                            <>
-                              <UserCheck className="h-3 w-3" />
-                              Unban
-                            </>
-                          ) : (
-                            <>
-                              <Ban className="h-3 w-3" />
-                              Ban
-                            </>
-                          )}
-                        </>
-                      )}
-                    </Button>
+                        ) : (
+                          <Award className={`h-3 w-3 ${user.is_sme ? "text-emerald-400" : "text-bone-white/30"}`} />
+                        )}
+                      </Button>
+
+                      <Button
+                        onClick={() => handleResetReputation(user.id)}
+                        disabled={resettingRep[user.id] || user.reputation_score === 0}
+                        className="flex items-center gap-2 text-xs font-mono px-3 py-1.5 transition-colors disabled:opacity-50 border border-bone-white/20 bg-bone-white/5 text-bone-white/70 hover:bg-bone-white/10"
+                        title="Reset Reputation"
+                      >
+                        {resettingRep[user.id] ? (
+                          <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        ) : (
+                          <RefreshCcw className="h-3 w-3" />
+                        )}
+                      </Button>
+
+                      <Button
+                        onClick={() => handleToggleBan(user.id, user.is_banned)}
+                        disabled={banningUser[user.id]}
+                        className={`flex items-center gap-2 text-xs font-mono px-3 py-1.5 transition-colors disabled:opacity-50 ${user.is_banned
+                            ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-400 hover:bg-emerald-400/20"
+                            : "border-red-500/50 bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                          }`}
+                      >
+                        {banningUser[user.id] ? (
+                          <>
+                            <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                            {user.is_banned ? "Unbanning..." : "Banning..."}
+                          </>
+                        ) : (
+                          <>
+                            {user.is_banned ? (
+                              <>
+                                <UserCheck className="h-3 w-3" />
+                                Unban
+                              </>
+                            ) : (
+                              <>
+                                <Ban className="h-3 w-3" />
+                                Ban
+                              </>
+                            )}
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))

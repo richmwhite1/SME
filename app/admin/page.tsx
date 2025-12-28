@@ -33,15 +33,26 @@ export default async function UnifiedAdminPage() {
         slug,
         created_at,
         is_sme_certified,
-        invite_sent,
-        certification_notes,
         third_party_lab_verified,
         purity_tested,
         source_transparency,
         potency_verified,
         excipient_audit,
         operational_legitimacy,
-        coa_url
+        coa_url,
+        admin_status,
+        certification_tier,
+        admin_notes,
+        sme_signals,
+        technical_specs,
+        technical_docs_url as tech_docs,
+        target_audience,
+        core_value_proposition,
+        sme_access_note,
+        youtube_link as video_url,
+        reference_url as citation_url,
+        view_count,
+        click_count
       FROM products
       ORDER BY created_at DESC
     `;

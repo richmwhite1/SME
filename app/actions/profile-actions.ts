@@ -16,7 +16,8 @@ export async function updateProfile(
     telegram?: string | null;
     x?: string | null;
     instagram?: string | null;
-  }
+  },
+  allowsGuestMessages?: boolean | null // Optional for backward compatibility if called elsewhere
 ) {
   const user = await currentUser();
 
@@ -74,7 +75,8 @@ export async function updateProfile(
           credentials = ${credentials || null},
           profession = ${profession || null},
           website_url = ${websiteUrl || null},
-          social_links = ${sql.json(socialLinks || {})}
+          social_links = ${sql.json(socialLinks || {})},
+          allows_guest_messages = ${allowsGuestMessages ?? true}
       WHERE id = ${user.id}
     `;
 

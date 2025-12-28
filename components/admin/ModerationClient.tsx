@@ -3,12 +3,17 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { restoreFromQueue, purgeFromQueue } from "@/app/actions/admin-actions";
+import {
+  restoreFromQueue,
+  purgeFromQueue,
+  deleteFlaggedContent,
+  clearContentFlag,
+  toggleUserBan
+} from "@/app/actions/admin-actions";
 import { useToast } from "@/components/ui/ToastContainer";
-import { RotateCcw, Trash2, User, Clock, Flag, FileText, MessageSquare, Package } from "lucide-react";
+import { RotateCcw, Trash2, User, Clock, Flag, Ban, CheckCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import Button from "@/components/ui/Button";
-import DisputeButton from "./DisputeButton";
 
 interface QueueItem {
   id: string;
@@ -39,411 +44,236 @@ interface QueueItem {
   } | null;
 }
 
+interface FlaggedItem {
+  id: string;
+  type: "discussion" | "review" | "discussion_comment" | "product_comment";
+  content: string; // or title for discussions
+  author_id: string | null;
+  created_at: string;
+  flag_count: number;
+  profiles?: {
+    full_name: string | null;
+    username: string | null;
+  } | null;
+  // Extra fields for logic
+  discussions?: { title: string; slug: string } | null;
+  protocols?: { title: string; slug: string } | null;
+}
+
 interface ModerationClientProps {
   queueItems: QueueItem[];
+  flaggedContent: {
+    discussions: any[];
+    reviews: any[];
+    discussionComments: any[];
+    productComments: any[];
+  };
   restoreAction: typeof restoreFromQueue;
   purgeAction: typeof purgeFromQueue;
 }
 
-type SubTab = "discussion" | "product";
-
 export default function ModerationClient({
   queueItems,
+  flaggedContent,
   restoreAction,
   purgeAction,
 }: ModerationClientProps) {
   const router = useRouter();
-  const { user } = useUser();
   const { showToast } = useToast();
-  const [restoring, setRestoring] = useState<Record<string, boolean>>({});
-  const [purging, setPurging] = useState<Record<string, boolean>>({});
-  const [activeSubTab, setActiveSubTab] = useState<SubTab>("discussion");
-  const [showReasonPrompt, setShowReasonPrompt] = useState<{ type: "restore" | "purge"; itemId: string } | null>(null);
-  const [reason, setReason] = useState("");
+  const [processing, setProcessing] = useState<Record<string, boolean>>({});
 
-  // Filter items by comment_type
-  const discussionItems = queueItems.filter((item) => item.comment_type === "discussion");
-  const productItems = queueItems.filter((item) => item.comment_type === "product");
+  // 1. Flatten Flagged Content into a unified list
+  const allFlaggedItems: FlaggedItem[] = [
+    ...flaggedContent.discussions.map(d => ({
+      id: d.id,
+      type: "discussion" as const,
+      content: d.title,
+      author_id: d.author_id,
+      created_at: d.created_at,
+      flag_count: d.flag_count,
+      profiles: d.profiles,
+      discussions: { title: d.title, slug: d.slug }
+    })),
+    ...flaggedContent.reviews.map(r => ({
+      id: r.id,
+      type: "review" as const,
+      content: r.content,
+      author_id: r.user_id,
+      created_at: r.created_at,
+      flag_count: r.flag_count,
+      profiles: r.profiles,
+      protocols: r.protocols
+    })),
+    ...flaggedContent.discussionComments.map(c => ({
+      id: c.id,
+      type: "discussion_comment" as const,
+      content: c.content,
+      author_id: c.author_id,
+      created_at: c.created_at,
+      flag_count: c.flag_count,
+      profiles: c.profiles,
+      discussions: c.discussions
+    })),
+    ...flaggedContent.productComments.map(c => ({
+      id: c.id,
+      type: "product_comment" as const,
+      content: c.content,
+      author_id: c.author_id,
+      created_at: c.created_at,
+      flag_count: c.flag_count,
+      profiles: c.profiles,
+      protocols: c.protocols
+    }))
+  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-  const handleRestore = async (queueItemId: string, reason?: string) => {
-    setRestoring((prev) => ({ ...prev, [queueItemId]: true }));
-
+  const handleClearFlag = async (item: FlaggedItem) => {
+    if (!confirm("Dismiss these flags and restore content?")) return;
+    setProcessing(prev => ({ ...prev, [item.id]: true }));
     try {
-      await restoreAction(queueItemId, reason);
-      showToast("Comment restored to public list", "success");
+      await clearContentFlag(item.id, item.type);
+      showToast("Flags cleared. Content restored.", "success");
       router.refresh();
     } catch (error: any) {
-      showToast(error.message || "Failed to restore comment", "error");
+      showToast(error.message, "error");
     } finally {
-      setRestoring((prev) => ({ ...prev, [queueItemId]: false }));
-      setShowReasonPrompt(null);
-      setReason("");
+      setProcessing(prev => ({ ...prev, [item.id]: false }));
     }
   };
 
-  const handlePurge = async (queueItemId: string, reason?: string) => {
-    setPurging((prev) => ({ ...prev, [queueItemId]: true }));
-
+  const handleDeleteContent = async (item: FlaggedItem) => {
+    if (!confirm("PERMANENTLY DELETE this content? This cannot be undone.")) return;
+    setProcessing(prev => ({ ...prev, [item.id]: true }));
     try {
-      await purgeAction(queueItemId, reason);
-      showToast("Comment purged from archive", "success");
+      await deleteFlaggedContent(item.id, item.type);
+      showToast("Content deleted.", "success");
       router.refresh();
     } catch (error: any) {
-      showToast(error.message || "Failed to purge comment", "error");
+      showToast(error.message, "error");
     } finally {
-      setPurging((prev) => ({ ...prev, [queueItemId]: false }));
-      setShowReasonPrompt(null);
-      setReason("");
+      setProcessing(prev => ({ ...prev, [item.id]: false }));
     }
   };
 
-  const promptForReason = (type: "restore" | "purge", itemId: string) => {
-    if (type === "purge") {
-      if (
-        !confirm(
-          "PURGE CONFIRMATION: This will permanently delete this comment from the archive. This action cannot be undone. Continue?"
-        )
-      ) {
-        return;
-      }
-    }
-    setShowReasonPrompt({ type, itemId });
-  };
-
-  const confirmAction = () => {
-    if (!showReasonPrompt) return;
-    if (showReasonPrompt.type === "restore") {
-      handleRestore(showReasonPrompt.itemId, reason || undefined);
-    } else {
-      handlePurge(showReasonPrompt.itemId, reason || undefined);
+  const handleBanUser = async (userId: string) => {
+    if (!confirm("Ban this user from the platform? They will lose login and messaging access.")) return;
+    // We use a dummy ID for loading state key collision avoidance if needed, but userId is fine here
+    setProcessing(prev => ({ ...prev, [`ban-${userId}`]: true }));
+    try {
+      await toggleUserBan(userId, true, "Banned via Moderation Queue");
+      showToast("User banned successfully.", "success");
+      router.refresh();
+    } catch (error: any) {
+      showToast(error.message, "error");
+    } finally {
+      setProcessing(prev => ({ ...prev, [`ban-${userId}`]: false }));
     }
   };
-
-  const renderItem = (item: QueueItem) => {
-    const isRestoring = restoring[item.id];
-    const isPurging = purging[item.id];
-    const isGuest = !item.author_id && item.guest_name;
-    const author = item.profiles;
-    const discussion = item.discussions;
-    const product = item.protocols;
-    const isNested = item.parent_id !== null;
-    // Binary indentation firewall: 0px for root, 20px for nested
-    const marginLeft = isNested ? "20px" : "0px";
-
-    return (
-      <div
-        key={item.id}
-        className="border border-bone-white/20 bg-bone-white/5 p-4 sm:p-6 font-mono"
-        style={{ marginLeft }}
-      >
-        {/* Header Row */}
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex-1 space-y-2">
-            {/* Author Info */}
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              {isGuest ? (
-                <>
-                  <User className="h-4 w-4 text-bone-white/70" />
-                  <span className="font-semibold text-bone-white">{item.guest_name}</span>
-                  <span className="border border-bone-white/30 bg-bone-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-bone-white/70">
-                    GUEST
-                  </span>
-                </>
-              ) : author ? (
-                <>
-                  <User className="h-4 w-4 text-bone-white/70" />
-                  <span className="font-semibold text-bone-white">
-                    {author.full_name || "Anonymous"}
-                  </span>
-                  {author.username && (
-                    <span className="text-xs text-bone-white/50">@{author.username}</span>
-                  )}
-                  {item.author_id && (
-                    <span className="text-[10px] text-bone-white/40 font-mono">
-                      ID: {item.author_id.slice(0, 8)}...
-                    </span>
-                  )}
-                </>
-              ) : (
-                <>
-                  <User className="h-4 w-4 text-bone-white/70" />
-                  <span className="text-bone-white/70">Anonymous</span>
-                  {item.author_id && (
-                    <span className="text-[10px] text-bone-white/40 font-mono">
-                      ID: {item.author_id.slice(0, 8)}...
-                    </span>
-                  )}
-                </>
-              )}
-            </div>
-
-            {/* Discussion/Product Link */}
-            {discussion && (
-              <div className="flex items-center gap-2 text-xs">
-                <FileText className="h-3 w-3 text-bone-white/70" />
-                <a
-                  href={`/discussions/${discussion.slug || item.discussion_id}`}
-                  className="text-bone-white/70 hover:text-bone-white transition-colors underline"
-                >
-                  {discussion.title || "Discussion"}
-                </a>
-              </div>
-            )}
-            {product && (
-              <div className="flex items-center gap-2 text-xs">
-                <FileText className="h-3 w-3 text-bone-white/70" />
-                <a
-                  href={`/products/${product.slug || item.protocol_id}`}
-                  className="text-bone-white/70 hover:text-bone-white transition-colors underline"
-                >
-                  {product.title || "Product"}
-                </a>
-              </div>
-            )}
-
-            {/* Metadata */}
-            <div className="flex flex-wrap items-center gap-4 text-xs text-bone-white/50">
-              <div className="flex items-center gap-1">
-                <Flag className="h-3 w-3" />
-                <span className="font-semibold text-bone-white/70">
-                  {item.flag_count} reporter{item.flag_count !== 1 ? "s" : ""}
-                </span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                <span>
-                  Queued {formatDistanceToNow(new Date(item.queued_at), { addSuffix: true })}
-                </span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                <span>
-                  Created {formatDistanceToNow(new Date(item.original_created_at), { addSuffix: true })}
-                </span>
-              </div>
-              {item.status === "disputed" && (
-                <div className="flex items-center gap-1">
-                  <span className="border border-yellow-500/50 bg-yellow-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-yellow-400">
-                    DISPUTED
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Dispute Button (only for comment author) */}
-            {user && item.author_id && (
-              <div className="mt-2">
-                <DisputeButton
-                  queueItemId={item.id}
-                  authorId={item.author_id}
-                  currentUserId={user.id}
-                  status={item.status}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex flex-col gap-2 sm:flex-row">
-            {showReasonPrompt?.itemId === item.id && showReasonPrompt.type === "restore" ? (
-              <div className="border border-emerald-400/30 bg-emerald-400/5 p-3 rounded font-mono">
-                <p className="text-xs text-bone-white/70 mb-2 uppercase tracking-wider">
-                  Reason (Optional)
-                </p>
-                <textarea
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder="Why are you restoring this comment?"
-                  className="w-full bg-forest-obsidian border border-bone-white/20 text-bone-white p-2 rounded text-sm mb-2 font-mono"
-                  rows={2}
-                />
-                <div className="flex gap-2">
-                  <Button
-                    onClick={confirmAction}
-                    disabled={isRestoring}
-                    className="flex items-center gap-2 border-emerald-400/50 bg-emerald-400/10 text-emerald-400 hover:bg-emerald-400/20 text-xs font-mono px-3 py-1.5 transition-colors"
-                  >
-                    Confirm Restore
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setShowReasonPrompt(null);
-                      setReason("");
-                    }}
-                    className="flex items-center gap-2 border-bone-white/20 bg-bone-white/5 text-bone-white/70 hover:bg-bone-white/10 text-xs font-mono px-3 py-1.5 transition-colors"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            ) : showReasonPrompt?.itemId === item.id && showReasonPrompt.type === "purge" ? (
-              <div className="border border-rose-500/30 bg-rose-500/5 p-3 rounded font-mono">
-                <p className="text-xs text-bone-white/70 mb-2 uppercase tracking-wider">
-                  Reason (Optional)
-                </p>
-                <textarea
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder="Why are you purging this comment?"
-                  className="w-full bg-forest-obsidian border border-bone-white/20 text-bone-white p-2 rounded text-sm mb-2 font-mono"
-                  rows={2}
-                />
-                <div className="flex gap-2">
-                  <Button
-                    onClick={confirmAction}
-                    disabled={isPurging}
-                    className="flex items-center gap-2 border-rose-500/50 bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 text-xs font-mono px-3 py-1.5 transition-colors"
-                  >
-                    Confirm Purge
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setShowReasonPrompt(null);
-                      setReason("");
-                    }}
-                    className="flex items-center gap-2 border-bone-white/20 bg-bone-white/5 text-bone-white/70 hover:bg-bone-white/10 text-xs font-mono px-3 py-1.5 transition-colors"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <Button
-                  onClick={() => promptForReason("restore", item.id)}
-                  disabled={isRestoring || isPurging || !!showReasonPrompt}
-                  className="flex items-center justify-center gap-2 border-emerald-400/50 bg-emerald-400/10 text-emerald-400 hover:bg-emerald-400/20 text-xs font-mono px-4 py-2 transition-colors disabled:opacity-50"
-                >
-                  {isRestoring ? (
-                    <>
-                      <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                      <span>RESTORING...</span>
-                    </>
-                  ) : (
-                    <>
-                      <RotateCcw className="h-3 w-3" />
-                      <span>RESTORE</span>
-                    </>
-                  )}
-                </Button>
-                <Button
-                  onClick={() => promptForReason("purge", item.id)}
-                  disabled={isRestoring || isPurging || !!showReasonPrompt}
-                  className="flex items-center justify-center gap-2 border-rose-500/50 bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 text-xs font-mono px-4 py-2 transition-colors disabled:opacity-50"
-                >
-                  {isPurging ? (
-                    <>
-                      <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                      <span>PURGING...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="h-3 w-3" />
-                      <span>PURGE</span>
-                    </>
-                  )}
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="border-t border-bone-white/10 pt-4">
-          <div className="rounded border border-bone-white/10 bg-forest-obsidian p-4">
-            <p className="text-sm text-bone-white/90 leading-relaxed whitespace-pre-wrap font-mono">
-              {item.content}
-            </p>
-          </div>
-          {item.dispute_reason && (
-            <div className="mt-3 border border-yellow-500/30 bg-yellow-500/5 p-3 rounded">
-              <p className="text-xs text-yellow-400/70 uppercase tracking-wider mb-1 font-mono">
-                Dispute Reason:
-              </p>
-              <p className="text-sm text-bone-white/80 font-mono">{item.dispute_reason}</p>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  if (queueItems.length === 0) {
-    return null; // Empty state handled in parent
-  }
 
   return (
     <div className="space-y-6">
-      {/* Sub-tab Navigation */}
-      <div className="border-b border-bone-white/20">
-        <nav className="flex space-x-1" aria-label="Sub-tabs">
-          <button
-            onClick={() => setActiveSubTab("discussion")}
-            className={`
-              flex items-center gap-2 px-4 py-2 text-sm font-mono uppercase tracking-wider
-              border-b-2 transition-colors
-              ${
-                activeSubTab === "discussion"
-                  ? "border-emerald-400 text-emerald-400"
-                  : "border-transparent text-bone-white/70 hover:text-bone-white hover:border-bone-white/30"
-              }
-            `}
-          >
-            <MessageSquare className="h-4 w-4" />
-            Discussion Signals ({discussionItems.length})
-          </button>
-          <button
-            onClick={() => setActiveSubTab("product")}
-            className={`
-              flex items-center gap-2 px-4 py-2 text-sm font-mono uppercase tracking-wider
-              border-b-2 transition-colors
-              ${
-                activeSubTab === "product"
-                  ? "border-emerald-400 text-emerald-400"
-                  : "border-transparent text-bone-white/70 hover:text-bone-white hover:border-bone-white/30"
-              }
-            `}
-          >
-            <Package className="h-4 w-4" />
-            Product Feedback ({productItems.length})
-          </button>
-        </nav>
+      {/* Header Stats */}
+      <div className="flex items-center gap-4 text-sm font-mono text-bone-white/70">
+        <div className="flex items-center gap-2">
+          <Flag className="h-4 w-4 text-red-500" />
+          <span>Active Flags: {allFlaggedItems.length}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4 text-bone-white/50" />
+          <span>Archived Items: {queueItems.length}</span>
+        </div>
       </div>
 
-      {/* Sub-tab Content */}
-      <div className="space-y-4">
-        {activeSubTab === "discussion" && (
-          <>
-            {discussionItems.length === 0 ? (
-              <div className="border border-bone-white/20 bg-bone-white/5 p-12 text-center">
-                <MessageSquare className="h-12 w-12 text-bone-white/30 mx-auto mb-4" />
-                <p className="font-mono text-lg text-bone-white/70 mb-2">NO DISCUSSION SIGNALS</p>
-                <p className="font-mono text-sm text-bone-white/50">
-                  No flagged discussion comments in queue
-                </p>
-              </div>
-            ) : (
-              discussionItems.map(renderItem)
-            )}
-          </>
-        )}
+      {allFlaggedItems.length === 0 ? (
+        <div className="border border-bone-white/20 bg-bone-white/5 p-12 text-center">
+          <CheckCircle className="h-12 w-12 text-emerald-400 mx-auto mb-4" />
+          <p className="font-mono text-lg text-bone-white/70 mb-2">ALL CLEAR</p>
+          <p className="font-mono text-sm text-bone-white/50">
+            No active flags requiring moderation. Good job!
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {allFlaggedItems.map(item => (
+            <div
+              key={`${item.type}-${item.id}`}
+              className="border border-red-500/20 bg-red-500/5 p-6 font-mono"
+            >
+              {/* Header: Sender & Meta */}
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <User className="h-4 w-4 text-bone-white/70" />
+                    <span className="font-semibold text-bone-white">
+                      {item.profiles?.full_name || "Unknown User"}
+                    </span>
+                    {item.profiles?.username && (
+                      <span className="text-xs text-bone-white/50">@{item.profiles?.username}</span>
+                    )}
+                    <span className="text-xs text-bone-white/30">ID: {item.author_id?.slice(0, 8)}...</span>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-bone-white/50">
+                    <span className="text-red-400 font-semibold flex items-center gap-1">
+                      <Flag className="h-3 w-3" /> {item.flag_count} Flags
+                    </span>
+                    <span>
+                      {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
+                    </span>
+                    <span className="uppercase tracking-wider border border-bone-white/20 px-1.5 py-0.5 rounded text-[10px]">
+                      {item.type.replace('_', ' ')}
+                    </span>
+                  </div>
+                </div>
 
-        {activeSubTab === "product" && (
-          <>
-            {productItems.length === 0 ? (
-              <div className="border border-bone-white/20 bg-bone-white/5 p-12 text-center">
-                <Package className="h-12 w-12 text-bone-white/30 mx-auto mb-4" />
-                <p className="font-mono text-lg text-bone-white/70 mb-2">NO PRODUCT FEEDBACK</p>
-                <p className="font-mono text-sm text-bone-white/50">
-                  No flagged product comments in queue
-                </p>
+                {/* Power Actions */}
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    onClick={() => handleClearFlag(item)}
+                    disabled={processing[item.id]}
+                    className="flex items-center gap-2 border-emerald-400/50 bg-emerald-400/10 text-emerald-400 hover:bg-emerald-400/20 text-xs px-3 py-1.5"
+                  >
+                    <RotateCcw className="h-3 w-3" /> Clear Flag
+                  </Button>
+                  <Button
+                    onClick={() => handleDeleteContent(item)}
+                    disabled={processing[item.id]}
+                    className="flex items-center gap-2 border-red-500/50 bg-red-500/10 text-red-500 hover:bg-red-500/20 text-xs px-3 py-1.5"
+                  >
+                    <Trash2 className="h-3 w-3" /> Delete Content
+                  </Button>
+                  {item.author_id && (
+                    <Button
+                      onClick={() => handleBanUser(item.author_id!)}
+                      disabled={processing[`ban-${item.author_id}`]}
+                      className="flex items-center gap-2 border-bone-white/20 bg-bone-white/5 text-bone-white/70 hover:bg-red-950/50 hover:text-red-400 hover:border-red-500/30 text-xs px-3 py-1.5"
+                    >
+                      <Ban className="h-3 w-3" /> Ban User
+                    </Button>
+                  )}
+                </div>
               </div>
-            ) : (
-              productItems.map(renderItem)
-            )}
-          </>
-        )}
-      </div>
+
+              {/* Content Payload */}
+              <div className="bg-forest-obsidian border border-bone-white/10 p-4 rounded text-sm text-bone-white/90 whitespace-pre-wrap">
+                {item.content || "No content text available"}
+              </div>
+
+              {/* Context Links */}
+              <div className="mt-2 flex gap-4 text-xs">
+                {item.discussions && (
+                  <a href={`/discussions/${item.discussions.slug}`} className="text-emerald-400 hover:underline">
+                    View Discussion: {item.discussions.title}
+                  </a>
+                )}
+                {item.protocols && (
+                  <a href={`/products/${item.protocols.slug}`} className="text-emerald-400 hover:underline">
+                    View Product: {item.protocols.title}
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

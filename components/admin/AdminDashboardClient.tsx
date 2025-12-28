@@ -3,10 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Edit, Shield, ShieldOff, BarChart3, Calendar, Mail, CheckCircle } from "lucide-react";
+import { Edit, Shield, ShieldOff, BarChart3, Calendar, Mail, CheckCircle, AlertCircle, Settings } from "lucide-react";
 import Button from "@/components/ui/Button";
 import CertificationModal from "./CertificationModal";
 import OutreachModal from "./OutreachModal";
+import ProductReviewModal from "./ProductReviewModal";
+import ProductEditModal from "./ProductEditModal";
+import ProductAnalyticsModal from "./ProductAnalyticsModal";
 import { formatDistanceToNow } from "date-fns";
 
 interface Product {
@@ -25,6 +28,19 @@ interface Product {
   operational_legitimacy?: boolean;
   coa_url?: string | null;
   review_count: number;
+  admin_status?: 'approved' | 'rejected' | 'pending_review';
+  certification_tier?: 'None' | 'Bronze' | 'Silver' | 'Gold';
+  admin_notes?: string;
+  sme_signals?: any;
+  technical_specs?: any;
+  tech_docs?: any;
+  target_audience?: string;
+  core_value_proposition?: string;
+  sme_access_note?: string;
+  video_url?: string;
+  citation_url?: string;
+  view_count?: number;
+  click_count?: number;
 }
 
 interface FlaggedContent {
@@ -49,6 +65,8 @@ export default function AdminDashboardClient({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedOutreachProduct, setSelectedOutreachProduct] = useState<Product | null>(null);
   const [isOutreachModalOpen, setIsOutreachModalOpen] = useState(false);
+  const [selectedReviewProduct, setSelectedReviewProduct] = useState<Product | null>(null);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
   const handleToggleCertification = (product: Product) => {
     setSelectedProduct(product);
@@ -70,8 +88,73 @@ export default function AdminDashboardClient({
     setSelectedOutreachProduct(null);
   };
 
+  const handleOpenReview = (product: Product) => {
+    setSelectedReviewProduct(product);
+    setIsReviewModalOpen(true);
+  };
+
+  const handleCloseReviewModal = () => {
+    setIsReviewModalOpen(false);
+    setSelectedReviewProduct(null);
+    router.refresh();
+  };
+
+  const [selectedEditProduct, setSelectedEditProduct] = useState<Product | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedAnalyticsProduct, setSelectedAnalyticsProduct] = useState<Product | null>(null);
+  const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
+
+  const handleOpenEdit = (product: Product) => {
+    setSelectedEditProduct(product);
+    setIsEditModalOpen(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setSelectedEditProduct(null);
+    router.refresh();
+  };
+
+  const handleOpenAnalytics = (product: Product) => {
+    setSelectedAnalyticsProduct(product);
+    setIsAnalyticsModalOpen(true);
+  };
+
+  const handleCloseAnalyticsModal = () => {
+    setIsAnalyticsModalOpen(false);
+    setSelectedAnalyticsProduct(null);
+  };
+
   const handleInviteSent = () => {
     router.refresh();
+  };
+
+  const getStatusBadge = (product: Product) => {
+    const status = product.admin_status || (product.is_sme_certified ? 'approved' : 'pending_review');
+
+    switch (status) {
+      case 'approved':
+        return (
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-medium text-emerald-400 border border-emerald-500/30">
+            <CheckCircle size={12} />
+            Approved
+          </span>
+        );
+      case 'rejected':
+        return (
+          <span className="inline-flex items-center gap-1 rounded-full bg-red-500/20 px-3 py-1 text-xs font-medium text-red-400 border border-red-500/30">
+            <AlertCircle size={12} />
+            Rejected
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 rounded-full bg-yellow-500/20 px-3 py-1 text-xs font-medium text-yellow-400 border border-yellow-500/30">
+            <ShieldOff size={12} />
+            Pending
+          </span>
+        );
+    }
   };
 
   return (
@@ -128,24 +211,7 @@ export default function AdminDashboardClient({
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${product.is_sme_certified
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-soft-clay/30 text-deep-stone/70"
-                          }`}
-                      >
-                        {product.is_sme_certified ? (
-                          <>
-                            <Shield size={12} />
-                            Certified
-                          </>
-                        ) : (
-                          <>
-                            <ShieldOff size={12} />
-                            Pending
-                          </>
-                        )}
-                      </span>
+                      {getStatusBadge(product)}
                     </td>
                     <td className="px-4 py-4 text-sm text-deep-stone/60">
                       {product.review_count}
@@ -170,41 +236,30 @@ export default function AdminDashboardClient({
                             </>
                           )}
                         </Button>
-                        <Link href={`/products/${product.slug}`}>
-                          <Button
-                            variant="outline"
-                            className="flex items-center gap-1 px-3 py-1.5 text-sm"
-                          >
-                            <Edit size={14} />
-                            Edit
-                          </Button>
-                        </Link>
                         <Button
-                          variant={product.is_sme_certified ? "secondary" : "primary"}
-                          onClick={() => handleToggleCertification(product)}
+                          variant="outline"
+                          onClick={() => handleOpenEdit(product)}
                           className="flex items-center gap-1 px-3 py-1.5 text-sm"
                         >
-                          {product.is_sme_certified ? (
-                            <>
-                              <ShieldOff size={14} />
-                              Uncertify
-                            </>
-                          ) : (
-                            <>
-                              <Shield size={14} />
-                              Certify
-                            </>
-                          )}
+                          <Edit size={14} />
+                          Edit
                         </Button>
-                        <Link href={`/products/${product.slug}`}>
-                          <Button
-                            variant="outline"
-                            className="flex items-center gap-1 px-3 py-1.5 text-sm"
-                          >
-                            <BarChart3 size={14} />
-                            Analytics
-                          </Button>
-                        </Link>
+                        <Button
+                          variant="secondary"
+                          onClick={() => handleOpenReview(product)}
+                          className="flex items-center gap-1 px-3 py-1.5 text-sm"
+                        >
+                          <Settings size={14} />
+                          Manage
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => handleOpenAnalytics(product)}
+                          className="flex items-center gap-1 px-3 py-1.5 text-sm"
+                        >
+                          <BarChart3 size={14} />
+                          Analytics
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -214,6 +269,30 @@ export default function AdminDashboardClient({
           </div>
         )}
       </div>
+
+      {selectedReviewProduct && (
+        <ProductReviewModal
+          isOpen={isReviewModalOpen}
+          onClose={handleCloseReviewModal}
+          product={selectedReviewProduct}
+        />
+      )}
+
+      {selectedEditProduct && (
+        <ProductEditModal
+          isOpen={isEditModalOpen}
+          onClose={handleCloseEditModal}
+          product={selectedEditProduct}
+        />
+      )}
+
+      {selectedAnalyticsProduct && (
+        <ProductAnalyticsModal
+          isOpen={isAnalyticsModalOpen}
+          onClose={handleCloseAnalyticsModal}
+          product={selectedAnalyticsProduct}
+        />
+      )}
 
       {selectedProduct && (
         <CertificationModal
