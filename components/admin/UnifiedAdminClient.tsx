@@ -87,6 +87,8 @@ interface User {
   banned_at: string | null;
   ban_reason: string | null;
   created_at: string;
+  reputation_score: number;
+  is_sme: boolean;
 }
 
 interface ContactSubmission {
