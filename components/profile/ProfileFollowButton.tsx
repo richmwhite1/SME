@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { SignInButton, useUser } from "@clerk/nextjs";
 import { toggleFollow } from "@/app/actions/profile-actions";
 import Button from "@/components/ui/Button";
-import { UserPlus, UserMinus, Loader2, Brain } from "lucide-react";
+import { UserPlus, UserCheck } from "lucide-react";
 
 interface ProfileFollowButtonProps {
   targetUserId: string;
@@ -19,23 +19,25 @@ export default function ProfileFollowButton({
   const { isSignedIn } = useUser();
   const router = useRouter();
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing);
-  const [loading, setLoading] = useState(false);
+  const [isPending, setIsPending] = useState(false);
 
   const handleToggleFollow = async () => {
     if (!isSignedIn) {
       return;
     }
 
-    setLoading(true);
+    const newStatus = !isFollowing;
+    setIsFollowing(newStatus); // Optimistic update
+    setIsPending(true);
+
     try {
       await toggleFollow(targetUserId);
-      setIsFollowing(!isFollowing);
       router.refresh();
     } catch (error) {
       console.error("Error toggling follow:", error);
-      // Optionally show error message to user
+      setIsFollowing(!newStatus); // Revert on error
     } finally {
-      setLoading(false);
+      setIsPending(false);
     }
   };
 
@@ -43,8 +45,8 @@ export default function ProfileFollowButton({
     return (
       <SignInButton mode="modal">
         <Button variant="outline" className="flex items-center gap-2">
-          <Brain size={16} />
-          Sign in to Track Intelligence
+          <UserPlus size={16} />
+          Sign in to Follow
         </Button>
       </SignInButton>
     );
@@ -52,25 +54,25 @@ export default function ProfileFollowButton({
 
   return (
     <Button
-      variant={isFollowing ? "secondary" : "primary"}
+      variant={isFollowing ? "outline" : "primary"}
       onClick={handleToggleFollow}
-      disabled={loading}
-      className="flex items-center gap-2"
+      disabled={isPending}
+      className={`
+         flex items-center gap-2 transition-all min-w-[120px] justify-center
+         ${isFollowing
+          ? "bg-transparent border-translucent-emerald text-bone-white/60 hover:text-red-400 hover:border-red-400/50 hover:bg-transparent"
+          : "bg-heart-green hover:bg-heart-green/90 text-forest-obsidian border-transparent"}
+       `}
     >
-      {loading ? (
+      {isFollowing ? (
         <>
-          <Loader2 size={16} className="animate-spin" />
-          {isFollowing ? "Untracking..." : "Tracking..."}
-        </>
-      ) : isFollowing ? (
-        <>
-          <UserMinus size={16} />
-          Stop Tracking
+          <UserCheck size={16} />
+          Following
         </>
       ) : (
         <>
-          <Brain size={16} />
-          Track Intelligence
+          <UserPlus size={16} />
+          Follow
         </>
       )}
     </Button>

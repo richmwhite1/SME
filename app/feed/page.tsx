@@ -480,7 +480,7 @@ export default async function FeedPage() {
                 <section className="mb-8 border border-sme-gold/30 bg-muted-moss p-6">
                   <div className="mb-4 flex items-center gap-2">
                     <Award className="h-5 w-5 text-sme-gold" />
-                    <h2 className="font-serif text-xl font-semibold text-bone-white">Tracked Intelligence</h2>
+                    <h2 className="font-serif text-xl font-semibold text-bone-white">Tracked Signal</h2>
                   </div>
                   <p className="mb-4 text-xs text-bone-white/70 font-mono">
                     New discussions and SME Citations contributions from tracked SMEs

@@ -307,7 +307,7 @@ export default async function UserProfilePage({
                   <EditProfileButton profile={typedProfile} />
                 </div>
               ) : (
-                // Public Viewer: Show Track Intelligence button
+                // Public Viewer: Show Follow button
                 <ProfileFollowButton
                   targetUserId={typedProfile.id}
                   isFollowing={isFollowing}
