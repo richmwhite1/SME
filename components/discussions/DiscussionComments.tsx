@@ -20,7 +20,7 @@ import TrustWeight from "@/components/ui/TrustWeight";
 import SocialCard from "@/components/social/SocialCard";
 import { useShareCard } from "@/components/social/useShareCard";
 import UserBadge from "@/components/UserBadge";
-import { toggleCommentVote } from "@/app/actions/vote-actions";
+
 
 interface ResourceReference {
   resource_id: string;
