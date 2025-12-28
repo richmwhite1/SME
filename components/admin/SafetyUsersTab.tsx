@@ -170,7 +170,7 @@ export default function SafetyUsersTab({ keywords, users }: SafetyUsersTabProps)
             `}
           >
             <UserCheck className="h-4 w-4" />
-            SME Management ({users.length})
+            User Directory ({users.length})
           </button>
         </nav>
       </div>
@@ -310,20 +310,34 @@ export default function SafetyUsersTab({ keywords, users }: SafetyUsersTabProps)
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-semibold text-bone-white">
-                          {user.full_name || "Anonymous"}
-                        </p>
-                        {user.username && (
-                          <span className="text-xs text-bone-white/50">@{user.username}</span>
+                        {user.username ? (
+                          <a
+                            href={`/u/${user.username}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-semibold text-emerald-400 hover:text-emerald-300 hover:underline flex items-center gap-1"
+                          >
+                            {user.full_name || "Anonymous"}
+                            <span className="text-xs text-bone-white/50 no-underline">(@{user.username})</span>
+                          </a>
+                        ) : (
+                          <p className="text-sm font-semibold text-bone-white">
+                            {user.full_name || "Anonymous"}
+                          </p>
                         )}
+
                         {user.is_sme && (
                           <span className="border border-emerald-400/50 bg-emerald-400/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-emerald-400 flex items-center gap-1">
                             <Award className="h-3 w-3" /> SME
                           </span>
                         )}
-                        {user.is_banned && (
+                        {user.is_banned ? (
                           <span className="border border-red-500/50 bg-red-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-red-400">
                             BANNED
+                          </span>
+                        ) : (
+                          <span className="border border-emerald-500/30 bg-emerald-500/5 px-2 py-0.5 text-[10px] uppercase tracking-wider text-emerald-500/70">
+                            ACTIVE
                           </span>
                         )}
                       </div>
@@ -339,6 +353,18 @@ export default function SafetyUsersTab({ keywords, users }: SafetyUsersTabProps)
                     </div>
 
                     <div className="flex items-center gap-2">
+                      {user.username && (
+                        <a
+                          href={`/u/${user.username}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-xs font-mono px-3 py-1.5 transition-colors border border-bone-white/20 bg-bone-white/5 text-bone-white/70 hover:bg-bone-white/10 hover:text-bone-white"
+                          title="View Profile"
+                        >
+                          View Profile
+                        </a>
+                      )}
+
                       <Button
                         onClick={() => handleToggleSME(user.id, user.is_sme)}
                         disabled={togglingSME[user.id] || user.is_banned}
@@ -369,8 +395,8 @@ export default function SafetyUsersTab({ keywords, users }: SafetyUsersTabProps)
                         onClick={() => handleToggleBan(user.id, user.is_banned)}
                         disabled={banningUser[user.id]}
                         className={`flex items-center gap-2 text-xs font-mono px-3 py-1.5 transition-colors disabled:opacity-50 ${user.is_banned
-                            ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-400 hover:bg-emerald-400/20"
-                            : "border-red-500/50 bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                          ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-400 hover:bg-emerald-400/20"
+                          : "border-red-500/50 bg-red-500/10 text-red-400 hover:bg-red-500/20"
                           }`}
                       >
                         {banningUser[user.id] ? (
@@ -383,12 +409,12 @@ export default function SafetyUsersTab({ keywords, users }: SafetyUsersTabProps)
                             {user.is_banned ? (
                               <>
                                 <UserCheck className="h-3 w-3" />
-                                Unban
+                                Activate
                               </>
                             ) : (
                               <>
                                 <Ban className="h-3 w-3" />
-                                Ban
+                                Deactivate
                               </>
                             )}
                           </>
