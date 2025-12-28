@@ -437,15 +437,16 @@ export default async function FeedPage() {
                   </p>
                   <div className="space-y-3">
                     {activeThreads.slice(0, 5).map((thread) => (
-                      <Link
+                      <div
                         key={thread.discussion_id}
-                        href={`/discussions/${thread.discussion_id}`}
-                        className="block border border-translucent-emerald bg-forest-obsidian p-4 transition-all duration-300 hover:border-heart-green active:scale-95"
+                        className="block border border-translucent-emerald bg-forest-obsidian p-4 transition-all duration-300 hover:border-heart-green"
                       >
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 min-w-0">
                             <h3 className="mb-1 font-serif text-base font-semibold text-bone-white truncate">
-                              {thread.discussion_title}
+                              <Link href={`/discussions/${thread.discussion_id}`} className="hover:underline">
+                                {thread.discussion_title}
+                              </Link>
                             </h3>
                             <div className="mb-2 flex items-center gap-2 text-xs text-bone-white/70 font-mono">
                               <span>
@@ -464,9 +465,11 @@ export default async function FeedPage() {
                               </div>
                             )}
                           </div>
-                          <ArrowRight className="h-4 w-4 text-bone-white/50 flex-shrink-0" />
+                          <Link href={`/discussions/${thread.discussion_id}`}>
+                            <ArrowRight className="h-4 w-4 text-bone-white/50 flex-shrink-0 hover:text-bone-white" />
+                          </Link>
                         </div>
-                      </Link>
+                      </div>
                     ))}
                   </div>
                 </section>
@@ -528,13 +531,12 @@ export default async function FeedPage() {
                         {formatDistanceToNow(new Date(trustTrendItem.created_at), { addSuffix: true })}
                       </span>
                     </div>
-                    <Link
-                      href={`/discussions/${trustTrendItem.id}`}
-                      className="block transition-colors hover:text-heart-green"
-                    >
-                      <h3 className="mb-2 font-serif text-lg font-semibold text-bone-white">
-                        {trustTrendItem.title}
-                      </h3>
+                    <div className="block">
+                      <Link href={`/discussions/${trustTrendItem.id}`} className="block transition-colors hover:text-heart-green">
+                        <h3 className="mb-2 font-serif text-lg font-semibold text-bone-white">
+                          {trustTrendItem.title}
+                        </h3>
+                      </Link>
                       <p className="mb-3 text-sm text-bone-white/80 font-mono leading-relaxed line-clamp-2">
                         {trustTrendItem.content}
                       </p>
@@ -554,7 +556,7 @@ export default async function FeedPage() {
                           )}
                         </div>
                       )}
-                    </Link>
+                    </div>
                   </div>
                 </section>
               )}
