@@ -34,7 +34,7 @@ export default function Navbar() {
           className="flex flex-col flex-shrink-0 hover:text-sme-gold transition-colors"
         >
           <span className="font-serif text-2xl font-bold text-bone-white">
-            Health SME
+            The Health SME
           </span>
           <span className="text-[10px] text-sme-gold/80 font-mono tracking-widest uppercase -mt-1">
             where evidence meets experience

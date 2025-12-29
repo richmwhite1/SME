@@ -140,6 +140,63 @@ export default async function UnifiedAdminPage() {
     console.error("Error fetching product intake:", error);
     productIntake = [];
   }
+
+  // Fetch brand verifications
+  let brandVerifications;
+  try {
+    brandVerifications = await sql`
+      SELECT 
+        bv.id,
+        bv.product_id,
+        pr.title as product_title,
+        pr.slug as product_slug,
+        bv.user_id,
+        p.full_name as user_name,
+        p.email as user_email,
+        bv.work_email,
+        bv.linkedin_profile,
+        bv.company_website,
+        bv.subscription_status,
+        bv.created_at
+      FROM brand_verifications bv
+      JOIN products pr ON bv.product_id = pr.id
+      JOIN profiles p ON bv.user_id = p.id
+      WHERE bv.status = 'pending'
+      ORDER BY bv.created_at ASC
+    `;
+  } catch (error) {
+    console.error("Error fetching brand verifications:", error);
+    brandVerifications = [];
+  }
+
+  // Fetch SME certifications
+  let smeCertifications;
+  try {
+    smeCertifications = await sql`
+      SELECT 
+        sc.id,
+        sc.product_id,
+        pr.title as product_title,
+        pr.slug as product_slug,
+        sc.brand_owner_id,
+        p.full_name as brand_owner_name,
+        sc.lab_report_urls,
+        sc.purity_data_urls,
+        sc.payment_status,
+        sc.status,
+        sc.created_at
+      FROM sme_certifications sc
+      JOIN products pr ON sc.product_id = pr.id
+      JOIN profiles p ON sc.brand_owner_id = p.id
+      WHERE sc.status IN ('pending', 'under_review', 'more_info_needed')
+      AND sc.payment_status = 'paid'
+      ORDER BY sc.created_at ASC
+    `;
+  } catch (error) {
+    console.error("Error fetching SME certifications:", error);
+    smeCertifications = [];
+  }
+
   // Calculate stats
   const totalProducts = productsWithReviews.length;
   const certifiedProducts = productsWithReviews.filter((p: any) => (p as any).is_sme_certified).length;
@@ -205,6 +262,8 @@ export default async function UnifiedAdminPage() {
           contactSubmissions={contactSubmissions}
           brandApplications={brandApplications}
           productIntake={productIntake}
+          brandVerifications={brandVerifications}
+          smeCertifications={smeCertifications}
         />
       </div>
     </main>

@@ -17,7 +17,11 @@ export async function createProductComment(
   content: string,
   productSlug: string,
   parentId?: string | null,
-  isOfficialResponse?: boolean
+  isOfficialResponse?: boolean,
+  sourceLink?: string | null,
+  postType?: 'verified_insight' | 'community_experience',
+  pillarOfTruth?: string | null,
+  starRating?: number | null
 ): Promise<{ success: boolean; error?: string; commentId?: string }> {
   const user = await currentUser();
   const sql = getDb();
@@ -30,6 +34,13 @@ export async function createProductComment(
 
   if (trimmedContent.length > 2000) {
     return { success: false, error: "Comment must be less than 2000 characters" };
+  }
+
+  // Validate star rating if provided
+  if (starRating !== undefined && starRating !== null) {
+    if (!Number.isInteger(starRating) || starRating < 1 || starRating > 5) {
+      return { success: false, error: "Star rating must be an integer between 1 and 5" };
+    }
   }
 
   // Guest users require AI moderation
@@ -102,6 +113,27 @@ export async function createProductComment(
             }
           }
 
+          // Auto-classify based on source link
+          const finalPostType = postType || (sourceLink ? 'verified_insight' : 'community_experience');
+          const finalPillar = finalPostType === 'verified_insight' ? pillarOfTruth : null;
+
+          // Validate pillar requirement for verified insights
+          if (finalPostType === 'verified_insight' && !finalPillar) {
+            return {
+              success: false,
+              error: "Pillar of Truth is required for verified insights"
+            };
+          }
+
+          // Prepare source metadata if link provided
+          let sourceMetadata = null;
+          if (sourceLink) {
+            sourceMetadata = {
+              url: sourceLink,
+              addedAt: new Date().toISOString()
+            };
+          }
+
           console.log('Insert Data:', {
             product_id: productId,
             author_id: authorId,
@@ -109,18 +141,24 @@ export async function createProductComment(
             flag_count: shouldAutoFlag ? 1 : 0,
             is_flagged: shouldAutoFlag,
             parent_id: parentId,
-            is_official_response: isOfficialResponse && canMarkOfficial
+            is_official_response: isOfficialResponse && canMarkOfficial,
+            post_type: finalPostType,
+            pillar_of_truth: finalPillar,
+            source_metadata: sourceMetadata,
+            star_rating: starRating || null
           });
 
           try {
             // Insert comment using raw SQL
             const insertResult = await sql`
               INSERT INTO product_comments (
-                product_id, author_id, content, flag_count, is_flagged, parent_id, is_official_response
+                product_id, author_id, content, flag_count, is_flagged, parent_id, is_official_response,
+                post_type, pillar_of_truth, source_metadata, star_rating
               )
               VALUES (
                 ${productId}, ${authorId}, ${trimmedContent},
-                ${shouldAutoFlag ? 1 : 0}, ${shouldAutoFlag}, ${parentId || null}, ${isOfficialResponse && canMarkOfficial ? true : false}
+                ${shouldAutoFlag ? 1 : 0}, ${shouldAutoFlag}, ${parentId || null}, ${isOfficialResponse && canMarkOfficial ? true : false},
+                ${finalPostType}, ${finalPillar}, ${sourceMetadata ? JSON.stringify(sourceMetadata) : null}, ${starRating || null}
               )
               RETURNING id
             `;
@@ -208,6 +246,59 @@ export async function createProductComment(
                 WHERE id = ${authorId}
               `;
 
+              // --- AUTO-CITATION: Create citation entry when SME provides source link ---
+              if (sourceLink && sourceLink.trim()) {
+                try {
+                  // Check if user is SME
+                  const profileResult = await sql`
+                    SELECT is_verified_expert, contributor_score 
+                    FROM profiles 
+                    WHERE id = ${authorId}
+                  `;
+                  const profile = profileResult[0];
+                  const isSME = profile?.is_verified_expert || (profile?.contributor_score || 0) >= 100;
+
+                  if (isSME) {
+                    console.log("SME with source link detected - creating auto-citation");
+
+                    // Extract title from URL or use a default
+                    let citationTitle = sourceLink;
+                    try {
+                      const url = new URL(sourceLink);
+                      citationTitle = url.hostname.replace('www.', '');
+
+                      // Special handling for PubMed
+                      if (sourceLink.includes('pubmed.ncbi.nlm.nih.gov')) {
+                        const pmidMatch = sourceLink.match(/\/(\d+)\/?/);
+                        if (pmidMatch) {
+                          citationTitle = `PubMed: ${pmidMatch[1]}`;
+                        }
+                      }
+                    } catch (urlError) {
+                      console.error("Error parsing citation URL:", urlError);
+                    }
+
+                    // Insert into comment_references table
+                    await sql`
+                      INSERT INTO comment_references (
+                        comment_id, resource_id, resource_title, resource_url
+                      )
+                      VALUES (
+                        ${insertedComment.id}, 
+                        ${insertedComment.id}, 
+                        ${citationTitle}, 
+                        ${sourceLink}
+                      )
+                    `;
+
+                    console.log(`Auto-citation created for comment ${insertedComment.id}: ${citationTitle}`);
+                  }
+                } catch (citationError) {
+                  console.error("Error creating auto-citation (table may not exist):", citationError);
+                  // Don't fail the whole operation if citation creation fails
+                }
+              }
+
               // --- NOTIFICATION LOOP: Notify users who raised their hand if an Expert replies ---
               if (parentId) {
                 try {
@@ -249,6 +340,17 @@ export async function createProductComment(
                   }
                 } catch (notifyError) {
                   console.error("Error in Notification Loop:", notifyError);
+                }
+              }
+
+              // Update aggregate star rating if star rating was provided
+              if (starRating) {
+                try {
+                  await sql`SELECT update_product_star_aggregate(${productId}::uuid)`;
+                  console.log(`Updated aggregate star rating for product ${productId}`);
+                } catch (aggregateError) {
+                  console.error("Error updating aggregate star rating:", aggregateError);
+                  // Don't fail the whole operation if aggregate update fails
                 }
               }
 
@@ -315,7 +417,8 @@ export async function createGuestProductComment(
   productId: string,
   content: string,
   guestName: string,
-  productSlug: string
+  productSlug: string,
+  starRating?: number | null
 ): Promise<{ success: boolean; error?: string; commentId?: string }> {
   const user = await currentUser();
   const sql = getDb();
@@ -346,6 +449,13 @@ export async function createGuestProductComment(
     return { success: false, error: "Comment must be less than 2000 characters" };
   }
 
+  // Validate star rating if provided
+  if (starRating !== undefined && starRating !== null) {
+    if (!Number.isInteger(starRating) || starRating < 1 || starRating > 5) {
+      return { success: false, error: "Star rating must be an integer between 1 and 5" };
+    }
+  }
+
   // Guest users require AI moderation via checkVibeForGuest (context-aware)
   const vibeResult = await checkVibeForGuest(trimmedContent);
   if (!vibeResult.isSafe) {
@@ -363,10 +473,10 @@ export async function createGuestProductComment(
     // Insert guest comment using raw SQL
     const result = await sql`
       INSERT INTO product_comments (
-        product_id, author_id, guest_name, content, flag_count, is_flagged, status
+        product_id, author_id, guest_name, content, flag_count, is_flagged, status, star_rating
       )
       VALUES (
-        ${productId}, NULL, ${trimmedGuestName}, ${trimmedContent}, 0, false, ${commentStatus}
+        ${productId}, NULL, ${trimmedGuestName}, ${trimmedContent}, 0, false, ${commentStatus}, ${starRating || null}
       )
       RETURNING id
     `;
@@ -378,6 +488,17 @@ export async function createGuestProductComment(
         success: false,
         error: "Comment was not created. Please try again."
       };
+    }
+
+    // Update aggregate star rating if star rating was provided
+    if (starRating) {
+      try {
+        await sql`SELECT update_product_star_aggregate(${productId}::uuid)`;
+        console.log(`Updated aggregate star rating for product ${productId}`);
+      } catch (aggregateError) {
+        console.error("Error updating aggregate star rating:", aggregateError);
+        // Don't fail the whole operation if aggregate update fails
+      }
     }
 
     // Revalidate paths

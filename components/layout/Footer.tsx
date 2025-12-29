@@ -18,7 +18,7 @@ export default function Footer() {
               href="/"
               className="inline-block font-serif text-2xl font-semibold text-white hover:text-earth-green transition-colors"
             >
-              SME
+              The Health SME
             </Link>
             <p className="text-sm leading-relaxed text-slate-300">
               Crowd-sourcing the future of holistic integrity
@@ -155,7 +155,7 @@ export default function Footer() {
         <div className="mt-12 border-t border-slate-800 pt-8">
           <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
             <p className="font-mono text-xs text-slate-500">
-              © {currentYear} SME. All rights reserved.
+              © {currentYear} The Health SME. All rights reserved.
             </p>
             <div className="flex items-center gap-4">
               <SocialLinks variant="footer" />

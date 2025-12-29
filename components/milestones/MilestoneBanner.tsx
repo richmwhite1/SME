@@ -74,7 +74,7 @@ export default function MilestoneBanner() {
     openShareCard({
       type: "achievement",
       content: milestone.description,
-      authorName: "Health SME Community",
+      authorName: "The Health SME Community",
       milestoneTitle: milestone.title,
       milestoneType: milestone.milestone_type,
       url: milestoneUrl,

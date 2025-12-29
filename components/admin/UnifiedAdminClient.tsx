@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Package, AlertTriangle, Users, Award, Shield, Inbox } from "lucide-react";
+import { Package, AlertTriangle, Users, Award, Shield, Inbox, Building2 } from "lucide-react";
 import AdminDashboardClient from "./AdminDashboardClient";
 import ModerationClient from "./ModerationClient";
 import SafetyUsersTab from "./SafetyUsersTab";
 import IntakeTab from "./IntakeTab";
+import BrandIntakeTab from "./BrandIntakeTab";
+import SMEAuditTab from "./SMEAuditTab";
 import { restoreFromQueue, purgeFromQueue } from "@/app/actions/admin-actions";
 
 interface Product {
@@ -127,6 +129,35 @@ interface ProductIntake {
   created_at: string;
 }
 
+interface BrandVerification {
+  id: string;
+  product_id: string;
+  product_title: string;
+  product_slug: string;
+  user_id: string;
+  user_name: string;
+  user_email: string;
+  work_email: string;
+  linkedin_profile: string;
+  company_website: string;
+  subscription_status: string;
+  created_at: string;
+}
+
+interface SMECertification {
+  id: string;
+  product_id: string;
+  product_title: string;
+  product_slug: string;
+  brand_owner_id: string;
+  brand_owner_name: string;
+  lab_report_urls: string[];
+  purity_data_urls: string[];
+  payment_status: string;
+  status: string;
+  created_at: string;
+}
+
 interface UnifiedAdminClientProps {
   products: Product[];
   flaggedContent: FlaggedContent;
@@ -136,9 +167,11 @@ interface UnifiedAdminClientProps {
   contactSubmissions: ContactSubmission[];
   brandApplications: BrandApplication[];
   productIntake: ProductIntake[];
+  brandVerifications: BrandVerification[];
+  smeCertifications: SMECertification[];
 }
 
-type Tab = "products" | "moderation" | "safety" | "intake" | "certifications";
+type Tab = "products" | "moderation" | "safety" | "intake" | "brand_intake" | "certifications";
 
 export default function UnifiedAdminClient({
   products,
@@ -149,6 +182,8 @@ export default function UnifiedAdminClient({
   contactSubmissions,
   brandApplications,
   productIntake,
+  brandVerifications,
+  smeCertifications,
 }: UnifiedAdminClientProps) {
   const [activeTab, setActiveTab] = useState<Tab>("products");
 
@@ -157,7 +192,8 @@ export default function UnifiedAdminClient({
     { id: "moderation" as Tab, label: "Moderation", icon: AlertTriangle },
     { id: "safety" as Tab, label: "Safety & Users", icon: Shield },
     { id: "intake" as Tab, label: "Business Intake", icon: Inbox },
-    { id: "certifications" as Tab, label: "Certifications", icon: Award },
+    { id: "brand_intake" as Tab, label: "Brand Intake", icon: Building2 },
+    { id: "certifications" as Tab, label: "SME Audit Queue", icon: Award },
   ];
 
   return (
@@ -267,15 +303,12 @@ export default function UnifiedAdminClient({
           />
         )}
 
+        {activeTab === "brand_intake" && (
+          <BrandIntakeTab verifications={brandVerifications} />
+        )}
+
         {activeTab === "certifications" && (
-          <div className="border border-bone-white/20 bg-bone-white/5 p-12 text-center">
-            <Award className="h-12 w-12 text-bone-white/30 mx-auto mb-4" />
-            <p className="font-mono text-lg text-bone-white/70 mb-2">CERTIFICATIONS</p>
-            <p className="font-mono text-sm text-bone-white/50">
-              SME verification and certification management system
-            </p>
-            <p className="font-mono text-xs text-bone-white/30 mt-4">Coming soon</p>
-          </div>
+          <SMEAuditTab certifications={smeCertifications} />
         )}
       </div>
     </div>

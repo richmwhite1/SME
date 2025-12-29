@@ -26,6 +26,7 @@ export interface Comment {
     raise_hand_count?: number; // New field
     is_official_response?: boolean; // New field
     is_flagged?: boolean;
+    star_rating?: number | null; // 1-5 star rating for products
     profiles: CommentProfile | null;
     references?: ResourceReference[];
     reactions?: Array<{
@@ -36,3 +37,4 @@ export interface Comment {
     // Allow index signature for extensions
     [key: string]: any;
 }
+

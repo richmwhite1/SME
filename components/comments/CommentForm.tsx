@@ -15,6 +15,10 @@ import AvatarLink from "@/components/profile/AvatarLink";
 import { useToast } from "@/components/ui/ToastContainer";
 import { vibeCheck } from "@/app/actions/vibe-actions";
 import EmojiPicker from "@/components/ui/EmojiPicker";
+import SourceLinkInput from "@/components/comments/SourceLinkInput";
+import PostTypeBadge from "@/components/comments/PostTypeBadge";
+import StarRatingInput from "@/components/comments/StarRatingInput";
+import { detectUrl } from "@/lib/url-metadata";
 
 interface ResourceReference {
   resource_id: string;
@@ -70,25 +74,49 @@ export default function CommentForm({
   // Auto-classification state
   const [postType, setPostType] = useState<'verified_insight' | 'community_experience'>('community_experience');
   const [pillarOfTruth, setPillarOfTruth] = useState<string | null>(null);
+  const [sourceLink, setSourceLink] = useState("");
+
+  // Star rating state (for products only)
+  const [starRating, setStarRating] = useState<number | null>(null);
 
   // Discussion pages: Guests cannot comment
   const isDiscussion = type === "discussion";
   const canGuestComment = !isDiscussion; // Only products allow guest comments
 
-  // Auto-classify based on citations
+  // Auto-classify based on citations (discussions) or source link (products)
   useEffect(() => {
-    if (references.length > 0) {
-      setPostType('verified_insight');
-    } else {
-      setPostType('community_experience');
-      setPillarOfTruth(null); // Clear pillar when switching to community experience
+    if (type === "discussion") {
+      // Discussion classification based on references
+      if (references.length > 0) {
+        setPostType('verified_insight');
+      } else {
+        setPostType('community_experience');
+        setPillarOfTruth(null);
+      }
+    } else if (type === "product") {
+      // Product classification based on source link
+      if (sourceLink.trim()) {
+        setPostType('verified_insight');
+      } else {
+        setPostType('community_experience');
+        setPillarOfTruth(null);
+      }
     }
-  }, [references]);
+  }, [references, sourceLink, type]);
 
   // Track cursor position in textarea
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setContent(e.target.value);
+    const newContent = e.target.value;
+    setContent(newContent);
     setCursorPosition(e.target.selectionStart);
+
+    // Auto-detect URL in content for product comments
+    if (type === "product" && !sourceLink) {
+      const detectedUrl = detectUrl(newContent);
+      if (detectedUrl) {
+        setSourceLink(detectedUrl);
+      }
+    }
   };
 
   const handleTextareaClick = () => {
@@ -158,7 +186,17 @@ export default function CommentForm({
       if (isSignedIn) {
         // Authenticated user submission
         if (type === "product" && productId && productSlug) {
-          const result = await createProductComment(productId, content.trim(), productSlug, parentId);
+          const result = await createProductComment(
+            productId,
+            content.trim(),
+            productSlug,
+            parentId,
+            undefined, // isOfficialResponse
+            sourceLink.trim() || null,
+            postType,
+            pillarOfTruth,
+            starRating // Add star rating
+          );
           if (!result.success) {
             throw new Error(result.error || "Failed to post comment");
           }
@@ -188,7 +226,8 @@ export default function CommentForm({
             productId,
             content.trim(),
             guestName.trim(),
-            productSlug
+            productSlug,
+            starRating // Add star rating
           );
 
           if (!result.success) {
@@ -203,6 +242,7 @@ export default function CommentForm({
       setContent("");
       setGuestName("");
       setPillarOfTruth(null);
+      setStarRating(null); // Reset star rating
       setError(null);
 
       if (onSuccess) {
@@ -312,6 +352,21 @@ export default function CommentForm({
         )}
       </div>
 
+      {/* Star Rating Input (Products Only) */}
+      {type === "product" && (
+        <div className="space-y-2 pb-3 border-b border-translucent-emerald/50">
+          <label className="block text-xs font-mono uppercase tracking-wider text-bone-white/70">
+            Rate this product (optional)
+          </label>
+          <StarRatingInput
+            value={starRating}
+            onChange={setStarRating}
+            size="md"
+            disabled={loading}
+          />
+        </div>
+      )}
+
       {/* Comment Textarea with Emoji Picker */}
       <div className="relative">
         <textarea
@@ -375,6 +430,44 @@ export default function CommentForm({
           {references.length > 0 && references[0].resource_url && (
             <div className="mt-2">
               <SourcePreviewCard url={references[0].resource_url} />
+            </div>
+          )}
+
+          {/* Pillar Selector - Required for Verified Insights */}
+          {postType === 'verified_insight' && (
+            <div className="mt-3">
+              <PillarSelector
+                value={pillarOfTruth}
+                onChange={setPillarOfTruth}
+                required={true}
+              />
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Source Link Input (only for products) */}
+      {type === "product" && (
+        <>
+          <SourceLinkInput
+            value={sourceLink}
+            onChange={setSourceLink}
+          />
+
+          {/* Post Type Badge - Real-time feedback */}
+          <div className="flex items-center gap-2 mt-2">
+            <PostTypeBadge postType={postType} size="sm" />
+            {postType === 'verified_insight' && (
+              <span className="text-xs text-emerald-400 font-mono">
+                Evidence detected - select pillar below
+              </span>
+            )}
+          </div>
+
+          {/* Source Preview - Show when link is added */}
+          {sourceLink && (
+            <div className="mt-2">
+              <SourcePreviewCard url={sourceLink} />
             </div>
           )}
 

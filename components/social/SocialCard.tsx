@@ -47,16 +47,16 @@ export default function SocialCard({
   useEffect(() => {
     setMounted(true);
     isMountedRef.current = true;
-    
+
     // Generate image immediately when component mounts to set downloadUrl state
     const generateImage = async () => {
       if (!cardRef.current || !isMountedRef.current) return;
-      
+
       // Wait a bit longer to ensure DOM is fully rendered
       await new Promise(resolve => setTimeout(resolve, 300));
-      
+
       if (!cardRef.current || !isMountedRef.current) return;
-      
+
       try {
         const dataUrl = await toPng(cardRef.current, {
           quality: 1.0,
@@ -64,7 +64,7 @@ export default function SocialCard({
           backgroundColor: "#0A0F0D",
           cacheBust: true,
         });
-        
+
         if (isMountedRef.current && dataUrl) {
           // Store the blob URL in state to enable download button
           setDownloadUrl(dataUrl);
@@ -76,12 +76,12 @@ export default function SocialCard({
         setIsImageReady(false);
       }
     };
-    
+
     // Small delay to ensure DOM is fully rendered
     const timer = setTimeout(() => {
       generateImage();
     }, 500);
-    
+
     return () => {
       isMountedRef.current = false;
       clearTimeout(timer);
@@ -128,7 +128,7 @@ export default function SocialCard({
       // This ensures the download button is enabled and state is properly set
       setDownloadUrl(dataUrl);
       setIsImageReady(true);
-      
+
       // Small delay to ensure state is updated before triggering download
       await new Promise(resolve => setTimeout(resolve, 100));
 
@@ -176,7 +176,7 @@ export default function SocialCard({
           style={grainStyle}
         >
           {/* Subtle grain overlay using CSS */}
-          <div 
+          <div
             className="absolute inset-0 pointer-events-none opacity-[0.03]"
             style={{
               backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px),
@@ -187,7 +187,7 @@ export default function SocialCard({
           <div className="mb-6 flex items-center justify-between border-b border-translucent-emerald pb-4 relative z-10">
             <div>
               <h1 className="font-serif text-xl font-bold text-bone-white mb-1">
-                Health SME
+                The Health SME
               </h1>
               <p className="text-xs text-bone-white/60 font-mono uppercase tracking-wider">
                 Health through biological intelligence
@@ -195,7 +195,7 @@ export default function SocialCard({
             </div>
             <div className="text-right">
               {(trustWeight !== null && trustWeight !== undefined) ||
-              (contributorScore !== null && contributorScore !== undefined) ? (
+                (contributorScore !== null && contributorScore !== undefined) ? (
                 <div className="mb-2">
                   <p className="font-mono text-xs text-bone-white/60 uppercase tracking-wider">
                     Trust Weight
@@ -246,9 +246,8 @@ export default function SocialCard({
                 {[1, 2, 3, 4, 5].map((star) => (
                   <span
                     key={star}
-                    className={`text-base ${
-                      star <= rating ? "text-sme-gold" : "text-bone-white/20"
-                    }`}
+                    className={`text-base ${star <= rating ? "text-sme-gold" : "text-bone-white/20"
+                      }`}
                   >
                     ★
                   </span>
@@ -271,7 +270,7 @@ export default function SocialCard({
           {/* Footer */}
           <div className="border-t border-translucent-emerald pt-6 relative z-10">
             <p className="font-mono text-xs text-bone-white/50 text-center uppercase tracking-wider">
-              Truth Sourced via the Health SME Community.
+              Truth Sourced via The Health SME Community.
             </p>
           </div>
         </div>
@@ -307,7 +306,7 @@ export default function SocialCard({
 
   // Use portal to ensure modal appends to document.body, not document root
   if (!mounted) return null;
-  
+
   return createPortal(modalContent, document.body);
 }
 

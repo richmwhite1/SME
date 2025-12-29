@@ -23,6 +23,8 @@ import { useToast } from "@/components/ui/ToastContainer";
 import VoteControl from "@/components/ui/VoteControl";
 import ReactionBar from "@/components/ui/ReactionBar";
 import SentimentSummary from "@/components/ui/SentimentSummary";
+import PostTypeBadge from "@/components/comments/PostTypeBadge";
+import StarRatingDisplay from "@/components/products/StarRatingDisplay";
 
 interface WaterfallCommentProps {
     comment: Comment;
@@ -124,6 +126,21 @@ export default function WaterfallComment({
                 </div>
             )}
 
+            {/* Post Type Badge */}
+            {comment.post_type && (
+                <div className="flex items-center gap-2 mb-2 ml-1">
+                    <PostTypeBadge
+                        postType={comment.post_type as 'verified_insight' | 'community_experience'}
+                        size="sm"
+                    />
+                    {comment.pillar_of_truth && (
+                        <span className="text-[10px] px-2 py-0.5 bg-sme-gold/10 border border-sme-gold/30 text-sme-gold font-mono uppercase tracking-wider">
+                            {comment.pillar_of_truth}
+                        </span>
+                    )}
+                </div>
+            )}
+
             <div
                 className={`
           relative border p-4 rounded-lg transition-all
@@ -165,6 +182,15 @@ export default function WaterfallComment({
                             )}
                             {comment.profiles?.contributor_score && comment.profiles.contributor_score > 0 && (
                                 <TrustWeight value={comment.profiles.contributor_score} className="scale-90 origin-left" />
+                            )}
+                            {/* Star Rating Display (Products Only) */}
+                            {type === 'product' && comment.star_rating && (
+                                <StarRatingDisplay
+                                    rating={comment.star_rating}
+                                    size="sm"
+                                    showCount={false}
+                                    className="ml-1"
+                                />
                             )}
                             <span className="text-xs text-bone-white/50 font-mono ml-auto">
                                 {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}

@@ -8,8 +8,15 @@ import SignalGrid from "@/components/products/dossier/SignalGrid";
 import StreamSplitter from "@/components/products/dossier/StreamSplitter";
 import TheVault from "@/components/products/dossier/TheVault";
 import SearchBar from "@/components/search/SearchBar";
+import SMECertifiedBadge from "@/components/products/SMECertifiedBadge";
+import BuyNowButton from "@/components/products/BuyNowButton";
+import ProductViewTracker from "@/components/products/ProductViewTracker";
 import { getDb } from "@/lib/db";
 import ReactMarkdown from "react-markdown";
+import { getSMEReviews, getAverageSMEScores, checkIsSME } from "@/app/actions/product-sme-review-actions";
+import SubmitExpertAudit from "@/components/sme/SubmitExpertAudit";
+import SMEAuditsList from "@/components/sme/SMEAuditsList";
+import DualTrackRadar from "@/components/sme/DualTrackRadar";
 
 // Force dynamic rendering to bypass caching issues
 export const dynamic = "force-dynamic";
@@ -128,7 +135,10 @@ interface Product {
   // Optional Fields
   founder_video_url?: string | null;
   ingredients?: string | null;
-  upvote_count?: number; // New field
+  upvote_count?: number;
+  // Brand management fields
+  is_verified?: boolean;
+  brand_owner_id?: string | null;
 }
 
 interface Signal {
@@ -159,7 +169,9 @@ export default async function ProductDetailPage({
       COALESCE(certification_vault_urls, '[]':: jsonb) as certification_vault_urls,
       founder_video_url,
       ingredients,
-      upvote_count
+      upvote_count,
+      aggregate_star_rating,
+      total_star_reviews
       FROM products
     WHERE(id:: text = ${id} OR slug = ${id})
         AND admin_status = 'approved'
@@ -229,13 +241,45 @@ export default async function ProductDetailPage({
       !!img && (img.startsWith('http://') || img.startsWith('https://'))
     );
 
-    // 4. Fetch comments with has_citation check
+    // 4. Fetch SME reviews (with error handling for unauthenticated users)
+    let smeReviews: any[] = [];
+    let avgSMEScores: any = {
+      purity: null,
+      bioavailability: null,
+      potency: null,
+      evidence: null,
+      sustainability: null,
+      experience: null,
+      safety: null,
+      transparency: null,
+      synergy: null,
+      reviewCount: 0,
+    };
+    let isSME = false;
+
+    try {
+      console.log('[SME Reviews] Fetching SME data for product:', product.id);
+      smeReviews = await getSMEReviews(product.id);
+      console.log('[SME Reviews] Fetched reviews:', smeReviews.length);
+
+      avgSMEScores = await getAverageSMEScores(product.id);
+      console.log('[SME Reviews] Fetched avg scores, count:', avgSMEScores.reviewCount);
+
+      isSME = await checkIsSME();
+      console.log('[SME Reviews] User is SME:', isSME);
+    } catch (smeError) {
+      // Silently fail if SME data fetch fails (e.g., user not authenticated)
+      console.error('[SME Reviews] Error fetching SME data:', smeError);
+      // Continue with empty data - page should still render
+    }
+
+    // 5. Fetch comments with has_citation check and new classification fields
     let serializedComments: any[] = [];
     try {
       const commentsResult = await sql`
     SELECT
     pc.id, pc.content, pc.created_at, pc.parent_id, pc.guest_name,
-      pc.insight_summary, pc.upvote_count,
+      pc.insight_summary, pc.upvote_count, pc.post_type, pc.pillar_of_truth, pc.source_metadata, pc.star_rating,
       p.id as author_id, p.full_name, p.username, p.avatar_url, p.badge_type, p.contributor_score, p.archive_clerk_id,
       EXISTS(SELECT 1 FROM comment_references cr WHERE cr.comment_id = pc.id) as has_citation
         FROM product_comments pc
@@ -254,6 +298,10 @@ export default async function ProductDetailPage({
         has_citation: comment.has_citation,
         insight_summary: comment.insight_summary,
         upvote_count: comment.upvote_count || 0,
+        post_type: comment.post_type,
+        pillar_of_truth: comment.pillar_of_truth,
+        source_metadata: comment.source_metadata,
+        star_rating: comment.star_rating,
         profiles: comment.author_id ? {
           id: String(comment.author_id),
           full_name: comment.full_name,
@@ -266,6 +314,22 @@ export default async function ProductDetailPage({
       }));
     } catch (commentsErr) {
       console.error("Error fetching comments:", commentsErr);
+    }
+
+    // 6. Fetch product benefits for Schema.org
+    let benefits: any[] = [];
+    try {
+      const benefitsResult = await sql`
+        SELECT benefit_title, benefit_type, citation_url, source_type, is_verified, upvote_count
+        FROM product_benefits
+        WHERE product_id::text = ${product.id}
+        AND (source_type = 'official' OR (source_type = 'community' AND upvote_count >= 5))
+        ORDER BY source_type DESC, upvote_count DESC, created_at DESC
+      `;
+      benefits = benefitsResult;
+      console.log('[Benefits] Fetched benefits:', benefits.length);
+    } catch (benefitsErr) {
+      console.error("[Benefits] Error fetching benefits:", benefitsErr);
     }
 
     // Build base URL for canonical and structured data
@@ -285,11 +349,43 @@ export default async function ProductDetailPage({
         "@type": "Brand",
         name: typedProduct.brand
       },
-      aggregateRating: typedProduct.community_consensus_score > 0 ? {
+      // Add benefits with citations for SEO/LLM indexing
+      ...(benefits.length > 0 && {
+        hasBenefit: benefits.map(b => ({
+          "@type": "Benefit",
+          name: b.benefit_title,
+          ...(b.citation_url && {
+            citation: {
+              "@type": "CreativeWork",
+              url: b.citation_url
+            }
+          })
+        }))
+      }),
+      // Add offers for verified brands with buy_url
+      ...(typedProduct.is_verified && typedProduct.buy_url && {
+        offers: {
+          "@type": "Offer",
+          url: typedProduct.buy_url,
+          priceCurrency: "USD",
+          availability: "https://schema.org/InStock",
+          ...(typedProduct.discount_code && {
+            priceSpecification: {
+              "@type": "UnitPriceSpecification",
+              referenceQuantity: {
+                "@type": "QuantitativeValue",
+                value: "1"
+              }
+            }
+          })
+        }
+      }),
+      // Use star ratings for aggregateRating if available, otherwise fall back to consensus score
+      aggregateRating: typedProduct.aggregate_star_rating && typedProduct.total_star_reviews > 0 ? {
         "@type": "AggregateRating",
-        ratingValue: typedProduct.community_consensus_score,
-        bestRating: "100",
-        ratingCount: serializedComments.length > 0 ? serializedComments.length : 1
+        ratingValue: typedProduct.aggregate_star_rating,
+        bestRating: "5",
+        ratingCount: typedProduct.total_star_reviews
       } : undefined
     };
 
@@ -303,6 +399,12 @@ export default async function ProductDetailPage({
 
         {/* Canonical URL */}
         <link rel="canonical" href={canonicalUrl} />
+
+        {/* Product View Tracker - Metered Billing */}
+        <ProductViewTracker
+          productId={typedProduct.id}
+          isVerified={typedProduct.is_verified || false}
+        />
 
         <main className="min-h-screen bg-forest-obsidian text-bone-white">
           <div className="mx-auto max-w-5xl px-6 py-8">
@@ -331,7 +433,28 @@ export default async function ProductDetailPage({
               image={safeImages[0]}
               productId={typedProduct.id}
               upvoteCount={typedProduct.upvote_count || 0}
+              aggregateStarRating={typedProduct.aggregate_star_rating}
+              totalStarReviews={typedProduct.total_star_reviews || 0}
             />
+
+            {/* SME CERTIFIED BADGE */}
+            {typedProduct.is_sme_certified && (
+              <div className="mb-8 flex justify-center">
+                <SMECertifiedBadge size="lg" />
+              </div>
+            )}
+
+            {/* BUY IT NOW BUTTON (Only for verified brands) */}
+            {typedProduct.is_verified && typedProduct.buy_url && (
+              <div className="mb-12">
+                <BuyNowButton
+                  productId={typedProduct.id}
+                  productTitle={typedProduct.title}
+                  discountCode={typedProduct.discount_code}
+                  buyUrl={typedProduct.buy_url}
+                />
+              </div>
+            )}
 
             {/* FOUNDER VIDEO (Optional) */}
             {typedProduct.founder_video_url && (
@@ -393,6 +516,18 @@ export default async function ProductDetailPage({
               </div>
             )}
 
+            {/* SME EXPERT AUDIT SUBMISSION (Only for SMEs) */}
+            <SubmitExpertAudit productId={typedProduct.id} isSME={isSME} />
+
+            {/* DUAL-TRACK RADAR CHART (SME vs Community) */}
+            <DualTrackRadar
+              smeScores={avgSMEScores}
+              smeReviewCount={avgSMEScores.reviewCount}
+            />
+
+            {/* SME AUDITS LIST */}
+            <SMEAuditsList reviews={smeReviews} />
+
             {/* THE VAULT */}
             <TheVault urls={typedProduct.certification_vault_urls} />
 
@@ -408,13 +543,19 @@ export default async function ProductDetailPage({
       </>
     );
   } catch (err) {
-    console.error("Unexpected error in product detail page:", err);
+    console.error("[Product Page] Unexpected error:", err);
+    console.error("[Product Page] Stack:", err instanceof Error ? err.stack : 'No stack');
     return (
       <main className="min-h-screen bg-forest-obsidian px-6 py-12 flex items-center justify-center">
-        <div className="text-center">
+        <div className="text-center max-w-2xl">
           <h1 className="text-2xl font-serif text-bone-white mb-4">Error Loading Dossier</h1>
-          <p className="text-white/50 mb-6">Security clearance failed. Please try again.</p>
-          <Link href="/products" className="text-emerald-400 hover:text-emerald-300 underline">
+          <p className="text-white/50 mb-2">Security clearance failed. Please try again.</p>
+          {process.env.NODE_ENV === 'development' && err instanceof Error && (
+            <div className="mt-4 p-4 bg-red-900/20 border border-red-500/30 rounded text-left">
+              <p className="text-red-400 text-sm font-mono">{err.message}</p>
+            </div>
+          )}
+          <Link href="/products" className="text-emerald-400 hover:text-emerald-300 underline mt-6 inline-block">
             Return to Index
           </Link>
         </div>

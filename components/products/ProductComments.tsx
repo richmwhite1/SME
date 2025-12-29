@@ -22,6 +22,7 @@ export default function ProductComments({
   const [comments, setComments] = useState<Comment[]>(initialComments);
   const [anchorCommentId, setAnchorCommentId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<"newest" | "reputation">("newest");
+  const [filterTab, setFilterTab] = useState<"all" | "verified_insight" | "community_experience">("all");
 
   // Sync state with props
   useEffect(() => {
@@ -56,17 +57,23 @@ export default function ProductComments({
     return sorted;
   };
 
-  // Build tree helper
+  // Build tree helper with filtering
   const buildCommentTree = (flatComments: Comment[]): Comment[] => {
+    // Apply filter first
+    let filteredComments = flatComments;
+    if (filterTab !== "all") {
+      filteredComments = flatComments.filter(c => c.post_type === filterTab);
+    }
+
     const commentMap = new Map<string, Comment>();
     const rootComments: Comment[] = [];
 
     // Clone to avoid mutating state directly
-    flatComments.forEach((c) => {
+    filteredComments.forEach((c) => {
       commentMap.set(c.id, { ...c, children: [] });
     });
 
-    flatComments.forEach((c) => {
+    filteredComments.forEach((c) => {
       const node = commentMap.get(c.id)!;
       if (c.parent_id && commentMap.has(c.parent_id)) {
         const parent = commentMap.get(c.parent_id)!;
@@ -122,6 +129,37 @@ export default function ProductComments({
             {sortMode === "newest" ? "Newest" : "Trusted Voice"}
           </button>
         </div>
+      </div>
+
+      {/* Filter Tabs */}
+      <div className="flex items-center gap-2 border-b border-translucent-emerald pb-2">
+        <button
+          onClick={() => setFilterTab("all")}
+          className={`px-3 py-1.5 text-xs font-mono uppercase tracking-wider transition-colors ${filterTab === "all"
+              ? "bg-heart-green text-forest-obsidian border border-heart-green"
+              : "bg-forest-obsidian text-bone-white/70 border border-translucent-emerald hover:text-bone-white hover:border-heart-green"
+            }`}
+        >
+          All
+        </button>
+        <button
+          onClick={() => setFilterTab("verified_insight")}
+          className={`px-3 py-1.5 text-xs font-mono uppercase tracking-wider transition-colors ${filterTab === "verified_insight"
+              ? "bg-emerald-500 text-forest-obsidian border border-emerald-500"
+              : "bg-forest-obsidian text-bone-white/70 border border-translucent-emerald hover:text-bone-white hover:border-emerald-500"
+            }`}
+        >
+          Verified Insights
+        </button>
+        <button
+          onClick={() => setFilterTab("community_experience")}
+          className={`px-3 py-1.5 text-xs font-mono uppercase tracking-wider transition-colors ${filterTab === "community_experience"
+              ? "bg-bone-white/20 text-bone-white border border-bone-white/30"
+              : "bg-forest-obsidian text-bone-white/70 border border-translucent-emerald hover:text-bone-white hover:border-bone-white/30"
+            }`}
+        >
+          Community Experience
+        </button>
       </div>
 
       {/* Root Comment Form - Only show if NO anchor or we want it always at top? 

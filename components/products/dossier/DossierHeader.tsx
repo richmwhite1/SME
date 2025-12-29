@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import Image from "next/image";
 import VoteControl from "@/components/ui/VoteControl";
+import StarRatingDisplay from "@/components/products/StarRatingDisplay";
 
 interface DossierHeaderProps {
     title: string;
@@ -10,6 +11,8 @@ interface DossierHeaderProps {
     image?: string;
     productId: string; // New prop
     upvoteCount?: number; // New prop
+    aggregateStarRating?: number | null; // Star rating aggregate
+    totalStarReviews?: number; // Total number of star reviews
 }
 
 export default function DossierHeader({
@@ -18,7 +21,9 @@ export default function DossierHeader({
     consensusScore,
     image,
     productId,
-    upvoteCount = 0
+    upvoteCount = 0,
+    aggregateStarRating,
+    totalStarReviews = 0
 }: DossierHeaderProps) {
     // Determine score color
     const getScoreColor = (score: number) => {
@@ -64,9 +69,20 @@ export default function DossierHeader({
                         <h1 className="font-serif text-3xl md:text-4xl font-bold text-white mb-1">
                             {title}
                         </h1>
-                        <p className="font-mono text-sm text-white/60 uppercase tracking-widest">
+                        <p className="font-mono text-sm text-white/60 uppercase tracking-widest mb-2">
                             {brand}
                         </p>
+                        {/* Star Rating Display */}
+                        {aggregateStarRating && totalStarReviews > 0 && (
+                            <div className="mt-2">
+                                <StarRatingDisplay
+                                    rating={aggregateStarRating}
+                                    reviewCount={totalStarReviews}
+                                    size="md"
+                                    showCount={true}
+                                />
+                            </div>
+                        )}
                     </div>
                 </div>
 
