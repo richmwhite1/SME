@@ -70,7 +70,7 @@ export async function submitProductWizard(data: ProductWizardInput) {
             .replace(/(^-|-$)/g, "");
 
         // Calculate pillar scores from active ingredients
-        const pillarScores = calculatePillarScores(validated.active_ingredients || []);
+        const pillarScores = calculatePillarScores((validated.active_ingredients as any) || []);
 
         // Insert product into database
         const result = await db`

@@ -83,7 +83,7 @@ export async function submitSMEReview(
 
         for (const pillar of pillars) {
             const value = reviewData[pillar as keyof SMEReviewData];
-            if (value !== null && value !== undefined && (value < 0 || value > 10)) {
+            if (typeof value === 'number' && (value < 0 || value > 10)) {
                 return { success: false, error: `Invalid ${pillar} score. Must be 0-10 or null.` };
             }
         }
@@ -139,6 +139,7 @@ export async function submitSMEReview(
             success: true,
             review: {
                 ...result[0],
+                id: result[0].id,
                 product_id: result[0].product_id,
                 sme_id: result[0].sme_id,
                 created_at: result[0].created_at.toISOString(),

@@ -54,14 +54,14 @@ export async function getStripeUsage() {
         }
 
         // Fetch subscription details from Stripe
-        const subscription = await stripe.subscriptions.retrieve(stripe_subscription_id);
+        const subscription = await stripe.subscriptions.retrieve(stripe_subscription_id) as any;
 
         const currentPeriodStart = new Date(subscription.current_period_start * 1000);
         const currentPeriodEnd = new Date(subscription.current_period_end * 1000);
 
         // Find the metered billing subscription item
         const meteredItem = subscription.items.data.find(
-            item => item.price.recurring?.usage_type === 'metered'
+            (item: any) => item.price.recurring?.usage_type === 'metered'
         );
 
         if (!meteredItem) {
@@ -80,7 +80,7 @@ export async function getStripeUsage() {
         }
 
         // Fetch usage record summaries for the current period
-        const usageSummaries = await stripe.subscriptionItems.listUsageRecordSummaries(
+        const usageSummaries = await (stripe.subscriptionItems as any).listUsageRecordSummaries(
             meteredItem.id,
             { limit: 1 }
         );

@@ -30,6 +30,18 @@ export const Step3Schema = z.object({
     })).default([]),
     sme_access_note: z.union([z.string(), z.literal("")]).optional(),
     technical_docs_url: z.union([z.string().url("Invalid documentation URL"), z.literal("")]).optional(),
+    // New fields
+    active_ingredients: z.array(z.object({
+        name: z.string(),
+        dosage: z.string()
+    })).default([]).optional(),
+    third_party_lab_link: z.union([z.string().url("Invalid URL"), z.literal("")]).optional(),
+    excipients: z.array(z.string()).default([]).optional(),
+    benefits: z.array(z.object({
+        title: z.string(),
+        type: z.enum(["anecdotal", "evidence_based"]),
+        citation: z.string().url().nullable().optional().or(z.literal(""))
+    })).default([]).optional(),
 });
 
 // Step 4: Truth Signals (Evidence)
@@ -38,6 +50,11 @@ export const Step4Schema = z.object({
         verified: z.boolean().optional(),
         evidence: z.string().min(1, "Evidence required"),
     })).optional(),
+    // Brand verification fields
+    is_brand_owner: z.boolean().optional(),
+    work_email: z.union([z.string(), z.literal("")]).optional(),
+    linkedin_profile: z.union([z.string(), z.literal("")]).optional(),
+    company_website: z.union([z.string(), z.literal("")]).optional(),
 });
 
 // Combined Schema for final submission

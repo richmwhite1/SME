@@ -92,7 +92,7 @@ export async function trackProductView(productId: string) {
 
                 if (meteredItem) {
                     // Report usage to Stripe
-                    await stripe.subscriptionItems.createUsageRecord(
+                    await (stripe.subscriptionItems as any).createUsageRecord(
                         meteredItem.id,
                         {
                             quantity: 1,

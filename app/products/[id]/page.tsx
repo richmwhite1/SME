@@ -139,6 +139,8 @@ interface Product {
   // Brand management fields
   is_verified?: boolean;
   brand_owner_id?: string | null;
+  aggregate_star_rating?: number | null;
+  total_star_reviews?: number | null;
 }
 
 interface Signal {

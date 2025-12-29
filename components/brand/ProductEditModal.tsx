@@ -112,7 +112,7 @@ export default function ProductEditModal({
                                      font-mono text-sm"
                         />
                         <p className="text-xs text-gray-600 mt-2">
-                            Where the "Buy Now" button will redirect users
+                            Where the &quot;Buy Now&quot; button will redirect users
                         </p>
                     </div>
 

@@ -78,7 +78,7 @@ export default function SubscriptionStatusCard({ status, totalViews }: Subscript
             {/* Usage Metrics */}
             <div className="pt-4 border-t border-[#333] space-y-2">
                 <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">This Month's Views:</span>
+                    <span className="text-gray-600">This Month&apos;s Views:</span>
                     <span className="text-white font-semibold">{totalViews.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">

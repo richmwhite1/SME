@@ -730,7 +730,7 @@ export default function ProductWizardV2() {
                                 ))}
 
                                 {benefits.length === 0 && (
-                                    <p className="text-gray-700 text-sm italic py-4">No benefits added yet. Click "+ Add Benefit" to get started.</p>
+                                    <p className="text-gray-700 text-sm italic py-4">No benefits added yet. Click &quot;+ Add Benefit&quot; to get started.</p>
                                 )}
 
                                 {errors.benefits && (
@@ -843,7 +843,7 @@ export default function ProductWizardV2() {
                             <div className="mb-6 p-4 border border-blue-900/30 bg-blue-900/10 text-blue-100 text-sm">
                                 <p>If you represent this brand, verify your ownership to unlock premium features:</p>
                                 <ul className="list-disc list-inside mt-2 space-y-1 text-xs">
-                                    <li>"Buy It Now" button on your product page</li>
+                                    <li>&quot;Buy It Now&quot; button on your product page</li>
                                     <li>Custom discount codes</li>
                                     <li>Eligibility for SME Certification ($3,000)</li>
                                     <li>Priority support</li>

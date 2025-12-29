@@ -29,7 +29,7 @@ const INGREDIENT_PILLAR_MAP: Record<string, Partial<PillarScores>> = {
     "curcumin": { "Gut Health": 85, "Prevention": 70, "Wellness": 60 },
     "turmeric": { "Gut Health": 80, "Prevention": 65, "Wellness": 55 },
     "probiotics": { "Gut Health": 95, "Wellness": 70, "Prevention": 60 },
-    "l-glutamine": { "Gut Health": 75, "Fitness": 50, "Recovery": 60 },
+    "l-glutamine": { "Gut Health": 75, "Fitness": 50 },
     "ginger": { "Gut Health": 70, "Prevention": 55, "Wellness": 50 },
     "psyllium": { "Gut Health": 80, "Wellness": 50 },
 
@@ -48,11 +48,11 @@ const INGREDIENT_PILLAR_MAP: Record<string, Partial<PillarScores>> = {
     "glycine": { "Sleep": 70, "Mental Health": 50, "Wellness": 45 },
 
     // Fitness / Performance
-    "creatine": { "Fitness": 95, "Performance": 90, "Biohacking": 70 },
-    "beta-alanine": { "Fitness": 85, "Performance": 80 },
-    "citrulline": { "Fitness": 80, "Performance": 75, "Wellness": 50 },
-    "bcaa": { "Fitness": 75, "Recovery": 70, "Performance": 65 },
-    "hmb": { "Fitness": 70, "Recovery": 75, "Longevity": 50 },
+    "creatine": { "Fitness": 95, "Biohacking": 70 },
+    "beta-alanine": { "Fitness": 85 },
+    "citrulline": { "Fitness": 80, "Wellness": 50 },
+    "bcaa": { "Fitness": 75 },
+    "hmb": { "Fitness": 70, "Longevity": 50 },
 
     // Longevity / Anti-aging
     "nmn": { "Longevity": 95, "Biohacking": 90, "Prevention": 75 },

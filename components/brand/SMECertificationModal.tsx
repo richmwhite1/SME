@@ -218,10 +218,10 @@ export default function SMECertificationModal({ productId, productTitle }: SMECe
                             <p className="font-semibold mb-2">Next Steps:</p>
                             <ol className="list-decimal list-inside space-y-1">
                                 <li>Upload your documentation above</li>
-                                <li>Click "Proceed to Payment" to pay the $3,000 certification fee</li>
+                                <li>Click &quot;Proceed to Payment&quot; to pay the $3,000 certification fee</li>
                                 <li>Our SME team will review your submission (typically 3-5 business days)</li>
-                                <li>You'll be notified via email when the review is complete</li>
-                                <li>Once approved, your product will display the "SME Certified" badge</li>
+                                <li>You&apos;ll be notified via email when the review is complete</li>
+                                <li>Once approved, your product will display the &quot;SME Certified&quot; badge</li>
                             </ol>
                         </div>
                     </div>

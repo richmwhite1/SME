@@ -147,7 +147,7 @@ export default async function BrandDashboard() {
 
                 {/* Products Section */}
                 <BrandDashboardClient
-                    products={products}
+                    products={products as any}
                     isSubscriptionActive={isSubscriptionActive}
                 />
 

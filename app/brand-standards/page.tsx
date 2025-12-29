@@ -136,7 +136,7 @@ export default function BrandStandardsPage() {
                   <tr>
                     <td className="p-6 font-bold text-bone-white">Commerce</td>
                     <td className="p-6 text-center text-bone-white/70">None</td>
-                    <td className="p-6 text-center text-bone-white/70">"Buy Now" & Promo Codes</td>
+                    <td className="p-6 text-center text-bone-white/70">&quot;Buy Now&quot; & Promo Codes</td>
                     <td className="p-6 text-center text-bone-white/70">Truth Signal Validation</td>
                   </tr>
 
@@ -194,7 +194,7 @@ export default function BrandStandardsPage() {
             <div className="rounded-lg bg-emerald-900/10 p-6 border border-emerald-500/20">
               <h3 className="mb-3 text-lg font-bold text-emerald-400">SME Certified (Evidence)</h3>
               <p className="text-sm text-bone-white/70 leading-relaxed">
-                The "Gold Standard." A brand has paid for a one-time intensive audit by our SMEs. All claims, COAs, and lab reports have been scientifically validated.
+                The &quot;Gold Standard.&quot; A brand has paid for a one-time intensive audit by our SMEs. All claims, COAs, and lab reports have been scientifically validated.
               </p>
             </div>
           </div>
