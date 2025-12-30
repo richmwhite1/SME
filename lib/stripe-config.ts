@@ -1,10 +1,11 @@
 import Stripe from 'stripe';
 
 // Initialize Stripe with API key from environment
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+// During build time, STRIPE_SECRET_KEY might be missing. We use a placeholder to prevent build failure.
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder_for_build';
 
-if (!stripeSecretKey) {
-    throw new Error('STRIPE_SECRET_KEY is not defined in environment variables');
+if (!process.env.STRIPE_SECRET_KEY) {
+    console.warn('⚠️ STRIPE_SECRET_KEY is not defined. Using placeholder key for build purposes.');
 }
 
 export const stripe = new Stripe(stripeSecretKey, {
