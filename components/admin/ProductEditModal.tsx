@@ -22,6 +22,12 @@ export default function ProductEditModal({
     const [description, setDescription] = useState(product.description || '');
     const [tagline, setTagline] = useState(product.tagline || '');
 
+    // NEW FIELDS
+    const [manufacturer, setManufacturer] = useState(product.manufacturer || '');
+    const [price, setPrice] = useState(product.price || '');
+    const [servingInfo, setServingInfo] = useState(product.serving_info || '');
+    const [warnings, setWarnings] = useState(product.warnings || '');
+
     // Links
     const [buyUrl, setBuyUrl] = useState(product.buy_url || '');
 
@@ -70,10 +76,14 @@ export default function ProductEditModal({
                 brand,
                 slug,
                 description,
+                manufacturer,
+                price,
+                serving_info: servingInfo,
+                warnings,
                 buy_url: buyUrl,
                 product_photos: photos,
                 ingredients,
-                tech_docs: techDocs ? JSON.stringify({ url: techDocs }) : undefined, // Wrap in JSON object if specific structure needed or just string
+                tech_docs: techDocs ? JSON.stringify({ url: techDocs }) : undefined,
             });
 
             if (!result.success) {
@@ -161,6 +171,49 @@ export default function ProductEditModal({
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
                                     rows={5}
+                                    className="w-full rounded border border-bone-white/20 bg-bone-white/5 p-2 font-mono text-sm text-bone-white focus:border-emerald-500 focus:outline-none"
+                                />
+                            </div>
+
+                            {/* NEW FIELDS */}
+                            <div>
+                                <label className="mb-1 block font-mono text-xs text-bone-white/60">Manufacturer</label>
+                                <input
+                                    type="text"
+                                    value={manufacturer}
+                                    onChange={(e) => setManufacturer(e.target.value)}
+                                    className="w-full rounded border border-bone-white/20 bg-bone-white/5 p-2 font-mono text-sm text-bone-white focus:border-emerald-500 focus:outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="mb-1 block font-mono text-xs text-bone-white/60">Price</label>
+                                <input
+                                    type="text"
+                                    value={price}
+                                    onChange={(e) => setPrice(e.target.value)}
+                                    placeholder="e.g. $29.99"
+                                    className="w-full rounded border border-bone-white/20 bg-bone-white/5 p-2 font-mono text-sm text-bone-white focus:border-emerald-500 focus:outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="mb-1 block font-mono text-xs text-bone-white/60">Serving Info</label>
+                                <input
+                                    type="text"
+                                    value={servingInfo}
+                                    onChange={(e) => setServingInfo(e.target.value)}
+                                    placeholder="e.g. 2 capsules, 60 servings"
+                                    className="w-full rounded border border-bone-white/20 bg-bone-white/5 p-2 font-mono text-sm text-bone-white focus:border-emerald-500 focus:outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="mb-1 block font-mono text-xs text-bone-white/60">Warnings</label>
+                                <textarea
+                                    value={warnings}
+                                    onChange={(e) => setWarnings(e.target.value)}
+                                    rows={3}
                                     className="w-full rounded border border-bone-white/20 bg-bone-white/5 p-2 font-mono text-sm text-bone-white focus:border-emerald-500 focus:outline-none"
                                 />
                             </div>

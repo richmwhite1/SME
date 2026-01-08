@@ -21,6 +21,7 @@ const MAX_PHOTOS = 10;
 
 // Base schema for community listings (simplified)
 const communitySchema = z.object({
+    product_url: z.string().url("Valid product URL is required"), // NEW: Required URL
     name: z.string().min(1, "Product name is required"),
     category: z.string().min(1, "Category is required"),
     company_blurb: z.string().min(10, "Company blurb must be at least 10 characters"),
@@ -63,6 +64,7 @@ const communitySchema = z.object({
 
 // Full schema for brand owners (strict validation)
 const brandSchema = z.object({
+    product_url: z.string().url("Valid product URL is required"), // NEW: Required URL
     name: z.string().min(1, "Product name is required"),
     category: z.string().min(1, "Category is required"),
     company_blurb: z.string().min(10, "Company blurb must be at least 10 characters"),
@@ -121,8 +123,7 @@ export default function ProductWizardV2() {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [activeSection, setActiveSection] = useState("narrative");
     const [submitError, setSubmitError] = useState<string | null>(null);
-    const [isUrlModalOpen, setIsUrlModalOpen] = useState(false);
-    const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false); // NEW
+    const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
     const [userType, setUserType] = useState<"community" | "brand">("community"); // NEW: Default to community flow
 
     // Refs for scrolling
@@ -134,6 +135,7 @@ export default function ProductWizardV2() {
     const form = useForm<WizardFormValues>({
         resolver: zodResolver(currentSchema),
         defaultValues: {
+            product_url: "", // NEW
             name: "",
             category: "",
             company_blurb: "",
@@ -259,7 +261,6 @@ export default function ProductWizardV2() {
             if (result.success && result.data) {
                 mergeAIResult(result.data);
                 showToast("Product data extracted from URL!", "success");
-                setIsUrlModalOpen(false);
             } else {
                 showToast(result.error || "Failed to analyze URL", "error");
             }
@@ -349,14 +350,45 @@ export default function ProductWizardV2() {
                             <Sparkles className="w-3 h-3" /> AI-POWERED INTAKE
                         </div>
                         <h1 className="text-3xl font-bold text-white tracking-tight mb-2">Product Onboarding</h1>
-                        <p className="text-gray-400 max-w-xl mb-6">
-                            Auto-fill this form by uploading your product label or pasting a link.
-                            Our AI extracts ingredients, benefits, and specs instantly.
+                        <p className="text-gray-400 max-w-xl mb-8">
+                            Start by pasting the product URL. Our AI will instantly extract ingredients, specs, and benefits.
                         </p>
 
-                        {/* USER TYPE TOGGLE */}
-                        <div className="bg-[#111] border border-[#333] rounded-lg p-4 max-w-2xl">
-                            <p className="text-xs uppercase tracking-wider text-gray-500 mb-3">Who are you?</p>
+                        {/* STEP 1: URL INPUT */}
+                        <div className="max-w-3xl mb-10">
+                            <label className="text-xs uppercase tracking-wider text-emerald-400 font-bold mb-2 block">
+                                Step 1: Paste Product URL (Required)
+                            </label>
+                            <div className="flex gap-3">
+                                <div className="flex-1 relative">
+                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">
+                                        <LinkIcon className="w-5 h-5" />
+                                    </div>
+                                    <input
+                                        {...register("product_url")}
+                                        placeholder="https://brand-site.com/products/example-supplement"
+                                        className="w-full bg-[#111] border border-[#333] p-4 pl-12 text-white rounded-lg focus:border-emerald-500 outline-none transition-all text-lg shadow-inner"
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const url = form.getValues("product_url");
+                                        if (url) handleUrlImport(url);
+                                    }}
+                                    disabled={isAnalyzing}
+                                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 rounded-lg font-bold transition-all shadow-lg shadow-emerald-900/20 whitespace-nowrap flex items-center gap-2"
+                                >
+                                    {isAnalyzing ? <span className="animate-spin">⏳</span> : <Sparkles className="w-4 h-4" />}
+                                    {isAnalyzing ? "Analyzing..." : "Auto-Fill"}
+                                </button>
+                            </div>
+                            {errors.product_url && <p className="text-red-500 text-sm mt-2">{errors.product_url.message}</p>}
+                        </div>
+
+                        {/* STEP 2: USER TYPE TOGGLE */}
+                        <div className="bg-[#111] border border-[#333] rounded-lg p-6 max-w-3xl">
+                            <p className="text-xs uppercase tracking-wider text-gray-500 mb-4">Step 2: Verify Your Identity</p>
                             <div className="grid grid-cols-2 gap-3">
                                 <button
                                     type="button"
@@ -831,6 +863,28 @@ export default function ProductWizardV2() {
                                 <Check className="w-6 h-6 text-emerald-500" />
                                 <h2 className="text-xl font-bold text-white">Final Verification</h2>
                             </div>
+
+                            {/* Why Verify Benefits */}
+                            <div className="bg-gradient-to-br from-emerald-900/20 to-black border border-emerald-500/30 rounded-lg p-6">
+                                <h3 className="text-emerald-400 font-bold mb-4 flex items-center gap-2">
+                                    <Sparkles className="w-5 h-5" /> Why Verify? ($100/month)
+                                </h3>
+                                <ul className="space-y-3">
+                                    <li className="flex gap-2">
+                                        <Check className="w-5 h-5 text-emerald-500 shrink-0" />
+                                        <span className="text-gray-300 text-sm"><strong>SME Verified Badge:</strong> Stand out with the gold standard of trust.</span>
+                                    </li>
+                                    <li className="flex gap-2">
+                                        <Check className="w-5 h-5 text-emerald-500 shrink-0" />
+                                        <span className="text-gray-300 text-sm"><strong>Analytics Dashboard:</strong> Access deep insights on consumer sentiment.</span>
+                                    </li>
+                                    <li className="flex gap-2">
+                                        <Check className="w-5 h-5 text-emerald-500 shrink-0" />
+                                        <span className="text-gray-300 text-sm"><strong>Direct Engagement:</strong> Respond to community reviews and questions.</span>
+                                    </li>
+                                </ul>
+                            </div>
+
                             <div className="flex items-center gap-3 mb-4">
                                 <input type="checkbox" {...register("is_brand_owner")} className="w-5 h-5 accent-emerald-500" />
                                 <label className="text-white">I am the brand owner or authorized representative.</label>

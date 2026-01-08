@@ -94,7 +94,7 @@ async function fetchTranscriptInvidious(videoId: string): Promise<string> {
     throw new Error("Could not fetch transcript from Invidious network.");
 }
 
-async function analyzeYouTubeVideo(url: string): Promise<string> {
+export async function analyzeYouTubeVideo(url: string): Promise<string> {
     const videoId = extractVideoId(url);
     if (!videoId) throw new Error("Invalid YouTube URL.");
 
