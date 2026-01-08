@@ -78,7 +78,7 @@ export default function ProductWizardV2() {
     const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false); // NEW
 
     // Refs for scrolling
-    const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+    const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
     const form = useForm<WizardFormValues>({
         resolver: zodResolver(wizardSchema),
