@@ -11,7 +11,7 @@ interface VoteControlProps {
     initialUpvoteCount: number;
     initialUserVote?: VoteType | null; // 1, -1, or null
     orientation?: "vertical" | "horizontal";
-    size?: "sm" | "md";
+    size?: "sm" | "md" | "lg";
 }
 
 export default function VoteControl({
@@ -85,8 +85,8 @@ export default function VoteControl({
     };
 
     const isVertical = orientation === "vertical";
-    const iconSize = size === "sm" ? 14 : 18;
-    const textSize = size === "sm" ? "text-xs" : "text-sm";
+    const iconSize = size === "sm" ? 14 : (size === "lg" ? 22 : 18);
+    const textSize = size === "sm" ? "text-xs" : (size === "lg" ? "text-base" : "text-sm");
 
     return (
         <div className={cn(
