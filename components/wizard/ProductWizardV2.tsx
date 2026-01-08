@@ -447,59 +447,8 @@ export default function ProductWizardV2() {
                             </button>
                         </div>
 
-                        {/* URL Import Modal */}
-                        {isUrlModalOpen && (
-                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
-                                <div className="bg-[#111] border border-[#333] rounded-lg w-full max-w-lg shadow-2xl overflow-hidden">
-                                    <div className="bg-[#0a0a0a] border-b border-[#333] px-6 py-4 flex justify-between items-center">
-                                        <h3 className="text-white font-bold flex items-center gap-2">
-                                            <LinkIcon className="w-4 h-4 text-emerald-500" />
-                                            Import from URL
-                                        </h3>
-                                        <button onClick={() => setIsUrlModalOpen(false)} className="text-gray-500 hover:text-white transition-colors">×</button>
-                                    </div>
-                                    <div className="p-6 space-y-4">
-                                        <p className="text-sm text-gray-400">
-                                            Paste a product page URL (e.g. Amazon, Shopify, or Brand site). Our AI will scrape and extract key details.
-                                        </p>
-                                        <input
-                                            autoFocus
-                                            placeholder="https://example.com/products/neuro-vance"
-                                            className="w-full bg-[#000] border border-[#333] p-3 text-white rounded focus:border-emerald-500 outline-none"
-                                            onKeyDown={async (e) => {
-                                                if (e.key === 'Enter') {
-                                                    const target = e.target as HTMLInputElement;
-                                                    if (target.value) handleUrlImport(target.value);
-                                                }
-                                            }}
-                                            id="url-input-modal"
-                                        />
-                                        <div className="flex justify-end gap-3 pt-2">
-                                            <button onClick={() => setIsUrlModalOpen(false)} className="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancel</button>
-                                            <button
-                                                onClick={() => {
-                                                    const input = document.getElementById('url-input-modal') as HTMLInputElement;
-                                                    if (input?.value) handleUrlImport(input.value);
-                                                }}
-                                                disabled={isAnalyzing}
-                                                className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded flex items-center gap-2"
-                                            >
-                                                {isAnalyzing ? "Scanning..." : "Import Product"}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
 
-                        <button
-                            type="button"
-                            onClick={() => setIsUrlModalOpen(true)}
-                            className="flex items-center gap-2 bg-[#222] hover:bg-[#333] border border-[#444] text-gray-300 px-5 py-3 rounded font-semibold transition-all"
-                        >
-                            <LinkIcon className="w-4 h-4" />
-                            Paste URL
-                        </button>
+                        {/* Barcode Modal is Below */}
 
                         {/* Barcode Modal */}
                         {isBarcodeModalOpen && (

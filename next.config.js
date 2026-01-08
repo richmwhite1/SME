@@ -29,6 +29,22 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'images.openfoodfacts.org',
       },
+      {
+        protocol: 'https',
+        hostname: 'cdn.sanity.io',
+      },
+      {
+        protocol: 'https',
+        hostname: 'd1vo8zfysxy97v.cloudfront.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'm.media-amazon.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images-na.ssl-images-amazon.com',
+      },
     ],
     unoptimized: false,
   },

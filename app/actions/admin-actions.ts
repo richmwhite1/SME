@@ -670,6 +670,10 @@ export async function updateProductDetails(
     brand: string;
     slug: string;
     description: string;
+    manufacturer?: string;
+    price?: string;
+    serving_info?: string;
+    warnings?: string;
     buy_url?: string;
     product_photos?: string[];
     ingredients?: string;
@@ -691,6 +695,10 @@ export async function updateProductDetails(
         brand = ${data.brand},
         slug = ${data.slug},
         description = ${data.description},
+        manufacturer = ${data.manufacturer || null},
+        price = ${data.price || null},
+        serving_info = ${data.serving_info || null},
+        warnings = ${data.warnings || null},
         buy_url = ${data.buy_url || null},
         product_photos = ${data.product_photos ? sql.array(data.product_photos) : null},
         ingredients = ${data.ingredients || null},
