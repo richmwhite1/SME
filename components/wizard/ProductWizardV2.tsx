@@ -159,7 +159,7 @@ export default function ProductWizardV2() {
             // 3. Data Cleaning: SME Signals (Merge with existing)
             if (key === 'sme_signals' && typeof val === 'object') {
                 const currentSignals = form.getValues('sme_signals') || {};
-                setValue('sme_signals', { ...currentSignals, ...val }, { shouldValidate: true });
+                setValue('sme_signals', { ...currentSignals, ...val as any }, { shouldValidate: true });
                 return;
             }
 
