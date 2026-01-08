@@ -24,6 +24,11 @@ const communitySchema = z.object({
     name: z.string().min(1, "Product name is required"),
     category: z.string().min(1, "Category is required"),
     company_blurb: z.string().min(10, "Company blurb must be at least 10 characters"),
+    manufacturer: z.string().optional().or(z.literal("")),
+    price: z.string().optional().or(z.literal("")),
+    serving_info: z.string().optional().or(z.literal("")),
+    warnings: z.string().optional().or(z.literal("")),
+    certifications: z.array(z.string()).optional().default([]),
     product_photos: z.array(z.string().url()).max(MAX_PHOTOS, "Maximum 10 photos allowed").optional().default([]),
     youtube_link: z.string().optional().or(z.literal("")),
     technical_docs_url: z.string().optional().or(z.literal("")),
@@ -35,7 +40,7 @@ const communitySchema = z.object({
     })).optional().default([]),
     active_ingredients: z.array(z.object({
         name: z.string(),
-        dosage: z.string()
+        dosage: z.string().optional() // CHANGED: Make dosage optional
     })).optional().default([]),
     third_party_lab_link: z.string().optional().or(z.literal("")),
     excipients: z.array(z.string()).optional().default([]),
@@ -61,6 +66,11 @@ const brandSchema = z.object({
     name: z.string().min(1, "Product name is required"),
     category: z.string().min(1, "Category is required"),
     company_blurb: z.string().min(10, "Company blurb must be at least 10 characters"),
+    manufacturer: z.string().optional().or(z.literal("")),
+    price: z.string().optional().or(z.literal("")),
+    serving_info: z.string().optional().or(z.literal("")),
+    warnings: z.string().optional().or(z.literal("")),
+    certifications: z.array(z.string()).optional().default([]),
     product_photos: z.array(z.string().url()).max(MAX_PHOTOS, "Maximum 10 photos allowed"),
     youtube_link: z.string().optional().or(z.literal("")),
     technical_docs_url: z.string().url("Must be a valid URL").or(z.literal("")).optional(),
@@ -72,7 +82,7 @@ const brandSchema = z.object({
     })),
     active_ingredients: z.array(z.object({
         name: z.string().min(1, "Ingredient name is required"),
-        dosage: z.string().min(1, "Dosage is required")
+        dosage: z.string().optional() // CHANGED: Make dosage optional
     })),
     third_party_lab_link: z.string().url("Must be a valid URL").or(z.literal("")).optional(),
     excipients: z.array(z.string()),
@@ -127,6 +137,11 @@ export default function ProductWizardV2() {
             name: "",
             category: "",
             company_blurb: "",
+            manufacturer: "",
+            price: "",
+            serving_info: "",
+            warnings: "",
+            certifications: [],
             product_photos: [],
             youtube_link: "",
             technical_docs_url: "",
@@ -357,7 +372,7 @@ export default function ProductWizardV2() {
                                             {userType === "community" && <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />}
                                         </div>
                                         <div>
-                                            <p className="font-semibold text-white mb-1">I'm a Community Member</p>
+                                            <p className="font-semibold text-white mb-1">I&apos;m a Community Member</p>
                                             <p className="text-xs text-gray-400">Share a product I love (simplified form)</p>
                                         </div>
                                     </div>
@@ -376,7 +391,7 @@ export default function ProductWizardV2() {
                                             {userType === "brand" && <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />}
                                         </div>
                                         <div>
-                                            <p className="font-semibold text-white mb-1">I'm a Brand Owner</p>
+                                            <p className="font-semibold text-white mb-1">I&apos;m a Brand Owner</p>
                                             <p className="text-xs text-gray-400">Full wizard + verification ($100/mo)</p>
                                         </div>
                                     </div>
@@ -602,6 +617,28 @@ export default function ProductWizardV2() {
                                 <textarea {...register("core_value_proposition")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded min-h-[100px]" placeholder="Key promise to the consumer..." />
                             </div>
 
+                            {/* NEW FIELDS */}
+                            <div className="grid md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-wider text-gray-500">Manufacturer/Brand</label>
+                                    <input {...register("manufacturer")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded" placeholder="e.g. Thorne Research" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-wider text-gray-500">Price (Optional)</label>
+                                    <input {...register("price")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded" placeholder="e.g. $29.99" />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs uppercase tracking-wider text-gray-500">Serving Information</label>
+                                <input {...register("serving_info")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded" placeholder="e.g. 2 capsules, 60 servings per container" />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs uppercase tracking-wider text-gray-500">Warnings & Safety Information</label>
+                                <textarea {...register("warnings")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded min-h-[100px]" placeholder="Any warnings, contraindications, or safety notes..." />
+                            </div>
+
                             {/* Hidden Barcode Field */}
                             <input type="hidden" {...register("barcode")} />
                         </div>
@@ -649,7 +686,7 @@ export default function ProductWizardV2() {
                                     <input placeholder="Ingredient Name" value={ing.name} onChange={e => {
                                         const n = [...activeIngredients]; n[i].name = e.target.value; setValue("active_ingredients", n);
                                     }} className="flex-[2] bg-[#111] border border-[#333] p-3 rounded text-sm text-white" />
-                                    <input placeholder="Dosage" value={ing.dosage} onChange={e => {
+                                    <input placeholder="Dosage (Optional)" value={ing.dosage || ""} onChange={e => {
                                         const n = [...activeIngredients]; n[i].dosage = e.target.value; setValue("active_ingredients", n);
                                     }} className="flex-1 bg-[#111] border border-[#333] p-3 rounded text-sm text-white" />
                                     <button type="button" onClick={() => setValue("active_ingredients", activeIngredients.filter((_, idx) => idx !== i))} className="px-3 text-red-500 hover:bg-red-900/20 rounded">×</button>
