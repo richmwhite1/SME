@@ -91,6 +91,7 @@ interface User {
   created_at: string;
   reputation_score: number;
   is_sme: boolean;
+  user_role: 'standard' | 'sme' | 'sme_admin' | 'admin' | 'business_user';
 }
 
 interface ContactSubmission {
