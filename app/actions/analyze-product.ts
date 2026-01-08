@@ -129,8 +129,65 @@ export async function analyzeProductUrl(url: string): Promise<AnalyzedProductDat
 
         return { success: true, data };
 
+
     } catch (error: any) {
         console.error("Error analyzing product URL:", error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function lookupProductByBarcode(barcode: string): Promise<AnalyzedProductData> {
+    try {
+        if (!barcode) throw new Error("No barcode provided");
+
+        const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`, {
+            headers: { 'User-Agent': 'SME-Health-App/1.0 (sme.health)' }
+        });
+
+        if (!res.ok) throw new Error(`OpenFoodFacts API Error: ${res.statusText}`);
+
+        const json = await res.json();
+        if (json.status === 0 || !json.product) {
+            return { success: false, error: "Product not found in OpenFoodFacts database" };
+        }
+
+        const p = json.product;
+
+        // Map OpenFoodFacts data to WizardFormValues
+        const data: any = {
+            name: p.product_name || "",
+            company_blurb: p.brands ? `Brand: ${p.brands}.` : "",
+            active_ingredients: [], // OFF doesn't give neat dosage arrays easily, usually just text
+            technical_specs: [],
+            product_photos: [],
+            excipients: []
+        };
+
+        // Try to parse ingredients if available
+        if (p.ingredients_text) {
+            data.company_blurb += ` Ingredients: ${p.ingredients_text.substring(0, 200)}...`;
+        }
+
+        // Nutriments -> Technical Specs
+        if (p.nutriments) {
+            const specs = [];
+            if (p.serving_size) specs.push({ key: "Serving Size", value: p.serving_size });
+            if (p.nutriments.energy_value) specs.push({ key: "Energy", value: `${p.nutriments.energy_value} ${p.nutriments.energy_unit}` });
+            if (p.nutriments.proteins_100g) specs.push({ key: "Proteins (100g)", value: `${p.nutriments.proteins_100g}g` });
+            if (p.nutriments.carbohydrates_100g) specs.push({ key: "Carbs (100g)", value: `${p.nutriments.carbohydrates_100g}g` });
+
+            data.technical_specs = specs;
+        }
+
+        // Image
+        if (p.image_url) {
+            data.product_photos = [p.image_url];
+        }
+
+        return { success: true, data };
+
+    } catch (error: any) {
+        console.error("Error looking up barcode:", error);
         return { success: false, error: error.message };
     }
 }
