@@ -81,11 +81,11 @@ const wizardSchema = z.object({
 
 type WizardFormValues = z.infer<typeof wizardSchema>;
 
-import { useProductWizardStore } from "@/lib/stores/product-wizard-store";
+
 
 export default function ProductWizardV2() {
     const router = useRouter();
-    const { data: storedData, updateData, setHasHydrated } = useProductWizardStore();
+    // Removed store integration
     const [step, setStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
@@ -93,43 +93,29 @@ export default function ProductWizardV2() {
     const form = useForm<WizardFormValues>({
         resolver: zodResolver(wizardSchema),
         defaultValues: {
-            name: storedData.name || "",
-            category: storedData.category || "",
-            company_blurb: storedData.company_blurb || "",
-            product_photos: storedData.product_photos || [],
-            youtube_link: storedData.video_url || "",
-            technical_docs_url: storedData.technical_docs_url || "",
-            target_audience: storedData.target_audience || "",
-            core_value_proposition: storedData.core_value_proposition || "",
-            technical_specs: storedData.technical_specs || [],
-            active_ingredients: storedData.active_ingredients || [],
-            third_party_lab_link: storedData.third_party_lab_link || "",
-            excipients: storedData.excipients || [],
-            benefits: storedData.benefits || [],
-            sme_access_notes: storedData.sme_access_note || "",
-            sme_signals: storedData.sme_signals || {},
-            is_brand_owner: storedData.is_brand_owner || false,
-            work_email: storedData.work_email || "",
-            linkedin_profile: storedData.linkedin_profile || "",
-            company_website: storedData.company_website || ""
+            name: "",
+            category: "",
+            company_blurb: "",
+            product_photos: [],
+            youtube_link: "",
+            technical_docs_url: "",
+            target_audience: "",
+            core_value_proposition: "",
+            technical_specs: [],
+            active_ingredients: [],
+            third_party_lab_link: "",
+            excipients: [],
+            benefits: [],
+            sme_access_notes: "",
+            sme_signals: {},
+            // Brand Verification
+            is_brand_owner: false,
+            work_email: "",
+            linkedin_profile: "",
+            company_website: "",
         },
         mode: "onChange"
     });
-
-    // Hydrate store on mount
-    useEffect(() => {
-        useProductWizardStore.persist.rehydrate();
-        setHasHydrated(true);
-    }, [setHasHydrated]);
-
-    // Persist form changes
-    const formValues = form.watch();
-    useEffect(() => {
-        const subscription = form.watch((value) => {
-            updateData(value as any);
-        });
-        return () => subscription.unsubscribe();
-    }, [form.watch, updateData]);
 
     const { register, trigger, setValue, watch, formState: { errors } } = form;
 
@@ -216,19 +202,25 @@ export default function ProductWizardV2() {
             }, {} as Record<string, string>);
 
             const result = await submitProductWizard({
-                name: data.name,
-                category: data.category,
-                company_blurb: data.company_blurb,
-                product_photos: data.product_photos,
+                name: data.name || "",
+                category: data.category || "",
+                company_blurb: data.company_blurb || "",
+                product_photos: data.product_photos || [],
                 youtube_link: data.youtube_link || null,
                 technical_docs_url: data.technical_docs_url || null,
-                target_audience: data.target_audience,
-                core_value_proposition: data.core_value_proposition,
+                target_audience: data.target_audience || "",
+                core_value_proposition: data.core_value_proposition || "",
                 technical_specs: specsObject,
                 sme_access_notes: data.sme_access_notes || null,
-                sme_signals: data.sme_signals,
+                sme_signals: data.sme_signals || {},
+                technical_specs: specsObject,
+                active_ingredients: data.active_ingredients || [],
+                excipients: data.excipients || [],
+                benefits: data.benefits || [],
+                sme_access_notes: data.sme_access_notes || null,
+                sme_signals: data.sme_signals || {},
                 // Brand verification fields
-                is_brand_owner: data.is_brand_owner,
+                is_brand_owner: data.is_brand_owner || false,
                 work_email: data.work_email || "",
                 linkedin_profile: data.linkedin_profile || "",
                 company_website: data.company_website || "",

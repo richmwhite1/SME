@@ -66,12 +66,12 @@ export default function DualTrackRadar({
     const hasSMEData = smeReviewCount > 0;
 
     return (
-        <div className="mb-12 border border-sme-gold/20 bg-black/20 backdrop-blur-sm rounded-lg p-8">
-            <div className="mb-6 text-center">
-                <h2 className="font-serif text-3xl font-bold text-bone-white mb-2">
+        <div className="mb-8 md:mb-12 border border-sme-gold/20 bg-black/20 backdrop-blur-sm rounded-lg p-4 md:p-8">
+            <div className="mb-4 md:mb-6 text-center">
+                <h2 className="font-serif text-2xl md:text-3xl font-bold text-bone-white mb-2">
                     9-Pillar Analysis
                 </h2>
-                <p className="text-sm text-bone-white/60 font-mono">
+                <p className="text-xs md:text-sm text-bone-white/60 font-mono">
                     {hasSMEData
                         ? `Expert vs. Community Scores • ${smeReviewCount} SME ${smeReviewCount === 1 ? 'Review' : 'Reviews'}`
                         : 'Awaiting Expert Reviews'}
@@ -80,7 +80,7 @@ export default function DualTrackRadar({
 
             {hasSMEData ? (
                 <>
-                    <div className="h-[500px] w-full">
+                    <div className="h-[400px] md:h-[500px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <RadarChart cx="50%" cy="50%" outerRadius="70%" data={chartData}>
                                 <PolarGrid stroke="#ffffff20" />
@@ -88,7 +88,7 @@ export default function DualTrackRadar({
                                     dataKey="subject"
                                     tick={{
                                         fill: '#E2E8F0',
-                                        fontSize: 11,
+                                        fontSize: window.innerWidth < 768 ? 13 : 11,
                                         fontWeight: 600,
                                         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
                                     }}
@@ -135,40 +135,56 @@ export default function DualTrackRadar({
                     </div>
 
                     {/* Score Summary */}
-                    <div className="mt-6 grid grid-cols-2 gap-4">
-                        <div className="bg-sme-gold/10 border border-sme-gold/30 rounded-lg p-4">
+                    <div className="mt-4 md:mt-6 grid grid-cols-2 gap-3 md:gap-4">
+                        <div className="bg-sme-gold/10 border border-sme-gold/30 rounded-lg p-3 md:p-4">
                             <div className="flex items-center gap-2 mb-2">
-                                <div className="h-3 w-3 rounded-full bg-sme-gold"></div>
-                                <span className="text-xs font-mono font-semibold text-sme-gold">SME EXPERTS</span>
+                                <div className="h-2.5 w-2.5 md:h-3 md:w-3 rounded-full bg-sme-gold"></div>
+                                <span className="text-[10px] md:text-xs font-mono font-semibold text-sme-gold">SME EXPERTS</span>
                             </div>
-                            <p className="text-2xl font-bold text-bone-white font-mono">
+                            <p className="text-xl md:text-2xl font-bold text-bone-white font-mono">
                                 {calculateAverage(Object.values(smeScores))}
                             </p>
-                            <p className="text-xs text-bone-white/50 mt-1">Average Score</p>
+                            <p className="text-[10px] md:text-xs text-bone-white/50 mt-1">Average Score</p>
                         </div>
 
                         {communityScores && (
-                            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4">
+                            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3 md:p-4">
                                 <div className="flex items-center gap-2 mb-2">
-                                    <div className="h-3 w-3 rounded-full bg-emerald-400"></div>
-                                    <span className="text-xs font-mono font-semibold text-emerald-400">COMMUNITY</span>
+                                    <div className="h-2.5 w-2.5 md:h-3 md:w-3 rounded-full bg-emerald-400"></div>
+                                    <span className="text-[10px] md:text-xs font-mono font-semibold text-emerald-400">COMMUNITY</span>
                                 </div>
-                                <p className="text-2xl font-bold text-bone-white font-mono">
+                                <p className="text-xl md:text-2xl font-bold text-bone-white font-mono">
                                     {calculateAverage(Object.values(communityScores))}
                                 </p>
-                                <p className="text-xs text-bone-white/50 mt-1">Average Score</p>
+                                <p className="text-[10px] md:text-xs text-bone-white/50 mt-1">Average Score</p>
                             </div>
                         )}
                     </div>
                 </>
             ) : (
                 <div className="text-center py-16">
-                    <div className="h-24 w-24 rounded-full bg-sme-gold/10 border-2 border-sme-gold/30 flex items-center justify-center mx-auto mb-4">
-                        <span className="text-4xl">📊</span>
+                    <div className="h-32 w-32 rounded-full bg-sme-gold/10 border-2 border-sme-gold/30 flex items-center justify-center mx-auto mb-6">
+                        <span className="text-6xl">📊</span>
                     </div>
-                    <p className="text-bone-white/60 font-mono text-sm">
-                        No expert reviews yet. SMEs can submit the first audit above.
+                    <h3 className="text-xl font-serif font-bold text-bone-white mb-2">
+                        Expert Review Pending
+                    </h3>
+                    <p className="text-bone-white/60 font-mono text-sm mb-6 max-w-md mx-auto">
+                        No expert reviews yet. Be the first SME to provide a comprehensive 9-pillar analysis.
                     </p>
+                    <button
+                        onClick={() => {
+                            const auditForm = document.getElementById('expert-audit-form');
+                            if (auditForm) {
+                                auditForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        }}
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-sme-gold text-forest-black font-bold font-mono uppercase tracking-wide rounded-lg hover:bg-sme-gold/90 transition-all shadow-lg hover:shadow-xl"
+                    >
+                        <span>Are you an SME?</span>
+                        <span className="text-lg">→</span>
+                        <span>Audit this Product</span>
+                    </button>
                 </div>
             )}
         </div>

@@ -1,10 +1,8 @@
 "use server";
 
 import { auth } from "@clerk/nextjs/server";
-import { neon } from "@neondatabase/serverless";
+import { getDb } from "@/lib/db";
 import { createCustomerPortalSession } from "@/lib/stripe-config";
-
-const sql = neon(process.env.DATABASE_URL!);
 
 /**
  * Create a Stripe Customer Portal session for brand to manage billing
@@ -16,6 +14,8 @@ export async function createPortalSession() {
         if (!userId) {
             return { success: false, error: "Not authenticated" };
         }
+
+        const sql = getDb();
 
         // Get brand verification with Stripe customer ID
         const result = await sql`

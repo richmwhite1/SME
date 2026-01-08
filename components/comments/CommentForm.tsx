@@ -186,6 +186,7 @@ export default function CommentForm({
       if (isSignedIn) {
         // Authenticated user submission
         if (type === "product" && productId && productSlug) {
+          console.log('[CommentForm] Submitting authenticated comment...');
           const result = await createProductComment(
             productId,
             content.trim(),
@@ -197,6 +198,13 @@ export default function CommentForm({
             pillarOfTruth,
             starRating // Add star rating
           );
+
+          console.log('[CommentForm] Server response:', result);
+
+          if (!result) {
+            throw new Error("Server returned no response");
+          }
+
           if (!result.success) {
             throw new Error(result.error || "Failed to post comment");
           }
@@ -222,6 +230,8 @@ export default function CommentForm({
           }
 
           // If approved, proceed with database insert
+          // If approved, proceed with database insert
+          console.log('[CommentForm] Submitting guest comment...');
           const result = await createGuestProductComment(
             productId,
             content.trim(),
@@ -229,6 +239,12 @@ export default function CommentForm({
             productSlug,
             starRating // Add star rating
           );
+
+          console.log('[CommentForm] Guest Server response:', result);
+
+          if (!result) {
+            throw new Error("Server returned no response");
+          }
 
           if (!result.success) {
             throw new Error(result.error || "Failed to post comment");

@@ -1,16 +1,10 @@
 "use server";
 
 // Ensure environment variables are loaded for server actions
-import * as dotenv from 'dotenv';
-dotenv.config({ path: '.env.local' });
-
 import { getDb } from "@/lib/db";
-import OpenAI from "openai";
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Remove OpenAI import and usage as they are not used in this file
+// Search is purely SQL-based here.
 
 interface SearchResult {
   result_type: "Product" | "Discussion" | "Resource" | "Evidence" | "Review";
@@ -45,32 +39,76 @@ export interface LensSearchResult {
   rank: number;
 }
 
-export type SearchFilterMode = 'verified' | 'community' | 'holistic';
+
 
 /**
  * Server action for global search
  */
+import { getGemmaClient } from "@/lib/ai/gemma-client";
+
+// ... existing imports
+
+export interface SearchResponse {
+  results: SearchResult[];
+  synthesis?: string | null;
+}
+
 export async function searchGlobal(
   query: string,
   limit: number = 10
-): Promise<SearchResult[]> {
+): Promise<SearchResponse> {
   if (!query || query.trim().length < 2) {
-    return [];
+    return { results: [] };
   }
 
   const sql = getDb();
+  let results: SearchResult[] = [];
 
   try {
     // Call the global_search PostgreSQL function
-    const results = await sql`
+    const dbResults = await sql`
       SELECT * FROM global_search(${query.trim()}, ${limit})
     `;
+    results = dbResults as unknown as SearchResult[];
 
-    return results as unknown as SearchResult[];
   } catch (error) {
     console.error("Search error:", error);
-    return [];
+    // Don't fail completely if DB search fails, still try AI? No, probably return empty.
+    results = [];
   }
+
+  // --- AI Synthesis Layer ---
+  let synthesis: string | null = null;
+  // Only synthesize if query is a question or long enough to be an intent
+  // And usually if we have results, or if we want to answer "zero result" queries too.
+  // Let's answer "zero result" queries too if they are health questions.
+  const isQuestion = query.includes("?") || query.length > 10;
+
+  if (isQuestion || results.length > 0) {
+    try {
+      const gemma = getGemmaClient();
+      const context = results.slice(0, 3).map(r => `${r.title}: ${r.content_snippet || r.snippet || r.content.substring(0, 100)}`).join("\n");
+
+      const prompt = `User Query: "${query}"
+          
+          Context from our database (if any):
+          ${context}
+          
+          Task: Provide a helpful, concise (1-2 sentences) answer or intent clarification for the user. 
+          If the database context is relevant, use it. If not, provide general high-level health knowledge (safe, non-medical advice).
+          
+          Answer:`;
+
+      // Fire and forget-ish, but here we await because we want to show it.
+      // In a real app we might stream this, but for now simple await.
+      const aiRes = await gemma.generateText('gemini-2.0-flash', prompt, { maxTokens: 100 });
+      synthesis = aiRes.trim();
+    } catch (e) {
+      console.error("AI Synthesis failed:", e);
+    }
+  }
+
+  return { results, synthesis };
 }
 
 /**
@@ -93,104 +131,6 @@ export async function searchProductsByLens(
   }
 }
 
-/**
- * Semantic Search with LLM Query Expansion and Filter Modes
- */
-export async function searchSemantic(
-  userQuery: string,
-  filterMode: SearchFilterMode = 'holistic',
-  limit: number = 20
-): Promise<SearchResult[]> {
-  if (!userQuery || userQuery.trim().length < 2) {
-    return [];
-  }
 
-  try {
-    // Level 1: Direct Keyword Search
-    const directResultsPromise = searchGlobal(userQuery, limit);
-    let expandedResults: SearchResult[] = [];
 
-    // Level 2: LLM Expansion (Optional)
-    // Only attempt if API key is present
-    if (process.env.OPENAI_API_KEY) {
-      try {
-        const expandedQuery = await expandQueryWithLLM(userQuery);
-        console.log(`[Search] Expanded "${userQuery}" to "${expandedQuery}"`);
 
-        // Only run secondary search if query was actually expanded
-        if (expandedQuery && expandedQuery.toLowerCase() !== userQuery.toLowerCase()) {
-          expandedResults = await searchGlobal(expandedQuery, limit);
-        }
-      } catch (llmError) {
-        console.warn("LLM expansion failed, proceeding with keyword search only:", llmError);
-      }
-    }
-
-    const directResults = await directResultsPromise;
-
-    // Merge: Prioritize direct keyword matches
-    const combined = new Map<string, SearchResult>();
-
-    // 1. Add direct results first
-    directResults.forEach(r => combined.set(r.result_id, r));
-
-    // 2. Add expanded results if not already present
-    expandedResults.forEach(r => {
-      if (!combined.has(r.result_id)) {
-        combined.set(r.result_id, r);
-      }
-    });
-
-    let results = Array.from(combined.values());
-
-    // Apply filter mode
-    if (filterMode === 'verified') {
-      // Filter to SME-certified products only
-      results = results.filter(r =>
-        r.result_type === 'Product' && r.is_sme_certified === true
-      );
-    } else if (filterMode === 'community') {
-      // Filter to discussions and reviews only
-      results = results.filter(r =>
-        r.result_type === 'Discussion' || r.result_type === 'Review'
-      );
-    }
-    // 'holistic' mode returns all results (no filtering)
-
-    return results.slice(0, limit);
-
-  } catch (error) {
-    console.error("Semantic search error:", error);
-    // Fallback to basic global search if anything catastrophic happens
-    return searchGlobal(userQuery, limit);
-  }
-}
-
-/**
- * Expands a user query into search terms using GPT-4o-mini
- */
-async function expandQueryWithLLM(query: string): Promise<string> {
-  try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: "You are a query expansion assistant for a health product search engine. Your goal is to take a user's symptom, goal, or term (e.g., 'sleep', 'tired', 'gut health') and expand it into a list of related scientific, biological, and product-category keywords. Return ONLY a space-separated string of the most relevant 3-5 keywords, including the original term. Do not use 'OR' or boolean operators, just words. Example input: 'sleep'. Example output: 'sleep melatonin magnesium insomnia circadian'."
-        },
-        {
-          role: "user",
-          content: query
-        }
-      ],
-      max_tokens: 50,
-      temperature: 0.3,
-    });
-
-    const expanded = response.choices[0]?.message?.content?.trim();
-    return expanded || query;
-  } catch (error) {
-    console.error("LLM expansion error:", error);
-    return query; // Fallback to original query
-  }
-}

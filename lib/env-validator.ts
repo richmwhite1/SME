@@ -34,10 +34,10 @@ export function validateEnvironmentVariables(): ValidationResult {
         );
     }
 
-    // OpenAI API key - optional but warn if missing
-    if (!process.env.OPENAI_API_KEY) {
+    // Google AI API key - optional but warn if missing
+    if (!process.env.GOOGLE_AI_API_KEY) {
         warnings.push(
-            "Missing OPENAI_API_KEY. Content moderation will fail closed (block all content for safety)."
+            "Missing GOOGLE_AI_API_KEY. Content moderation will fail closed (block all content for safety)."
         );
     }
 
@@ -80,11 +80,11 @@ export function validateAndLogEnvironment(): void {
         console.log("   ❌ CLERK_SECRET_KEY is MISSING");
     }
 
-    // Check and log OpenAI key
-    if (process.env.OPENAI_API_KEY) {
-        console.log("   ✅ OPENAI_API_KEY is set");
+    // Check and log Google AI key
+    if (process.env.GOOGLE_AI_API_KEY) {
+        console.log("   ✅ GOOGLE_AI_API_KEY is set");
     } else {
-        console.log("   ⚠️  OPENAI_API_KEY is MISSING (optional)");
+        console.log("   ⚠️  GOOGLE_AI_API_KEY is MISSING (optional)");
     }
 
     // Log warnings

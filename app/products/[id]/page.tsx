@@ -3,20 +3,21 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import ProductImageGallery from "@/components/products/ProductImageGallery";
-import DossierHeader from "@/components/products/dossier/DossierHeader";
+import HeroSection from "@/components/products/dossier/HeroSection";
 import SignalGrid from "@/components/products/dossier/SignalGrid";
-import StreamSplitter from "@/components/products/dossier/StreamSplitter";
+import TabbedDossier from "@/components/products/dossier/TabbedDossier";
 import TheVault from "@/components/products/dossier/TheVault";
 import SearchBar from "@/components/search/SearchBar";
-import SMECertifiedBadge from "@/components/products/SMECertifiedBadge";
-import BuyNowButton from "@/components/products/BuyNowButton";
 import ProductViewTracker from "@/components/products/ProductViewTracker";
+import StickyCTABar from "@/components/products/StickyCTABar";
 import { getDb } from "@/lib/db";
-import ReactMarkdown from "react-markdown";
 import { getSMEReviews, getAverageSMEScores, checkIsSME } from "@/app/actions/product-sme-review-actions";
+import DualTrackRadar from "@/components/sme/DualTrackRadar";
+import ReactMarkdown from "react-markdown";
 import SubmitExpertAudit from "@/components/sme/SubmitExpertAudit";
 import SMEAuditsList from "@/components/sme/SMEAuditsList";
-import DualTrackRadar from "@/components/sme/DualTrackRadar";
+import BenefitsEditor from "@/components/products/BenefitsEditor";
+import CommunityBenefits from "@/components/products/CommunityBenefits";
 
 // Force dynamic rendering to bypass caching issues
 export const dynamic = "force-dynamic";
@@ -282,7 +283,7 @@ export default async function ProductDetailPage({
     SELECT
     pc.id, pc.content, pc.created_at, pc.parent_id, pc.guest_name,
       pc.insight_summary, pc.upvote_count, pc.post_type, pc.pillar_of_truth, pc.source_metadata, pc.star_rating,
-      p.id as author_id, p.full_name, p.username, p.avatar_url, p.badge_type, p.contributor_score, p.archive_clerk_id,
+      p.id as author_id, p.full_name, p.username, p.avatar_url, p.badge_type, p.contributor_score,
       EXISTS(SELECT 1 FROM comment_references cr WHERE cr.comment_id = pc.id) as has_citation
         FROM product_comments pc
         LEFT JOIN profiles p ON pc.author_id = p.id
@@ -310,8 +311,7 @@ export default async function ProductDetailPage({
           username: comment.username,
           avatar_url: comment.avatar_url,
           badge_type: comment.badge_type,
-          contributor_score: comment.contributor_score,
-          archive_clerk_id: comment.archive_clerk_id || comment.author_id
+          contributor_score: comment.contributor_score
         } : null
       }));
     } catch (commentsErr) {
@@ -332,6 +332,21 @@ export default async function ProductDetailPage({
       console.log('[Benefits] Fetched benefits:', benefits.length);
     } catch (benefitsErr) {
       console.error("[Benefits] Error fetching benefits:", benefitsErr);
+    }
+
+    // 7. Fetch distinct community benefits for the UI component
+    let communityBenefits: any[] = [];
+    try {
+      const communityResult = await sql`
+        SELECT id, benefit_title, benefit_type, citation_url, upvote_count, downvote_count, submitted_by, created_at
+        FROM product_benefits
+        WHERE product_id::text = ${product.id}
+        AND source_type = 'community'
+        ORDER BY upvote_count DESC, created_at DESC
+      `;
+      communityBenefits = communityResult;
+    } catch (err) {
+      console.error("[Community Benefits] Error fetching:", err);
     }
 
     // Build base URL for canonical and structured data
@@ -391,6 +406,13 @@ export default async function ProductDetailPage({
       } : undefined
     };
 
+    // Calculate average SME score for dual-score display
+    const avgSMEScore = avgSMEScores.reviewCount > 0
+      ? Object.values(avgSMEScores)
+        .filter((v): v is number => typeof v === 'number' && v > 0)
+        .reduce((sum, score, _, arr) => sum + score / arr.length, 0)
+      : null;
+
     return (
       <>
         {/* JSON-LD Structured Data */}
@@ -409,7 +431,7 @@ export default async function ProductDetailPage({
         />
 
         <main className="min-h-screen bg-forest-obsidian text-bone-white">
-          <div className="mx-auto max-w-5xl px-6 py-8">
+          <div className="mx-auto max-w-7xl px-6 py-8">
             {/* Global Search Bar - Persistent */}
             <div className="mb-8">
               <div className="max-w-3xl mx-auto">
@@ -427,36 +449,22 @@ export default async function ProductDetailPage({
               </Link>
             </div>
 
-            {/* DOSSIER HEADER */}
-            <DossierHeader
+            {/* HERO SECTION (2-Column: 40% Gallery + 60% Stats) */}
+            <HeroSection
               title={typedProduct.title}
               brand={typedProduct.brand}
-              consensusScore={typedProduct.community_consensus_score}
-              image={safeImages[0]}
+              images={safeImages}
               productId={typedProduct.id}
               upvoteCount={typedProduct.upvote_count || 0}
               aggregateStarRating={typedProduct.aggregate_star_rating}
               totalStarReviews={typedProduct.total_star_reviews || 0}
+              isSMECertified={typedProduct.is_sme_certified || false}
+              isVerified={typedProduct.is_verified || false}
+              buyUrl={typedProduct.buy_url}
+              discountCode={typedProduct.discount_code}
+              smeTrustScore={avgSMEScore}
+              communitySentiment={typedProduct.community_consensus_score}
             />
-
-            {/* SME CERTIFIED BADGE */}
-            {typedProduct.is_sme_certified && (
-              <div className="mb-8 flex justify-center">
-                <SMECertifiedBadge size="lg" />
-              </div>
-            )}
-
-            {/* BUY IT NOW BUTTON (Only for verified brands) */}
-            {typedProduct.is_verified && typedProduct.buy_url && (
-              <div className="mb-12">
-                <BuyNowButton
-                  productId={typedProduct.id}
-                  productTitle={typedProduct.title}
-                  discountCode={typedProduct.discount_code}
-                  buyUrl={typedProduct.buy_url}
-                />
-              </div>
-            )}
 
             {/* FOUNDER VIDEO (Optional) */}
             {typedProduct.founder_video_url && (
@@ -476,71 +484,43 @@ export default async function ProductDetailPage({
               </div>
             )}
 
-            {/* Image Gallery (Optional/Collapsible or Visual Aid) */}
-            {safeImages.length > 1 && (
-              <div className="mb-12">
-                <ProductImageGallery images={safeImages} />
-              </div>
-            )}
-
             {/* SIGNAL GRID */}
             <SignalGrid signals={signals} />
 
-            {/* INGREDIENTS (Optional) */}
-            {typedProduct.ingredients && (
-              <div className="mb-12 border border-translucent-emerald bg-muted-moss p-8 rounded-lg">
-                <h2 className="mb-4 font-serif text-2xl font-bold text-bone-white border-b border-white/10 pb-4">
-                  Active Ingredients
-                </h2>
-                <p className="text-bone-white/80 leading-relaxed whitespace-pre-wrap">
-                  {typedProduct.ingredients}
-                </p>
-              </div>
-            )}
-
-            {/* AI SUMMARY (Keeping as it's valuable context) */}
-            {typedProduct.ai_summary && (
-              <div className="mb-12 border border-translucent-emerald bg-muted-moss p-8 rounded-lg">
-                <h2 className="mb-4 font-serif text-2xl font-bold text-bone-white border-b border-white/10 pb-4">
-                  Expert Notebook
-                </h2>
-                <div className="prose prose-slate max-w-none 
-                  prose-headings:font-serif prose-headings:text-bone-white prose-headings:font-bold
-                  prose-p:text-bone-white/80 prose-p:leading-relaxed prose-p:mb-4
-                  prose-strong:text-bone-white prose-strong:font-semibold
-                  prose-ul:text-bone-white/80 prose-ul:leading-relaxed
-                  prose-li:text-bone-white/80 prose-li:my-2
-                  prose-a:text-heart-green hover:prose-a:text-emerald-300 transition-colors
-                  prose-code:text-emerald-200 prose-code:bg-emerald-950/30 prose-code:px-1 prose-code:rounded
-                  prose-blockquote:border-l-emerald-500/50 prose-blockquote:text-white/60">
-                  <ReactMarkdown>{typedProduct.ai_summary}</ReactMarkdown>
-                </div>
-              </div>
-            )}
-
-            {/* SME EXPERT AUDIT SUBMISSION (Only for SMEs) */}
-            <SubmitExpertAudit productId={typedProduct.id} isSME={isSME} />
-
-            {/* DUAL-TRACK RADAR CHART (SME vs Community) */}
+            {/* 9-PILLAR RADAR CHART (Positioned prominently) */}
             <DualTrackRadar
               smeScores={avgSMEScores}
               smeReviewCount={avgSMEScores.reviewCount}
             />
 
-            {/* SME AUDITS LIST */}
-            <SMEAuditsList reviews={smeReviews} />
+            {/* TABBED DOSSIER (4 Tabs: Expert Audits, Evidence & Insights, Community Experience, Specs) */}
+            <TabbedDossier
+              productId={typedProduct.id}
+              productSlug={typedProduct.slug}
+              isSME={isSME}
+              smeReviews={smeReviews}
+              comments={serializedComments}
+              ingredients={typedProduct.ingredients}
+              aiSummary={typedProduct.ai_summary}
+              isVerified={typedProduct.is_verified || false}
+              officialBenefits={benefits.filter(b => b.source_type === 'official')}
+              communityBenefits={communityBenefits}
+            />
 
             {/* THE VAULT */}
             <TheVault urls={typedProduct.certification_vault_urls} />
 
-            {/* STREAM SPLITTER (COMMENTS) */}
-            <StreamSplitter
-              productId={typedProduct.id}
-              productSlug={typedProduct.slug}
-              comments={serializedComments}
-            />
-
           </div>
+
+          {/* Sticky CTA Bar for Mobile */}
+          {typedProduct.is_verified && typedProduct.buy_url && (
+            <StickyCTABar
+              buyUrl={typedProduct.buy_url}
+              productTitle={typedProduct.title}
+              discountCode={typedProduct.discount_code}
+              isVisible={true}
+            />
+          )}
         </main>
       </>
     );

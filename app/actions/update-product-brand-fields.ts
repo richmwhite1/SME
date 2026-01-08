@@ -25,8 +25,8 @@ export async function updateProductBrandFields(params: UpdateProductBrandFieldsP
             SELECT role FROM profiles WHERE id = ${userId}
         `;
 
-        if (userProfile.length === 0 || userProfile[0].role !== 'BRAND_REP') {
-            return { success: false, error: "Unauthorized - BRAND_REP role required" };
+        if (userProfile.length === 0 || userProfile[0].role !== 'business_user') {
+            return { success: false, error: "Unauthorized - business user role required" };
         }
 
         // Verify user owns the product

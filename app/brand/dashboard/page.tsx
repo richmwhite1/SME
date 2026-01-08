@@ -1,17 +1,16 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { neon } from "@neondatabase/serverless";
+import { getDb } from "@/lib/db";
 import { Package, Award, TrendingUp } from "lucide-react";
 import SMECertificationModal from "@/components/brand/SMECertificationModal";
 import SubscriptionStatusBanner from "@/components/brand/SubscriptionStatusBanner";
 import BillingTransparencyCard from "@/components/brand/BillingTransparencyCard";
 import BrandDashboardClient from "@/components/brand/BrandDashboardClient";
 
-const sql = neon(process.env.DATABASE_URL!);
-
 export const dynamic = "force-dynamic";
 
 export default async function BrandDashboard() {
+    const sql = getDb();
     const { userId } = await auth();
 
     if (!userId) {
@@ -23,7 +22,7 @@ export default async function BrandDashboard() {
     SELECT role, full_name, email FROM profiles WHERE id = ${userId}
   `;
 
-    if (userProfile.length === 0 || userProfile[0].role !== 'BRAND_REP') {
+    if (userProfile.length === 0 || userProfile[0].role !== 'business_user') {
         redirect("/");
     }
 

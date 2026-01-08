@@ -38,33 +38,38 @@ export default async function DiscussionsPage({
   let allDiscussions: any[] = [];
 
   try {
-    // Base fields selection with subqueries for metrics
+    // Base fields selection with subqueries for metrics and profile data
     const selectFields = `
-      id, title, content, tags, slug, created_at, upvote_count, author_id,
-      (SELECT COUNT(*) FROM discussion_comments WHERE discussion_id = discussions.id)::int as message_count,
-      (SELECT MAX(created_at) FROM discussion_comments WHERE discussion_id = discussions.id) as last_activity_at,
+      d.id, d.title, d.content, d.tags, d.slug, d.created_at, d.upvote_count, d.author_id,
+      (SELECT COUNT(*) FROM discussion_comments WHERE discussion_id = d.id)::int as message_count,
+      (SELECT MAX(created_at) FROM discussion_comments WHERE discussion_id = d.id) as last_activity_at,
       (
         SELECT json_agg(emoji) 
         FROM (
           SELECT emoji 
           FROM comment_reactions cr 
           JOIN discussion_comments dc ON cr.comment_id = dc.id 
-          WHERE dc.discussion_id = discussions.id 
+          WHERE dc.discussion_id = d.id 
           GROUP BY emoji 
           ORDER BY COUNT(*) DESC 
           LIMIT 3
         ) e
-      ) as top_emojis
+      ) as top_emojis,
+      p.id as profile_id,
+      p.full_name,
+      p.username,
+      p.avatar_url,
+      p.badge_type
     `;
 
     // Determine sort order
-    let orderByClause = "ORDER BY created_at DESC";
+    let orderByClause = "ORDER BY d.created_at DESC";
     if (sort === "active") {
-      orderByClause = "ORDER BY message_count DESC NULLS LAST, created_at DESC";
+      orderByClause = "ORDER BY message_count DESC NULLS LAST, d.created_at DESC";
     } else if (sort === "upvotes") {
-      orderByClause = "ORDER BY upvote_count DESC NULLS LAST, created_at DESC";
+      orderByClause = "ORDER BY d.upvote_count DESC NULLS LAST, d.created_at DESC";
     } else if (sort === "popularity") {
-      orderByClause = "ORDER BY (upvote_count + message_count) DESC NULLS LAST, created_at DESC";
+      orderByClause = "ORDER BY (d.upvote_count + message_count) DESC NULLS LAST, d.created_at DESC";
     }
 
     if (isTrustedOnly) {
@@ -78,22 +83,68 @@ export default async function DiscussionsPage({
       if (authorIds.length > 0) {
         const placeholders = authorIds.map((_, i) => `$${i + 1}`).join(',');
         // For dynamic ORDER BY we need sql.unsafe
-        allDiscussions = await sql.unsafe(`
+        const rawResults = await sql.unsafe(`
           SELECT ${selectFields}
-          FROM discussions
-          WHERE is_flagged = false AND author_id IN (${placeholders})
+          FROM discussions d
+          LEFT JOIN profiles p ON d.author_id = p.id
+          WHERE d.is_flagged = false AND d.author_id IN (${placeholders})
           ${orderByClause}
           LIMIT 100
         `, authorIds);
+
+        // Transform results to nest profile data
+        allDiscussions = rawResults.map((row: any) => ({
+          id: row.id,
+          title: row.title,
+          content: row.content,
+          tags: row.tags,
+          slug: row.slug,
+          created_at: row.created_at,
+          upvote_count: row.upvote_count,
+          author_id: row.author_id,
+          message_count: row.message_count,
+          last_activity_at: row.last_activity_at,
+          top_emojis: row.top_emojis,
+          profiles: row.profile_id ? {
+            id: row.profile_id,
+            full_name: row.full_name,
+            username: row.username,
+            avatar_url: row.avatar_url,
+            badge_type: row.badge_type
+          } : null
+        }));
       }
     } else {
-      allDiscussions = await sql.unsafe(`
+      const rawResults = await sql.unsafe(`
         SELECT ${selectFields}
-        FROM discussions
-        WHERE is_flagged = false
+        FROM discussions d
+        LEFT JOIN profiles p ON d.author_id = p.id
+        WHERE d.is_flagged = false
         ${orderByClause}
         LIMIT 100
       `);
+
+      // Transform results to nest profile data
+      allDiscussions = rawResults.map((row: any) => ({
+        id: row.id,
+        title: row.title,
+        content: row.content,
+        tags: row.tags,
+        slug: row.slug,
+        created_at: row.created_at,
+        upvote_count: row.upvote_count,
+        author_id: row.author_id,
+        message_count: row.message_count,
+        last_activity_at: row.last_activity_at,
+        top_emojis: row.top_emojis,
+        profiles: row.profile_id ? {
+          id: row.profile_id,
+          full_name: row.full_name,
+          username: row.username,
+          avatar_url: row.avatar_url,
+          badge_type: row.badge_type
+        } : null
+      }));
     }
   } catch (error) {
     console.error("Error fetching discussions:", error);
@@ -146,9 +197,12 @@ export default async function DiscussionsPage({
                 </div>
                 {user && (
                   <Link href="/discussions/new">
-                    <Button variant="primary" className="flex items-center gap-2">
+                    <Button
+                      variant="primary"
+                      className="flex items-center gap-2 bg-heart-green border-heart-green hover:bg-heart-green/90 shadow-lg shadow-heart-green/20 hover:shadow-heart-green/40 transition-all duration-300"
+                    >
                       <Plus size={14} />
-                      Start Discussion
+                      Start a Discussion
                     </Button>
                   </Link>
                 )}
@@ -181,7 +235,12 @@ export default async function DiscussionsPage({
                 </p>
                 {user && (
                   <Link href="/discussions/new">
-                    <Button variant="primary">Start Discussion</Button>
+                    <Button
+                      variant="primary"
+                      className="bg-heart-green border-heart-green hover:bg-heart-green/90 shadow-lg shadow-heart-green/20 hover:shadow-heart-green/40 transition-all duration-300"
+                    >
+                      Start a Discussion
+                    </Button>
                   </Link>
                 )}
               </div>

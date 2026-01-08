@@ -26,7 +26,6 @@ const SubmissionSchema = z.object({
         value: z.string().min(1)
     })).default([]),
     sme_access_note: z.string().optional().or(z.literal("")),
-    // technical_docs_url is already defined in Step 2
 
     // Step 4: Signals
     sme_signals: z.record(z.string(), z.any()).optional(),

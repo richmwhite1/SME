@@ -25,7 +25,7 @@ export async function submitSMECertification(params: {
       SELECT role FROM profiles WHERE id = ${userId}
     `;
 
-        if (userCheck.length === 0 || userCheck[0].role !== 'BRAND_REP') {
+        if (userCheck.length === 0 || userCheck[0].role !== 'business_user') {
             return { success: false, error: "Only verified brand representatives can apply for SME certification" };
         }
 

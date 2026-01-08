@@ -240,7 +240,7 @@ export default async function ProductsPage({
                   <TrendingUp className="w-5 h-5 text-sme-gold" />
                   <h2 className="font-serif text-2xl text-bone-white">Trending Now</h2>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
                   {trendingProducts.map((product) => (
                     <Link key={product.id} href={`/products/${product.slug}`} className="group">
                       <div className="h-full p-5 rounded-xl bg-white/5 border border-translucent-emerald hover:border-sme-gold/30 hover:bg-white/10 transition-all duration-300 relative overflow-hidden">
@@ -291,7 +291,7 @@ export default async function ProductsPage({
             </div>
 
             {products.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {products.map((product) => (
                   <Link key={product.id} href={`/products/${product.slug}`} className="group">
                     <div className="h-full flex flex-col p-6 rounded-xl bg-white/5 border border-translucent-emerald hover:border-sme-gold/30 hover:bg-white/10 transition-all duration-300">

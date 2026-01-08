@@ -37,3 +37,9 @@ next-env.d.ts
 
 
 
+
+# Generated player scripts
+*-player-script.js
+
+# Backups
+.env.local.backup

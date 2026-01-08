@@ -9,6 +9,7 @@ import {
   toggleUserBan,
   toggleSME,
   resetReputation,
+  updateUserRole,
 } from "@/app/actions/admin-actions";
 import { Shield, X, Plus, Ban, UserCheck, Search, Award, RefreshCcw } from "lucide-react";
 import Button from "@/components/ui/Button";
@@ -30,6 +31,7 @@ interface User {
   created_at: string;
   reputation_score: number;
   is_sme: boolean;
+  user_role: 'standard' | 'sme' | 'sme_admin' | 'admin' | 'business_user';
 }
 
 interface SafetyUsersTabProps {
@@ -50,6 +52,7 @@ export default function SafetyUsersTab({ keywords, users }: SafetyUsersTabProps)
   const [banningUser, setBanningUser] = useState<Record<string, boolean>>({});
   const [togglingSME, setTogglingSME] = useState<Record<string, boolean>>({});
   const [resettingRep, setResettingRep] = useState<Record<string, boolean>>({});
+  const [updatingRole, setUpdatingRole] = useState<Record<string, boolean>>({});
   const [searchTerm, setSearchTerm] = useState("");
 
   const handleAddKeyword = async () => {
@@ -127,6 +130,41 @@ export default function SafetyUsersTab({ keywords, users }: SafetyUsersTabProps)
     } finally {
       setResettingRep((prev) => ({ ...prev, [userId]: false }));
     }
+  };
+
+  const handleRoleChange = async (userId: string, newRole: 'standard' | 'sme' | 'sme_admin' | 'admin' | 'business_user') => {
+    setUpdatingRole((prev) => ({ ...prev, [userId]: true }));
+    try {
+      await updateUserRole(userId, newRole);
+      showToast(`User role updated to ${getRoleLabel(newRole)}`, "success");
+      router.refresh();
+    } catch (error: any) {
+      showToast(error.message || "Failed to update user role", "error");
+    } finally {
+      setUpdatingRole((prev) => ({ ...prev, [userId]: false }));
+    }
+  };
+
+  const getRoleLabel = (role: string) => {
+    const labels: Record<string, string> = {
+      standard: 'Standard',
+      sme: 'SME',
+      sme_admin: 'SME Admin',
+      admin: 'Admin',
+      business_user: 'Business User',
+    };
+    return labels[role] || role;
+  };
+
+  const getRoleBadgeColor = (role: string) => {
+    const colors: Record<string, string> = {
+      admin: 'border-purple-400/50 bg-purple-400/10 text-purple-400',
+      sme_admin: 'border-blue-400/50 bg-blue-400/10 text-blue-400',
+      sme: 'border-emerald-400/50 bg-emerald-400/10 text-emerald-400',
+      business_user: 'border-amber-400/50 bg-amber-400/10 text-amber-400',
+      standard: 'border-bone-white/20 bg-bone-white/5 text-bone-white/70',
+    };
+    return colors[role] || colors.standard;
   };
 
   const filteredUsers = users.filter((user) => {
@@ -331,6 +369,9 @@ export default function SafetyUsersTab({ keywords, users }: SafetyUsersTabProps)
                             <Award className="h-3 w-3" /> SME
                           </span>
                         )}
+                        <span className={`border px-2 py-0.5 text-[10px] uppercase tracking-wider ${getRoleBadgeColor(user.user_role || 'standard')}`}>
+                          {getRoleLabel(user.user_role || 'standard')}
+                        </span>
                         {user.is_banned ? (
                           <span className="border border-red-500/50 bg-red-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-red-400">
                             BANNED
@@ -365,22 +406,25 @@ export default function SafetyUsersTab({ keywords, users }: SafetyUsersTabProps)
                         </a>
                       )}
 
-                      <Button
-                        onClick={() => handleToggleSME(user.id, user.is_sme)}
-                        disabled={togglingSME[user.id] || user.is_banned}
-                        className={`flex items-center gap-2 text-xs font-mono px-3 py-1.5 transition-colors disabled:opacity-50 border border-bone-white/20 bg-bone-white/5 text-bone-white/70 hover:bg-bone-white/10`}
-                        title={user.is_sme ? "Revoke SME Status" : "Grant SME Status"}
-                      >
-                        {togglingSME[user.id] ? (
-                          <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                        ) : (
-                          <Award className={`h-3 w-3 ${user.is_sme ? "text-emerald-400" : "text-bone-white/30"}`} />
-                        )}
-                      </Button>
+                      <div className="relative">
+                        <select
+                          value={user.user_role || 'standard'}
+                          onChange={(e) => handleRoleChange(user.id, e.target.value as any)}
+                          disabled={updatingRole[user.id] || user.is_banned}
+                          className="flex items-center gap-2 text-xs font-mono px-3 py-1.5 transition-colors disabled:opacity-50 border border-bone-white/20 bg-forest-obsidian text-bone-white hover:bg-bone-white/10 cursor-pointer"
+                          title="Change User Role"
+                        >
+                          <option value="standard">Standard</option>
+                          <option value="sme">SME</option>
+                          <option value="sme_admin">SME Admin</option>
+                          <option value="business_user">Business User</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                      </div>
 
                       <Button
                         onClick={() => handleResetReputation(user.id)}
-                        disabled={resettingRep[user.id] || user.reputation_score === 0}
+                        disabled={resettingRep[user.id] || user.reputation_score === 0 || updatingRole[user.id]}
                         className="flex items-center gap-2 text-xs font-mono px-3 py-1.5 transition-colors disabled:opacity-50 border border-bone-white/20 bg-bone-white/5 text-bone-white/70 hover:bg-bone-white/10"
                         title="Reset Reputation"
                       >

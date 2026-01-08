@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { createDiscussion } from "@/app/actions/discussion-actions";
+import { analyzeResource } from "@/app/actions/analyze-actions";
 import Button from "@/components/ui/Button";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Sparkles } from "lucide-react";
 import Link from "next/link";
 import Tooltip from "@/components/ui/Tooltip";
 import TaggingInput from "@/components/topics/TaggingInput";
@@ -20,6 +21,7 @@ export default function NewDiscussionPage() {
   const [referenceUrl, setReferenceUrl] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,6 +41,26 @@ export default function NewDiscussionPage() {
       </main>
     );
   }
+
+  const handleAnalyze = async () => {
+    if (!referenceUrl) return;
+    setAnalyzing(true);
+    try {
+      const result = await analyzeResource(referenceUrl);
+      if (result.success && result.content) {
+        // Append analysis to content
+        const newContent = content ? `${content}\n\n${result.content}` : result.content;
+        setContent(newContent);
+        showToast("Video protocol extracted and added to content!", "success");
+      } else {
+        showToast(result.error || "Analysis failed", "error");
+      }
+    } catch (err) {
+      showToast("Failed to analyze link", "error");
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,6 +89,8 @@ export default function NewDiscussionPage() {
       setLoading(false);
     }
   };
+
+  /* const isYoutubeUrl = referenceUrl.includes("youtube.com") || referenceUrl.includes("youtu.be"); */
 
   return (
     <main className="min-h-screen bg-forest-obsidian px-6 py-12">
@@ -131,22 +155,39 @@ export default function NewDiscussionPage() {
                 className="mb-2 flex items-center gap-2 text-sm font-medium text-bone-white font-mono"
               >
                 Reference URL (optional)
-                <Tooltip content="Only links from Trusted Voices appear in SME Citations.">
+                <Tooltip content="Paste a YouTube link to extract protocols automatically.">
                   <span className="cursor-help text-bone-white/50 hover:text-bone-white/70">
                     ℹ️
                   </span>
                 </Tooltip>
               </label>
-              <input
-                type="url"
-                id="referenceUrl"
-                value={referenceUrl}
-                onChange={(e) => setReferenceUrl(e.target.value)}
-                placeholder="https://example.com/source"
-                className="w-full border border-translucent-emerald bg-forest-obsidian px-4 py-2 text-bone-white placeholder-bone-white/50 focus:border-heart-green focus:outline-none font-mono"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  id="referenceUrl"
+                  value={referenceUrl}
+                  onChange={(e) => setReferenceUrl(e.target.value)}
+                  placeholder="https://(youtube.com, pdf, article)..."
+                  className="flex-1 border border-translucent-emerald bg-forest-obsidian px-4 py-2 text-bone-white placeholder-bone-white/50 focus:border-heart-green focus:outline-none font-mono"
+                />
+                {referenceUrl.length > 5 && (
+                  <Button
+                    type="button"
+                    onClick={handleAnalyze}
+                    disabled={analyzing || !referenceUrl}
+                    className="flex-shrink-0 bg-sme-gold/10 text-sme-gold border border-sme-gold/50 hover:bg-sme-gold/20 font-mono text-xs flex items-center gap-2 px-3"
+                  >
+                    {analyzing ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Sparkles size={14} />
+                    )}
+                    {analyzing ? "Analyzing..." : "Analyze Link"}
+                  </Button>
+                )}
+              </div>
               <p className="mt-1 text-xs text-bone-white/50 font-mono">
-                Add a source link to support your discussion
+                Paste any health link (Video, Study, Article) to extract a structured summary.
               </p>
             </div>
 
@@ -190,4 +231,3 @@ export default function NewDiscussionPage() {
     </main>
   );
 }
-

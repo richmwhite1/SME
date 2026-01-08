@@ -1,9 +1,7 @@
 "use server";
 
-import { neon } from "@neondatabase/serverless";
+import { getDb } from "@/lib/db";
 import { getStripe } from "@/lib/stripe-config";
-
-const sql = neon(process.env.DATABASE_URL!);
 
 /**
  * Track product view and report to Stripe for metered billing
@@ -11,6 +9,8 @@ const sql = neon(process.env.DATABASE_URL!);
  */
 export async function trackProductView(productId: string) {
     try {
+        const sql = getDb();
+
         // Get product details including brand owner
         const productResult = await sql`
       SELECT 
@@ -64,50 +64,8 @@ export async function trackProductView(productId: string) {
         updated_at = NOW()
     `;
 
-        // Report usage to Stripe (if metered billing is configured)
-        try {
-            // Get brand's Stripe subscription
-            const brandVerification = await sql`
-        SELECT 
-          bv.stripe_subscription_id,
-          bv.stripe_customer_id
-        FROM brand_verifications bv
-        WHERE bv.user_id = ${product.brand_owner_id}
-        AND bv.status = 'approved'
-        AND bv.subscription_status = 'active'
-        LIMIT 1
-      `;
-
-            if (brandVerification.length > 0 && brandVerification[0].stripe_subscription_id) {
-                const { stripe_subscription_id } = brandVerification[0];
-
-                // Get subscription to find the metered price item
-                const stripe = getStripe();
-                const subscription = await stripe.subscriptions.retrieve(stripe_subscription_id);
-
-                // Find the metered billing subscription item
-                const meteredItem = subscription.items.data.find(
-                    (item) => item.price.id === process.env.STRIPE_METERED_PRICE_ID
-                );
-
-                if (meteredItem) {
-                    // Report usage to Stripe
-                    await (stripe.subscriptionItems as any).createUsageRecord(
-                        meteredItem.id,
-                        {
-                            quantity: 1,
-                            action: "increment",
-                            timestamp: Math.floor(Date.now() / 1000),
-                        }
-                    );
-
-                    console.log(`✅ Reported 1 view to Stripe for product ${product.title}`);
-                }
-            }
-        } catch (stripeError) {
-            // Log error but don't fail the request
-            console.error("⚠️ Failed to report usage to Stripe:", stripeError);
-        }
+        // Note: Stripe reporting is now handled by a daily cron job
+        // app/api/cron/sync-usage/route.ts
 
         return {
             success: true,
@@ -128,6 +86,8 @@ export async function trackProductView(productId: string) {
  */
 export async function getBrandUsageStats(userId: string) {
     try {
+        const sql = getDb();
+
         // Get current month's usage
         const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
 

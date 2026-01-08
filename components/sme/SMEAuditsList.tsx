@@ -128,10 +128,13 @@ export default function SMEAuditsList({ reviews }: SMEAuditsListProps) {
                             </div>
                         </div>
 
-                        {/* Pillar Scores Grid */}
+                        {/* Pillar Scores Grid - Only show filled pillars */}
                         <div className="grid grid-cols-3 gap-3 mb-6">
                             {PILLARS.map(pillar => {
                                 const score = review[pillar.key as keyof typeof review] as number | null;
+                                // Hide N/A pillars completely
+                                if (score === null || score === 0) return null;
+
                                 return (
                                     <div
                                         key={pillar.key}
@@ -143,7 +146,7 @@ export default function SMEAuditsList({ reviews }: SMEAuditsListProps) {
                                             </span>
                                         </div>
                                         <div className={`text-2xl font-bold font-mono ${getScoreColor(score)}`}>
-                                            {score === null || score === 0 ? 'N/A' : score}
+                                            {score}
                                         </div>
                                     </div>
                                 );

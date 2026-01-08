@@ -121,6 +121,11 @@ export async function getProductForAudit(productId: string) {
       throw new Error('Product not found');
     }
 
+    // Fetch benefits
+    const benefits = await sql`
+      SELECT * FROM product_benefits WHERE product_id = ${productId}
+    `;
+
     const productData = product[0];
 
     // Parse radar data from sme_signals if available
@@ -151,7 +156,11 @@ export async function getProductForAudit(productId: string) {
     return {
       ...productData,
       radar_data: radarData,
-      sme_signals: signals, // Ensure we return the parsed signals object
+      sme_signals: signals,
+      benefits: benefits, // Attach benefits
+      active_ingredients: productData.active_ingredients || [],
+      excipients: productData.excipients || [],
+      tech_docs: productData.tech_docs || [], // Ensure we use the new column
     };
   } catch (error) {
     console.error('Error fetching product for review:', error);
@@ -165,19 +174,30 @@ export async function getProductForAudit(productId: string) {
 export async function submitProductAudit(
   productId: string,
   data: {
+    // Core product fields
+    name?: string;
+    title?: string;
+    brand?: string;
+    category?: string;
+    third_party_lab_link?: string;
+    // Existing fields
     admin_status: 'approved' | 'rejected' | 'pending_review';
-    certification_tier: 'None' | 'Bronze' | 'Silver' | 'Gold';
+    certification_tier: 'None' | 'Unverified' | 'Verified' | 'SME Certified'; // Updated types
     admin_notes?: string;
     product_photos: string[];
     video_url?: string;
     company_blurb?: string;
     sme_signals: any;
     // New Audit Fields
-    tech_docs?: any;
+    tech_docs?: any[];
     target_audience?: string;
     core_value_proposition?: string;
     technical_specs?: any;
     sme_access_note?: string;
+    // Parity Fields
+    active_ingredients?: any[];
+    excipients?: string[];
+    benefits?: any[];
   }
 ) {
   const adminStatus = await isAdmin();
@@ -195,6 +215,11 @@ export async function submitProductAudit(
       await tx`
         UPDATE products
         SET 
+          name = ${data.name || null},
+          title = ${data.title || data.name || null},
+          brand = ${data.brand || null},
+          category = ${data.category || null},
+          third_party_lab_link = ${data.third_party_lab_link || null},
           admin_status = ${data.admin_status},
           certification_tier = ${data.certification_tier},
           admin_notes = ${data.admin_notes || null},
@@ -202,15 +227,47 @@ export async function submitProductAudit(
           youtube_link = ${data.video_url || null},
           company_blurb = ${data.company_blurb || null},
           sme_signals = ${JSON.stringify(data.sme_signals)},
-          technical_docs_url = ${data.tech_docs?.url || null},
+          tech_docs = ${JSON.stringify(data.tech_docs || [])}, -- Use new column
           target_audience = ${data.target_audience || null},
           core_value_proposition = ${data.core_value_proposition || null},
           technical_specs = ${data.technical_specs ? JSON.stringify(data.technical_specs) : null},
+          active_ingredients = ${JSON.stringify(data.active_ingredients || [])},
+          excipients = ${JSON.stringify(data.excipients || [])},
           sme_access_note = ${data.sme_access_note || null},
-          is_sme_certified = ${data.admin_status === 'approved' && data.certification_tier !== 'None'},
+          is_sme_certified = ${data.admin_status === 'approved' && data.certification_tier === 'SME Certified'},
           updated_at = NOW()
         WHERE id = ${productId}
       `;
+
+      // Handle Benefits (Delete all and re-insert)
+      await tx`DELETE FROM product_benefits WHERE product_id = ${productId}`;
+
+      if (data.benefits && data.benefits.length > 0) {
+        for (const benefit of data.benefits) {
+          // Handle benefits that might just be titles or full objects? 
+          // In wizard it's { title, type, citation? }. 
+          // We'll assume complete objects.
+          await tx`
+                INSERT INTO product_benefits (
+                    product_id,
+                    benefit_title,
+                    benefit_type,
+                    citation_url,
+                    source_type,
+                    submitted_by,
+                    is_verified
+                ) VALUES (
+                    ${productId}::uuid,
+                    ${benefit.benefit_title || benefit.title},
+                    ${benefit.benefit_type || benefit.type || 'functional'},
+                    ${benefit.citation_url || benefit.citation || null},
+                    'admin_audit',
+                    ${adminId},
+                    ${benefit.is_verified || true}
+                )
+             `;
+        }
+      }
 
       // Log the admin action
       await tx`
@@ -224,10 +281,8 @@ export async function submitProductAudit(
         certification_tier: data.certification_tier,
         changes: {
           photos_count: data.product_photos.length,
-          video_updated: !!data.video_url,
-          blurb_updated: !!data.company_blurb,
-          signals_updated: true,
-          audit_fields_updated: true
+          audit_fields_updated: true,
+          benefits_updated: true
         }
       })}
         )

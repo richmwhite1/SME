@@ -44,7 +44,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${playfair.variable} ${geistMono.variable} ${inter.className}`}>
+    <html lang="en" className={`${inter.variable} ${playfair.variable} ${geistMono.variable} ${inter.className}`} suppressHydrationWarning>
       <body className="min-h-screen bg-forest-obsidian flex flex-col overflow-x-hidden">
         <ClerkProvider
           appearance={{

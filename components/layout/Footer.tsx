@@ -57,7 +57,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="/onboard"
+                  href="/products/submit"
                   className="text-sm leading-6 text-emerald-500 hover:text-emerald-400 font-semibold"
                 >
                   List Your Product

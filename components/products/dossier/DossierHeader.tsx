@@ -3,6 +3,8 @@ import { ArrowLeft } from "lucide-react";
 import Image from "next/image";
 import VoteControl from "@/components/ui/VoteControl";
 import StarRatingDisplay from "@/components/products/StarRatingDisplay";
+import Tooltip from "@/components/ui/Tooltip";
+import { TERMINOLOGY } from "@/lib/terminology";
 
 interface DossierHeaderProps {
     title: string;
@@ -92,14 +94,21 @@ export default function DossierHeader({
                         <div className="text-[10px] font-mono uppercase tracking-widest text-white/50 mb-1">
                             Community Consensus
                         </div>
-                        <div className="text-xs text-white/40">
+                        <div className="text-xs text-white/40 flex items-center gap-1">
                             Trust Score
+                            <Tooltip content="Community-driven score based on verified reviews and expert audits" />
                         </div>
                     </div>
-                    <div className={`flex items-center justify-center w-16 h-16 rounded-full border-2 ${scoreColorClass} bg-black/20 backdrop-blur-sm`}>
-                        <span className={`font-mono text-2xl font-bold ${scoreColorClass.split(' ')[0]}`}>
-                            {consensusScore}
-                        </span>
+                    <div className={`flex items-center justify-center w-16 h-16 rounded-full border-2 ${consensusScore === 0 ? 'border-white/20 text-white/40' : scoreColorClass} bg-black/20 backdrop-blur-sm`}>
+                        {consensusScore === 0 ? (
+                            <span className="font-mono text-[9px] font-semibold text-white/40 text-center px-1 leading-tight">
+                                Pending<br />SME<br />Audit
+                            </span>
+                        ) : (
+                            <span className={`font-mono text-2xl font-bold ${scoreColorClass.split(' ')[0]}`}>
+                                {consensusScore}
+                            </span>
+                        )}
                     </div>
                 </div>
             </div>

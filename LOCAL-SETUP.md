@@ -23,8 +23,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGc...
 # Supabase Service Role (Optional - needed for image uploads)
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...
 
-# OpenAI API (Optional - needed for AI moderation/vibe check)
-OPENAI_API_KEY=sk-...
+# Google AI API Key (Required for AI Features)
+GOOGLE_AI_API_KEY=AIza...
 ```
 
 ### 3. Start Development Server
@@ -56,10 +56,10 @@ Navigate to [http://localhost:3000](http://localhost:3000)
    - **anon/public key** → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - **service_role key** → `SUPABASE_SERVICE_ROLE_KEY` (keep secret!)
 
-### OpenAI Key (Optional)
-1. Go to [https://platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+### Google AI Key
+1. Go to [https://aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
 2. Create a new API key
-3. Copy to `OPENAI_API_KEY`
+3. Copy to `GOOGLE_AI_API_KEY`
 
 ---
 

@@ -131,7 +131,7 @@ export default function SubmitExpertAudit({ productId, isSME }: SubmitExpertAudi
     }
 
     return (
-        <div className="mb-12">
+        <div id="expert-audit-form" className="mb-12">
             {!isExpanded ? (
                 <button
                     onClick={() => setIsExpanded(true)}

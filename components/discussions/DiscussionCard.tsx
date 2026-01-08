@@ -93,13 +93,10 @@ export default function DiscussionCard({ discussion }: DiscussionCardProps) {
                 }}
                 className="hover:text-bone-white transition-colors cursor-pointer"
               >
-                by {discussion.profiles.full_name || "Anonymous"}
-                {discussion.profiles.username && (
-                  <span className="ml-1">@{discussion.profiles.username}</span>
-                )}
+                by {discussion.profiles.username ? `@${discussion.profiles.username}` : (discussion.profiles.full_name || "Anonymous")}
               </span>
             ) : (
-              <span>by Anonymous</span>
+              <span className="text-bone-white/40 italic">by Anonymous</span>
             )}
             <span>
               {new Date(discussion.created_at).toLocaleDateString()}

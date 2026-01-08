@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { MessageSquare, Star } from "lucide-react";
 import CompareButton from "@/components/products/CompareButton";
+import Tooltip from "@/components/ui/Tooltip";
+import { TERMINOLOGY } from "@/lib/terminology";
 
 interface ProductListCardProps {
     title: string;
@@ -83,13 +85,13 @@ export default function ProductListCard({
         <div
             onClick={handleCardClick}
             className={`group border bg-muted-moss overflow-hidden relative transition-all duration-300 cursor-pointer select-none active:scale-95 ${hasHighVelocity
-                    ? "border-forest-obsidian hover:border-heart-green hover:shadow-[0_0_16px_rgba(16,185,129,0.3),0_0_32px_rgba(16,185,129,0.15)]"
-                    : "border-translucent-emerald hover:border-heart-green"
+                ? "border-forest-obsidian hover:border-heart-green hover:shadow-[0_0_16px_rgba(16,185,129,0.3),0_0_32px_rgba(16,185,129,0.15)]"
+                : "border-translucent-emerald hover:border-heart-green"
                 }`}
             style={{ userSelect: 'none' }}
         >
             {/* Image Thumbnail - Denser, Clinical */}
-            <div className="relative h-40 w-full overflow-hidden bg-forest-obsidian">
+            <div className="relative h-32 sm:h-40 w-full overflow-hidden bg-forest-obsidian">
                 {fullImageUrl ? (
                     <Image
                         src={fullImageUrl}
@@ -101,11 +103,14 @@ export default function ProductListCard({
                     />
                 ) : (
                     <div className="h-full w-full bg-forest-obsidian flex items-center justify-center border border-translucent-emerald">
-                        <div className="text-center p-4">
-                            <div className="bg-bone-white/10 border border-bone-white/20 p-3 mb-2">
-                                <p className="text-[10px] font-mono uppercase tracking-wider text-bone-white/70">
-                                    Specimen Under Audit
-                                </p>
+                        <div className="text-center p-2 sm:p-4">
+                            <div className="bg-bone-white/10 border border-bone-white/20 p-2 sm:p-3 mb-2">
+                                <div className="flex items-center justify-center gap-1">
+                                    <p className="text-[10px] font-mono uppercase tracking-wider text-bone-white/70">
+                                        Specimen Under Audit
+                                    </p>
+                                    <Tooltip content={TERMINOLOGY.SPECIMEN_UNDER_AUDIT} />
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -118,11 +123,15 @@ export default function ProductListCard({
                         </span>
                     </div>
                 )}
+                {/* Compare Button - Desktop Only (Top Left) */}
+                <div className="hidden sm:block absolute top-2 left-2 z-10" onClick={(e) => e.stopPropagation()}>
+                    <CompareButton productId={productId} productTitle={title} />
+                </div>
             </div>
 
-            {/* Content - Denser, Technical */}
-            <div className="p-4">
-                <h3 className="mb-1 font-serif text-lg font-semibold text-bone-white line-clamp-2">
+            {/* Content - Mobile Optimized */}
+            <div className="p-3 sm:p-4">
+                <h3 className="mb-1 font-serif text-base sm:text-lg font-semibold text-bone-white line-clamp-2">
                     {title}
                 </h3>
                 {/* Activity Score - Technical Metadata */}
@@ -135,12 +144,15 @@ export default function ProductListCard({
 
                 {/* Signal Bar Footer - High-Signal Indicators */}
                 <div className="pt-3 border-t border-translucent-emerald">
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center justify-between gap-2 sm:gap-4">
                         {/* Pillar Score - Dot-Matrix Style */}
                         <div className="flex items-center gap-1.5">
-                            <span className="text-[9px] font-mono uppercase tracking-wider text-bone-white" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
-                                Pillar:
-                            </span>
+                            <div className="flex items-center gap-0.5">
+                                <span className="text-[10px] sm:text-[9px] font-mono uppercase tracking-wider text-bone-white" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+                                    Pillar:
+                                </span>
+                                <Tooltip content={TERMINOLOGY.PILLAR_SCORE} />
+                            </div>
                             <div className="flex items-center gap-0.5">
                                 {[sourceTransparency, purityTested, potencyVerified, excipientAudit, operationalLegitimacy].map((verified, index) => (
                                     <div
@@ -150,7 +162,7 @@ export default function ProductListCard({
                                     />
                                 ))}
                             </div>
-                            <span className="text-[9px] font-mono text-bone-white" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+                            <span className="text-[10px] sm:text-[9px] font-mono text-bone-white" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
                                 {verifiedPillars}/5
                             </span>
                         </div>
@@ -158,7 +170,7 @@ export default function ProductListCard({
                         {/* Community Heat - Message Icon + Count */}
                         <div className="flex items-center gap-1">
                             <MessageSquare size={10} className="text-bone-white/70" />
-                            <span className="text-[9px] font-mono text-bone-white/70" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+                            <span className="text-[10px] sm:text-[9px] font-mono text-bone-white/70" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
                                 {commentCount}
                             </span>
                         </div>
@@ -166,7 +178,7 @@ export default function ProductListCard({
                         {/* Review Rating - Star Icon + Average (Always show if rating exists, otherwise show placeholder) */}
                         <div className="flex items-center gap-1">
                             <Star size={10} className={`${averageRating && averageRating > 0 ? 'text-sme-gold fill-sme-gold' : 'text-bone-white/30 fill-none'}`} />
-                            <span className={`text-[9px] font-mono ${averageRating && averageRating > 0 ? 'text-sme-gold' : 'text-bone-white/50'}`} style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+                            <span className={`text-[10px] sm:text-[9px] font-mono ${averageRating && averageRating > 0 ? 'text-sme-gold' : 'text-bone-white/50'}`} style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
                                 {averageRating && averageRating > 0 ? `${averageRating.toFixed(1)}/5` : 'N/A'}
                             </span>
                         </div>
@@ -179,18 +191,17 @@ export default function ProductListCard({
                         {signalBadges.map((badge) => (
                             <span
                                 key={badge}
-                                className="inline-block border border-translucent-emerald bg-forest-obsidian px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider text-bone-white/70"
+                                className="inline-block border border-translucent-emerald bg-forest-obsidian px-1.5 py-0.5 text-[10px] sm:text-[9px] font-mono uppercase tracking-wider text-bone-white/70"
                             >
                                 {badge}
                             </span>
                         ))}
                     </div>
                 )}
-            </div>
-
-            {/* Compare Button - Top Left */}
-            <div className="absolute top-2 left-2 z-10" onClick={(e) => e.stopPropagation()}>
-                <CompareButton productId={productId} productTitle={title} />
+                {/* Compare Button - Mobile Only (Integrated Footer) */}
+                <div className="sm:hidden pt-2 mt-2 border-t border-translucent-emerald" onClick={(e) => e.stopPropagation()}>
+                    <CompareButton productId={productId} productTitle={title} />
+                </div>
             </div>
         </div>
     );

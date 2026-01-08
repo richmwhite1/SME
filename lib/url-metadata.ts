@@ -82,6 +82,18 @@ export function isPubMedUrl(url: string): boolean {
 }
 
 /**
+ * Extract domain from URL
+ */
+export function extractDomain(url: string): string | null {
+    try {
+        const urlObj = new URL(url);
+        return urlObj.hostname.toLowerCase();
+    } catch {
+        return null;
+    }
+}
+
+/**
  * Check if URL is a DOI link
  */
 export function isDoiUrl(url: string): boolean {

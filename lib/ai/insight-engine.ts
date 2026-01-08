@@ -1,9 +1,4 @@
-import OpenAI from "openai";
-
-// Initialize OpenAI client
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
+import { getGemmaClient } from "./gemma-client";
 
 /**
  * Technical Insights Synthesizer
@@ -18,33 +13,31 @@ export async function generateInsight(commentText: string): Promise<string | nul
     }
 
     try {
-        const response = await openai.chat.completions.create({
-            model: "gpt-4o",
-            messages: [
-                {
-                    role: "system",
-                    content: `You are the Technical Insights Synthesizer. Your task is to extract the core value from verified Subject Matter Expert (SME) comments.
+        const gemma = getGemmaClient();
+
+        const prompt = `You are the Technical Insights Synthesizer. Your task is to extract the core value from verified Subject Matter Expert (SME) comments.
 
 Objective: Transform high-level expert commentary into a concise, professional summary that emphasizes the "Key Takeaway" or "Actionable Insight."
 
 Strict Guidelines:
-Focus on Substance: Ignore introductory pleasantries. Jump straight to the technical insight.
-Professional Tone: Use authoritative, objective language.
-Clutter-Free: If the input lacks a concrete insight, return: "Insight: General expert agreement."
-Format: Return a single bullet point starting with a bolded keyword.
-Example: **Infrastructure**: Recommends horizontal scaling over vertical for this specific database architecture.
-Length: Maximum 30 words.`
-                },
-                {
-                    role: "user",
-                    content: commentText
-                }
-            ],
+1. Focus on Substance: Ignore introductory pleasantries. Jump straight to the technical insight.
+2. Professional Tone: Use authoritative, objective language.
+3. Clutter-Free: If the input lacks a concrete insight, return: "Insight: General expert agreement."
+4. Format: Return a single bullet point starting with a bolded keyword.
+5. Example: **Infrastructure**: Recommends horizontal scaling over vertical for this specific database architecture.
+6. Length: Maximum 30 words.
+
+Comment: "${commentText}"
+
+Response:`;
+
+        // Use 'gemini-2.0-flash' explicitly or undefined for default (default is gemini-2.0-flash now)
+        const response = await gemma.generateText('gemini-2.0-flash', prompt, {
             temperature: 0.5,
-            max_tokens: 60,
+            maxTokens: 60,
         });
 
-        const insight = response.choices[0]?.message?.content?.trim();
+        const insight = response.trim();
 
         // Sanity check the output
         if (!insight || insight.length < 5) {

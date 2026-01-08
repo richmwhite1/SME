@@ -16,7 +16,6 @@ export default function Step3Integration() {
             core_value_proposition: data.core_value_proposition || "",
             technical_specs: data.technical_specs || [],
             sme_access_note: data.sme_access_note || "",
-            technical_docs_url: data.technical_docs_url || "",
         }
     });
 

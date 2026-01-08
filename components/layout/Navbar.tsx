@@ -15,6 +15,7 @@ import SMEDashboardLink from "./SMEDashboardLink";
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const pathname = usePathname();
 
   const isLinkActive = (path: string) => {
@@ -42,8 +43,24 @@ export default function Navbar() {
         </Link>
 
         {/* Search Bar - Centered, Command-Line Style - Hidden on mobile */}
-        <div className="hidden md:flex flex-1 max-w-2xl mx-4 lg:mx-8">
-          <SearchBar />
+        <div className="hidden md:flex flex-1 max-w-2xl mx-4 lg:mx-8 relative">
+          <div
+            className={`w-full transition-all duration-300 ease-out ${isSearchExpanded
+              ? "fixed left-1/2 top-3 -translate-x-1/2 w-[90vw] max-w-4xl z-[100]"
+              : "relative"
+              }`}
+          >
+            <SearchBar
+              onExpand={() => setIsSearchExpanded(true)}
+              onCollapse={() => setIsSearchExpanded(false)}
+            />
+          </div>
+          {/* Fixed Backdrop */}
+          <div
+            className={`fixed inset-0 bg-forest-obsidian/80 backdrop-blur-sm z-[90] transition-opacity duration-300 ${isSearchExpanded ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+              }`}
+            aria-hidden="true"
+          />
         </div>
 
         {/* Desktop Navigation */}

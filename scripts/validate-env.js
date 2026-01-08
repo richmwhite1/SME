@@ -12,51 +12,18 @@ const requiredEnvVars = [
 ];
 
 const optionalEnvVars = [
-    'OPENAI_API_KEY',
+    'GOOGLE_AI_API_KEY', // Replaces OPENAI_API_KEY
     'DATABASE_PRIVATE_URL',
     'DATABASE_URL',
 ];
 
-let hasErrors = false;
-const warnings = [];
-
-console.log('🔍 Validating environment variables before build...\n');
-
-// Check required variables
-requiredEnvVars.forEach((varName) => {
-    if (!process.env[varName]) {
-        console.error(`❌ ERROR: Missing required environment variable: ${varName}`);
-        hasErrors = true;
-    } else {
-        console.log(`✅ ${varName} is set`);
-    }
-});
-
-// Check database URL (at least one must be present)
-if (!process.env.DATABASE_URL && !process.env.DATABASE_PRIVATE_URL) {
-    console.error('❌ ERROR: Missing DATABASE_URL or DATABASE_PRIVATE_URL');
-    hasErrors = true;
-} else {
-    if (process.env.DATABASE_PRIVATE_URL) {
-        console.log('✅ DATABASE_PRIVATE_URL is set (preferred for Railway)');
-    }
-    if (process.env.DATABASE_URL) {
-        console.log('✅ DATABASE_URL is set');
-    }
-}
-
-// Check optional variables and warn if missing
-optionalEnvVars.forEach((varName) => {
-    if (!process.env[varName]) {
-        warnings.push(varName);
-    }
-});
+// ... (existing code)
 
 if (warnings.length > 0) {
     console.log('\n⚠️  Optional environment variables not set:');
     warnings.forEach((varName) => {
-        if (varName === 'OPENAI_API_KEY') {
-            console.log(`   - ${varName} (moderation will fail closed - block all content)`);
+        if (varName === 'GOOGLE_AI_API_KEY') {
+            console.log(`   - ${varName} (AI moderation and features will be disabled)`);
         } else {
             console.log(`   - ${varName}`);
         }

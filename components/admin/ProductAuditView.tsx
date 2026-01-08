@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -13,11 +13,14 @@ import {
     FileText,
     ExternalLink,
     ChevronLeft,
-    Plus
+    Plus,
+    LayoutList,
+    FlaskConical,
+    Sparkles
 } from 'lucide-react';
 import { submitProductAudit, updateProductPhotos } from '@/app/actions/admin-approval-actions';
-import ProductRadarChart from '@/components/product/ProductRadarChart';
 import CloudinaryUploadWidget from '@/components/wizard/CloudinaryUploadWidget';
+import TechDocsManager, { TechDoc } from '@/components/admin/TechDocsManager';
 
 interface ProductAuditViewProps {
     product: any;
@@ -28,14 +31,25 @@ export default function ProductAuditView({ product }: ProductAuditViewProps) {
 
     // State for editable fields
     const [photos, setPhotos] = useState<string[]>(Array.isArray(product.product_photos) ? product.product_photos : []);
-    const [videoUrl, setVideoUrl] = useState(product.video_url || '');
+    const [videoUrl, setVideoUrl] = useState(product.video_url || product.youtube_link || '');
     const [blurb, setBlurb] = useState(product.company_blurb || '');
 
-    // Additional Audit Fields
-    const [techDocsUrl, setTechDocsUrl] = useState(product.tech_docs?.url || '');
+    // NEW: Core product fields
+    const [productName, setProductName] = useState(product.name || product.title || '');
+    const [brand, setBrand] = useState(product.brand || '');
+    const [category, setCategory] = useState(product.category || '');
+    const [thirdPartyLabLink, setThirdPartyLabLink] = useState(product.third_party_lab_link || '');
+
+    // Audit Fields
+    const [techDocs, setTechDocs] = useState<TechDoc[]>(Array.isArray(product.tech_docs) ? product.tech_docs : (product.tech_docs?.url ? [{ name: 'Legacy Doc', url: product.tech_docs.url, type: 'url' }] : []));
     const [targetAudience, setTargetAudience] = useState(product.target_audience || '');
     const [coreValueProp, setCoreValueProp] = useState(product.core_value_proposition || '');
     const [smeAccessNote, setSmeAccessNote] = useState(product.sme_access_note || '');
+
+    // Parity Fields (JSON arrays)
+    const [activeIngredients, setActiveIngredients] = useState<any[]>(Array.isArray(product.active_ingredients) ? product.active_ingredients : []);
+    const [excipients, setExcipients] = useState<string[]>(Array.isArray(product.excipients) ? product.excipients : []);
+    const [benefits, setBenefits] = useState<any[]>(Array.isArray(product.benefits) ? product.benefits : []);
 
     // Specs
     const initialSpecs = typeof product.technical_specs === 'string'
@@ -60,13 +74,10 @@ export default function ProductAuditView({ product }: ProductAuditViewProps) {
     };
 
     // State for signals
-    // Ensure we have a valid object, default to existing or empty
-    // The previous implementation utilized boolean values, but the new implementation utilizes objects { verified: boolean, evidence: string }
     const initialSignals = product.sme_signals || {};
     const [signals, setSignals] = useState(initialSignals);
 
     const handleToggleSignal = (key: string) => {
-        // When toggling ON manually, we assume verified=true but no evidence yet
         setSignals((prev: any) => ({ ...prev, [key]: { verified: true, evidence: '' } }));
     };
 
@@ -82,8 +93,10 @@ export default function ProductAuditView({ product }: ProductAuditViewProps) {
     const [adminStatus, setAdminStatus] = useState<'approved' | 'rejected' | 'pending_review'>(
         product.admin_status || 'pending_review'
     );
-    const [certificationTier, setCertificationTier] = useState<'None' | 'Bronze' | 'Silver' | 'Gold'>(
-        product.certification_tier || 'None'
+    const [certificationTier, setCertificationTier] = useState<'None' | 'Unverified' | 'Verified' | 'SME Certified'>(
+        (['Bronze', 'Silver', 'Gold'].includes(product.certification_tier)
+            ? (product.certification_tier === 'Bronze' ? 'Unverified' : product.certification_tier === 'Silver' ? 'Verified' : 'SME Certified')
+            : product.certification_tier) || 'None'
     );
     const [adminNotes, setAdminNotes] = useState(product.admin_notes || '');
 
@@ -132,6 +145,13 @@ export default function ProductAuditView({ product }: ProductAuditViewProps) {
 
         try {
             await submitProductAudit(product.id, {
+                // Core product fields
+                name: productName,
+                title: productName,
+                brand: brand,
+                category: category,
+                third_party_lab_link: thirdPartyLabLink,
+                // Existing fields
                 admin_status: adminStatus,
                 certification_tier: certificationTier,
                 admin_notes: adminNotes,
@@ -140,15 +160,18 @@ export default function ProductAuditView({ product }: ProductAuditViewProps) {
                 company_blurb: blurb,
                 sme_signals: signals,
                 // Audit updates
-                tech_docs: { url: techDocsUrl },
+                tech_docs: techDocs,
                 target_audience: targetAudience,
                 core_value_proposition: coreValueProp,
                 technical_specs: technicalSpecs,
                 sme_access_note: smeAccessNote,
+                // Parity Fields
+                active_ingredients: activeIngredients,
+                excipients: excipients,
+                benefits: benefits
             });
 
             setSuccess(true);
-            // Optional: Redirect back to dashboard after delay
             setTimeout(() => {
                 router.push('/admin/dashboard');
             }, 1500);
@@ -159,11 +182,44 @@ export default function ProductAuditView({ product }: ProductAuditViewProps) {
         }
     };
 
+    // List Editors
+    const removeListItem = (setter: any, list: any[], index: number) => {
+        const newList = list.filter((_, i) => i !== index);
+        setter(newList);
+    };
+
+    // Active Ingredients Editor
+    const [newIngredient, setNewIngredient] = useState({ name: '', dosage: '' });
+    const addIngredient = () => {
+        if (newIngredient.name) {
+            setActiveIngredients([...activeIngredients, newIngredient]);
+            setNewIngredient({ name: '', dosage: '' });
+        }
+    };
+
+    // Excipients Editor
+    const [newExcipient, setNewExcipient] = useState('');
+    const addExcipient = () => {
+        if (newExcipient) {
+            setExcipients([...excipients, newExcipient]);
+            setNewExcipient('');
+        }
+    };
+
+    // Benefits Editor
+    const [newBenefit, setNewBenefit] = useState({ title: '', type: 'functional', citation: '' });
+    const addBenefit = () => {
+        if (newBenefit.title) {
+            setBenefits([...benefits, { ...newBenefit, source: 'admin', is_verified: true }]);
+            setNewBenefit({ title: '', type: 'functional', citation: '' });
+        }
+    };
+
 
     return (
-        <div className="min-h-screen bg-forest-obsidian pb-20">
+        <div className="min-h-screen bg-[#0a0a0a] pb-20 text-[#e5e5e5]">
             {/* Top Bar */}
-            <div className="sticky top-0 z-10 border-b border-bone-white/10 bg-forest-obsidian/95 backdrop-blur-sm">
+            <div className="sticky top-0 z-10 border-b border-bone-white/10 bg-[#0a0a0a]/95 backdrop-blur-sm">
                 <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
                     <div className="flex items-center gap-4">
                         <button
@@ -174,7 +230,7 @@ export default function ProductAuditView({ product }: ProductAuditViewProps) {
                         </button>
                         <div>
                             <h1 className="font-mono text-xl font-bold text-bone-white">
-                                Product Audit: {product.product_name}
+                                Product Audit: {product.product_name || product.name || product.title}
                             </h1>
                             <p className="font-mono text-sm text-bone-white/60">
                                 {product.brand} • submitted on {new Date(product.created_at).toLocaleDateString()}
@@ -193,11 +249,7 @@ export default function ProductAuditView({ product }: ProductAuditViewProps) {
                             disabled={isSubmitting || success}
                             className="flex items-center gap-2 rounded bg-emerald-500 px-6 py-2 font-mono text-sm font-bold uppercase tracking-wider text-black transition-colors hover:bg-emerald-400 disabled:opacity-50"
                         >
-                            {isSubmitting ? (
-                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-black border-t-transparent" />
-                            ) : (
-                                <Save className="h-4 w-4" />
-                            )}
+                            <Save className="h-4 w-4" />
                             {isSubmitting ? 'Saving...' : 'Submit Decision'}
                         </button>
                     </div>
@@ -271,37 +323,66 @@ export default function ProductAuditView({ product }: ProductAuditViewProps) {
                                         className="w-full rounded border border-bone-white/20 bg-black/40 py-2.5 pl-10 pr-4 font-mono text-sm text-bone-white placeholder-bone-white/30 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                                     />
                                 </div>
-                                {videoUrl && (
-                                    <a
-                                        href={videoUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center justify-center rounded border border-bone-white/20 px-3 text-bone-white/60 hover:bg-bone-white/10 hover:text-bone-white"
-                                    >
-                                        <ExternalLink className="h-4 w-4" />
-                                    </a>
-                                )}
                             </div>
-                            {/* Preview if valid youtube */}
-                            {videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be') ? (
-                                <div className="mt-4 aspect-video w-full overflow-hidden rounded border border-bone-white/10 bg-black">
-                                    <iframe
-                                        src={videoUrl.replace('watch?v=', 'embed/')}
-                                        className="h-full w-full"
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                        allowFullScreen
-                                    />
-                                </div>
-                            ) : null}
                         </div>
                     </section>
 
-                    {/* 2. Content Overwrite */}
+                    {/* 2. Content & Parity Fields */}
                     <section className="rounded-lg border border-bone-white/10 bg-bone-white/5 p-6">
                         <h2 className="mb-6 flex items-center gap-2 font-mono text-lg font-bold text-bone-white">
                             <span className="flex h-6 w-6 items-center justify-center rounded bg-emerald-500/20 text-xs text-emerald-400">2</span>
-                            Content Review
+                            Content & Formulation
                         </h2>
+
+                        {/* Product Name */}
+                        <div className="mb-6">
+                            <label className="mb-2 block font-mono text-sm font-semibold uppercase tracking-wider text-bone-white/70">
+                                Product Name
+                            </label>
+                            <input
+                                type="text"
+                                value={productName}
+                                onChange={(e) => setProductName(e.target.value)}
+                                className="w-full rounded border border-bone-white/20 bg-black/40 p-4 font-sans text-sm text-bone-white placeholder-bone-white/30 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            />
+                        </div>
+
+                        {/* Brand */}
+                        <div className="mb-6">
+                            <label className="mb-2 block font-mono text-sm font-semibold uppercase tracking-wider text-bone-white/70">
+                                Brand
+                            </label>
+                            <input
+                                type="text"
+                                value={brand}
+                                onChange={(e) => setBrand(e.target.value)}
+                                className="w-full rounded border border-bone-white/20 bg-black/40 p-4 font-sans text-sm text-bone-white placeholder-bone-white/30 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            />
+                        </div>
+
+                        {/* Category */}
+                        <div className="mb-6">
+                            <label className="mb-2 block font-mono text-sm font-semibold uppercase tracking-wider text-bone-white/70">
+                                Category
+                            </label>
+                            <select
+                                value={category}
+                                onChange={(e) => setCategory(e.target.value)}
+                                className="w-full rounded border border-bone-white/20 bg-black/40 p-4 font-sans text-sm text-bone-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            >
+                                <option value="">Select Category...</option>
+                                <option value="Survivalist">Survivalist</option>
+                                <option value="Detox">Detox</option>
+                                <option value="Brain Fog">Brain Fog</option>
+                                <option value="Vitality">Vitality</option>
+                                <option value="Sleep">Sleep</option>
+                                <option value="Gut Health">Gut Health</option>
+                                <option value="Hormones">Hormones</option>
+                                <option value="Performance">Performance</option>
+                                <option value="Weight Loss">Weight Loss</option>
+                                <option value="Recovery">Recovery</option>
+                            </select>
+                        </div>
 
                         <div className="mb-6">
                             <label className="mb-2 block font-mono text-sm font-semibold uppercase tracking-wider text-bone-white/70">
@@ -310,56 +391,119 @@ export default function ProductAuditView({ product }: ProductAuditViewProps) {
                             <textarea
                                 value={blurb}
                                 onChange={(e) => setBlurb(e.target.value)}
-                                rows={8}
+                                rows={6}
                                 className="w-full rounded border border-bone-white/20 bg-black/40 p-4 font-sans text-sm leading-relaxed text-bone-white placeholder-bone-white/30 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                             />
-                            <p className="mt-2 text-right font-mono text-xs text-bone-white/40">
-                                {blurb.length} characters
-                            </p>
                         </div>
 
-                        {/* Additional Content Fields */}
-                        <div className="grid gap-6 md:grid-cols-2 mb-6">
-                            <div>
-                                <label className="mb-2 block font-mono text-sm font-semibold uppercase tracking-wider text-bone-white/70">
-                                    Target Audience
-                                </label>
-                                <input
-                                    type="text"
-                                    value={targetAudience}
-                                    onChange={(e) => setTargetAudience(e.target.value)}
-                                    className="w-full rounded border border-bone-white/20 bg-black/40 p-2 font-mono text-sm text-bone-white focus:border-emerald-500 focus:outline-none"
-                                    placeholder="e.g. Biohackers"
-                                />
+                        <div className="mb-6">
+                            <label className="mb-2 block font-mono text-sm font-semibold uppercase tracking-wider text-bone-white/70">
+                                Target Audience
+                            </label>
+                            <textarea
+                                value={targetAudience}
+                                onChange={(e) => setTargetAudience(e.target.value)}
+                                rows={2}
+                                className="w-full rounded border border-bone-white/20 bg-black/40 p-4 font-sans text-sm leading-relaxed text-bone-white placeholder-bone-white/30 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            />
+                        </div>
+
+                        <div className="mb-6">
+                            <label className="mb-2 block font-mono text-sm font-semibold uppercase tracking-wider text-bone-white/70">
+                                Core Value Proposition
+                            </label>
+                            <textarea
+                                value={coreValueProp}
+                                onChange={(e) => setCoreValueProp(e.target.value)}
+                                rows={2}
+                                className="w-full rounded border border-bone-white/20 bg-black/40 p-4 font-sans text-sm leading-relaxed text-bone-white placeholder-bone-white/30 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            />
+                        </div>
+
+                        {/* ACTIVE INGREDIENTS */}
+                        <div className="mb-6 border-t border-bone-white/10 pt-6">
+                            <h3 className="mb-3 font-mono text-sm font-semibold uppercase tracking-wider text-bone-white/70 flex items-center gap-2">
+                                <FlaskConical className="w-4 h-4" /> Active Ingredients
+                            </h3>
+                            <div className="space-y-2 mb-3">
+                                {activeIngredients.map((ing, i) => (
+                                    <div key={i} className="flex justify-between items-center bg-bone-white/5 p-2 rounded text-sm text-bone-white">
+                                        <span>{ing.name} <span className="text-bone-white/50">{ing.dosage}</span></span>
+                                        <button onClick={() => removeListItem(setActiveIngredients, activeIngredients, i)} className="text-red-400/50 hover:text-red-400"><X className="w-4 h-4" /></button>
+                                    </div>
+                                ))}
                             </div>
-                            <div>
-                                <label className="mb-2 block font-mono text-sm font-semibold uppercase tracking-wider text-bone-white/70">
-                                    Core Value Proposition
-                                </label>
-                                <input
-                                    type="text"
-                                    value={coreValueProp}
-                                    onChange={(e) => setCoreValueProp(e.target.value)}
-                                    className="w-full rounded border border-bone-white/20 bg-black/40 p-2 font-mono text-sm text-bone-white focus:border-emerald-500 focus:outline-none"
-                                    placeholder="One-line value prop"
-                                />
+                            <div className="flex gap-2">
+                                <input value={newIngredient.name} onChange={e => setNewIngredient({ ...newIngredient, name: e.target.value })} placeholder="Name" className="flex-1 bg-black/40 p-2 text-xs border border-bone-white/20 rounded text-white" />
+                                <input value={newIngredient.dosage} onChange={e => setNewIngredient({ ...newIngredient, dosage: e.target.value })} placeholder="Dosage" className="w-24 bg-black/40 p-2 text-xs border border-bone-white/20 rounded text-white" />
+                                <button onClick={addIngredient} className="bg-emerald-500/20 text-emerald-400 p-2 rounded"><Plus className="w-4 h-4" /></button>
                             </div>
                         </div>
 
-                        <div className="grid gap-6 md:grid-cols-2">
-                            <div>
-                                <h3 className="mb-2 font-mono text-xs uppercase tracking-wider text-bone-white/50">Tagline</h3>
-                                <div className="rounded border border-bone-white/10 bg-black/20 p-3 font-mono text-sm text-bone-white/80">
-                                    {product.tagline || 'No tagline'}
-                                </div>
+                        {/* EXCIPIENTS */}
+                        <div className="mb-6 border-t border-bone-white/10 pt-6">
+                            <h3 className="mb-3 font-mono text-sm font-semibold uppercase tracking-wider text-bone-white/70 flex items-center gap-2">
+                                <LayoutList className="w-4 h-4" /> Excipients (Other Ingredients)
+                            </h3>
+                            <div className="flex flex-wrap gap-2 mb-3">
+                                {excipients.map((ex, i) => (
+                                    <div key={i} className="bg-bone-white/10 px-2 py-1 rounded text-xs text-bone-white flex items-center gap-2">
+                                        {ex}
+                                        <button onClick={() => removeListItem(setExcipients, excipients, i)} className="text-red-400/50 hover:text-red-400"><X className="w-3 h-3" /></button>
+                                    </div>
+                                ))}
                             </div>
-                            <div>
-                                <h3 className="mb-2 font-mono text-xs uppercase tracking-wider text-bone-white/50">Category</h3>
-                                <div className="rounded border border-bone-white/10 bg-black/20 p-3 font-mono text-sm text-bone-white/80">
-                                    {product.category || 'Uncategorized'}
+                            <div className="flex gap-2">
+                                <input value={newExcipient} onChange={e => setNewExcipient(e.target.value)} placeholder="Excipient Name" className="flex-1 bg-black/40 p-2 text-xs border border-bone-white/20 rounded text-white" />
+                                <button onClick={addExcipient} className="bg-emerald-500/20 text-emerald-400 p-2 rounded"><Plus className="w-4 h-4" /></button>
+                            </div>
+                        </div>
+
+                        {/* BENEFITS */}
+                        <div className="mb-6 border-t border-bone-white/10 pt-6">
+                            <h3 className="mb-3 font-mono text-sm font-semibold uppercase tracking-wider text-bone-white/70 flex items-center gap-2">
+                                <Sparkles className="w-4 h-4" /> Benefits & Claims
+                            </h3>
+                            <div className="space-y-2 mb-3">
+                                {benefits.map((ben, i) => (
+                                    <div key={i} className="bg-bone-white/5 p-2 rounded text-sm text-bone-white flex justify-between items-start">
+                                        <div>
+                                            <div className="font-medium">{ben.benefit_title || ben.title} <span className="text-xs text-emerald-500 bg-emerald-500/10 px-1 rounded">{ben.benefit_type || ben.type}</span></div>
+                                            {ben.citation_url && <a href={ben.citation_url} target="_blank" className="text-xs text-blue-400 hover:underline">{ben.citation_url}</a>}
+                                        </div>
+                                        <button onClick={() => removeListItem(setBenefits, benefits, i)} className="text-red-400/50 hover:text-red-400"><X className="w-4 h-4" /></button>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="grid gap-2">
+                                <input value={newBenefit.title} onChange={e => setNewBenefit({ ...newBenefit, title: e.target.value })} placeholder="Benefit Title" className="w-full bg-black/40 p-2 text-xs border border-bone-white/20 rounded text-white" />
+                                <div className="flex gap-2">
+                                    <select value={newBenefit.type} onChange={e => setNewBenefit({ ...newBenefit, type: e.target.value })} className="bg-black/40 p-2 text-xs border border-bone-white/20 rounded text-white">
+                                        <option value="functional">Functional</option>
+                                        <option value="cognitive">Cognitive</option>
+                                        <option value="physical">Physical</option>
+                                    </select>
+                                    <input value={newBenefit.citation} onChange={e => setNewBenefit({ ...newBenefit, citation: e.target.value })} placeholder="Citation URL (Optional)" className="flex-1 bg-black/40 p-2 text-xs border border-bone-white/20 rounded text-white" />
+                                    <button onClick={addBenefit} className="bg-emerald-500/20 text-emerald-400 p-2 rounded"><Plus className="w-4 h-4" /></button>
                                 </div>
                             </div>
                         </div>
+
+                        {/* THIRD-PARTY LAB LINK */}
+                        <div className="mb-6 border-t border-bone-white/10 pt-6">
+                            <label className="mb-2 block font-mono text-sm font-semibold uppercase tracking-wider text-bone-white/70">
+                                Third-Party Lab Testing Link
+                            </label>
+                            <input
+                                type="url"
+                                value={thirdPartyLabLink}
+                                onChange={(e) => setThirdPartyLabLink(e.target.value)}
+                                placeholder="https://example.com/lab-results.pdf"
+                                className="w-full rounded border border-bone-white/20 bg-black/40 p-3 font-sans text-sm text-bone-white placeholder-bone-white/30 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            />
+                            <p className="mt-1 text-xs text-bone-white/50">Link to independent laboratory testing results (COA, purity tests, etc.)</p>
+                        </div>
+
                     </section>
 
                     {/* 3. Truth Signal Management */}
@@ -371,14 +515,13 @@ export default function ProductAuditView({ product }: ProductAuditViewProps) {
                             </h2>
                             <div className="flex gap-4 font-mono text-sm">
                                 <span className="text-emerald-400">Active: <b>{Object.keys(signals).length}</b></span>
-                                {/* <span className="text-red-400">Inactive: <b>{redFlagsCount}</b></span> */}
                             </div>
                         </div>
 
                         <div className="grid gap-4 sm:grid-cols-2">
                             {['third_party_lab_verified', 'purity_tested', 'source_transparency', 'potency_verified', 'excipient_audit', 'operational_legitimacy', 'esoteric', 'safe', 'warning'].map((key) => {
                                 const signalData = signals[key as keyof typeof signals] as any;
-                                const isVerified = !!signalData; // If functionality is simply presence check
+                                const isVerified = !!signalData;
                                 const evidence = signalData?.evidence;
 
                                 return (
@@ -463,16 +606,6 @@ export default function ProductAuditView({ product }: ProductAuditViewProps) {
                                 );
                             })}
                         </div>
-
-                        {/* SME Radar Chart Display */}
-                        <div className="mt-8 border-t border-bone-white/10 pt-8">
-                            <h3 className="mb-4 font-mono text-sm font-semibold uppercase tracking-wider text-bone-white/70">
-                                Topic Balance (Radar)
-                            </h3>
-                            <div className="h-64 w-full">
-                                <ProductRadarChart data={product.radar_data} />
-                            </div>
-                        </div>
                     </section>
                 </div>
 
@@ -480,7 +613,7 @@ export default function ProductAuditView({ product }: ProductAuditViewProps) {
                 <div className="lg:col-span-4 space-y-6">
 
                     {/* Decision Card */}
-                    <div className="sticky top-24 rounded-lg border border-emerald-500/30 bg-forest-obsidian p-6 shadow-xl shadow-black/50">
+                    <div className="sticky top-24 rounded-lg border border-emerald-500/30 bg-[#0a0a0a] p-6 shadow-xl shadow-black/50">
                         <h2 className="mb-6 font-mono text-lg font-bold text-emerald-400">
                             Decision Panel
                         </h2>
@@ -548,10 +681,10 @@ export default function ProductAuditView({ product }: ProductAuditViewProps) {
                                         onChange={(e) => setCertificationTier(e.target.value as any)}
                                         className="w-full rounded border border-bone-white/20 bg-black/40 p-3 font-mono text-sm text-bone-white focus:border-emerald-500 focus:outline-none"
                                     >
-                                        <option value="None">None</option>
-                                        <option value="Bronze">Bronze</option>
-                                        <option value="Silver">Silver</option>
-                                        <option value="Gold">Gold</option>
+                                        <option value="None">Select Tier...</option>
+                                        <option value="Unverified">Unverified</option>
+                                        <option value="Verified">Verified</option>
+                                        <option value="SME Certified">SME Certified</option>
                                     </select>
                                 </div>
                             )}
@@ -559,7 +692,7 @@ export default function ProductAuditView({ product }: ProductAuditViewProps) {
                         </div>
 
                         {/* SME Access Notes */}
-                        <div>
+                        <div className="mt-6">
                             <label className="mb-2 block font-mono text-xs uppercase tracking-wider text-yellow-500/80">
                                 SME Access Notes
                             </label>
@@ -572,7 +705,7 @@ export default function ProductAuditView({ product }: ProductAuditViewProps) {
                             />
                         </div>
 
-                        <div>
+                        <div className="mt-4">
                             <label className="mb-2 block font-mono text-xs uppercase tracking-wider text-bone-white/70">
                                 Internal Notes
                             </label>
@@ -586,7 +719,7 @@ export default function ProductAuditView({ product }: ProductAuditViewProps) {
                         </div>
 
                         {error && (
-                            <div className="rounded border border-red-500/50 bg-red-500/10 p-3 text-center font-mono text-xs text-red-400">
+                            <div className="mt-4 rounded border border-red-500/50 bg-red-500/10 p-3 text-center font-mono text-xs text-red-400">
                                 {error}
                             </div>
                         )}
@@ -594,7 +727,7 @@ export default function ProductAuditView({ product }: ProductAuditViewProps) {
                         <button
                             onClick={handleSubmit}
                             disabled={isSubmitting || success}
-                            className="w-full rounded bg-emerald-500 py-4 font-mono text-sm font-bold uppercase tracking-wider text-black transition-colors hover:bg-emerald-400 disabled:opacity-50"
+                            className="mt-6 w-full rounded bg-emerald-500 py-4 font-mono text-sm font-bold uppercase tracking-wider text-black transition-colors hover:bg-emerald-400 disabled:opacity-50"
                         >
                             {isSubmitting ? 'Processing...' : success ? 'Saved!' : 'Submit Decision'}
                         </button>
@@ -602,90 +735,57 @@ export default function ProductAuditView({ product }: ProductAuditViewProps) {
                 </div>
 
                 {/* Documents Card */}
-                <div className="rounded-lg border border-bone-white/10 bg-bone-white/5 p-6">
+                <div className="rounded-lg border border-bone-white/10 bg-bone-white/5 p-6 lg:col-span-12">
                     <h3 className="mb-4 font-mono text-sm font-semibold uppercase tracking-wider text-bone-white/70">
-                        Supporting Docs
+                        Supporting Docs & Technical Specs
                     </h3>
-                    <div className="space-y-3">
-                        {product.coa_url ? (
-                            <a href={product.coa_url} target="_blank" className="flex items-center gap-2 text-sm text-emerald-400 hover:text-emerald-300">
-                                <FileText className="h-4 w-4" /> View COA
-                            </a>
-                        ) : (
-                            <span className="text-sm text-bone-white/40">No COA provided</span>
-                        )}
 
-                        {product.technical_docs_url && (
-                            <a href={product.technical_docs_url} target="_blank" className="flex items-center gap-2 text-sm text-emerald-400 hover:text-emerald-300">
-                                <ExternalLink className="h-4 w-4" /> Technical Specs
-                            </a>
-                        )}
+                    {/* Tech Docs Manager */}
+                    <TechDocsManager
+                        docs={techDocs}
+                        onUpdate={setTechDocs}
+                        maxDocs={10}
+                    />
 
-                        {/* Editable Tech Docs URL */}
-                        <div className="pt-2 border-t border-bone-white/10 mt-2">
-                            <label className="mb-1 block font-mono text-xs uppercase text-bone-white/50">Technical Doc URL</label>
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    value={techDocsUrl}
-                                    onChange={(e) => setTechDocsUrl(e.target.value)}
-                                    className="flex-1 rounded border border-bone-white/20 bg-black/40 p-2 font-mono text-xs text-bone-white focus:border-emerald-500 focus:outline-none"
-                                    placeholder="https://..."
-                                />
-                                {techDocsUrl && (
-                                    <a
-                                        href={techDocsUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center justify-center rounded border border-emerald-500/30 bg-emerald-500/10 px-3 text-xs font-bold uppercase text-emerald-400 hover:bg-emerald-500/20"
-                                    >
-                                        Open
-                                    </a>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Technical Specs Key-Value Editor */}
-                        <div className="pt-4 border-t border-bone-white/10 mt-2">
-                            <h3 className="mb-3 font-mono text-sm font-semibold uppercase tracking-wider text-bone-white/70">
-                                Technical Specs
-                            </h3>
-                            <div className="space-y-2 mb-3">
-                                {Object.entries(technicalSpecs).map(([key, value]) => (
-                                    <div key={key} className="flex items-center justify-between rounded bg-bone-white/5 p-2 text-xs">
-                                        <div className="flex flex-col">
-                                            <span className="font-bold text-bone-white/80">{key}</span>
-                                            <span className="text-bone-white/60">{String(value)}</span>
-                                        </div>
-                                        <button onClick={() => handleRemoveSpec(key)} className="text-bone-white/40 hover:text-red-400">
-                                            <Trash2 className="h-3 w-3" />
-                                        </button>
+                    {/* Technical Specs Key-Value Editor */}
+                    <div className="pt-4 border-t border-bone-white/10 mt-6">
+                        <h3 className="mb-3 font-mono text-sm font-semibold uppercase tracking-wider text-bone-white/70">
+                            Technical Specs (Key/Value)
+                        </h3>
+                        <div className="space-y-2 mb-3">
+                            {Object.entries(technicalSpecs).map(([key, value]) => (
+                                <div key={key} className="flex items-center justify-between rounded bg-bone-white/5 p-2 text-xs">
+                                    <div className="flex flex-col">
+                                        <span className="font-bold text-bone-white/80">{key}</span>
+                                        <span className="text-bone-white/60">{String(value)}</span>
                                     </div>
-                                ))}
-                            </div>
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    value={newSpecKey}
-                                    onChange={(e) => setNewSpecKey(e.target.value)}
-                                    placeholder="Key"
-                                    className="flex-1 rounded border border-bone-white/20 bg-black/40 p-2 font-mono text-xs text-bone-white focus:border-emerald-500 focus:outline-none"
-                                />
-                                <input
-                                    type="text"
-                                    value={newSpecValue}
-                                    onChange={(e) => setNewSpecValue(e.target.value)}
-                                    placeholder="Value"
-                                    className="flex-1 rounded border border-bone-white/20 bg-black/40 p-2 font-mono text-xs text-bone-white focus:border-emerald-500 focus:outline-none"
-                                />
-                                <button onClick={handleAddSpec} className="rounded bg-bone-white/10 p-2 text-bone-white hover:bg-emerald-500/20 hover:text-emerald-400">
-                                    <Plus className="h-4 w-4" />
-                                </button>
-                            </div>
+                                    <button onClick={() => handleRemoveSpec(key)} className="text-bone-white/40 hover:text-red-400">
+                                        <Trash2 className="h-3 w-3" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                value={newSpecKey}
+                                onChange={(e) => setNewSpecKey(e.target.value)}
+                                placeholder="Key"
+                                className="flex-1 rounded border border-bone-white/20 bg-black/40 p-2 font-mono text-xs text-bone-white focus:border-emerald-500 focus:outline-none"
+                            />
+                            <input
+                                type="text"
+                                value={newSpecValue}
+                                onChange={(e) => setNewSpecValue(e.target.value)}
+                                placeholder="Value"
+                                className="flex-1 rounded border border-bone-white/20 bg-black/40 p-2 font-mono text-xs text-bone-white focus:border-emerald-500 focus:outline-none"
+                            />
+                            <button onClick={handleAddSpec} className="rounded bg-bone-white/10 p-2 text-bone-white hover:bg-emerald-500/20 hover:text-emerald-400">
+                                <Plus className="h-4 w-4" />
+                            </button>
                         </div>
                     </div>
                 </div>
-
             </div>
         </div>
     );

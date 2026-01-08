@@ -19,14 +19,26 @@ export async function POST(req: NextRequest) {
 
         // Verify webhook signature - CRITICAL for security
         let event;
-        try {
-            event = verifyWebhookSignature(body, signature);
-        } catch (err) {
-            console.error("❌ Webhook signature verification failed:", err);
-            return NextResponse.json(
-                { error: "Invalid signature" },
-                { status: 400 }
-            );
+
+        // DEV ONLY: Allow mock signature for testing without Stripe CLI
+        if (process.env.NODE_ENV === 'development' && signature === 'mock_signature') {
+            console.log("⚠️ DEV MODE: Bypassing signature verification for testing");
+            try {
+                event = JSON.parse(body);
+            } catch (e) {
+                return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+            }
+        } else {
+            // Standard secure verification
+            try {
+                event = verifyWebhookSignature(body, signature);
+            } catch (err) {
+                console.error("❌ Webhook signature verification failed:", err);
+                return NextResponse.json(
+                    { error: "Invalid signature" },
+                    { status: 400 }
+                );
+            }
         }
 
         console.log(`📨 Webhook received: ${event.type}`);

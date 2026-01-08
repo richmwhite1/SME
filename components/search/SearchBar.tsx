@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Search, FlaskConical, MessageSquare, BookOpen, Award, Loader2 } from "lucide-react";
+import { Search, FlaskConical, MessageSquare, BookOpen, Award, Loader2, Sparkles } from "lucide-react";
 import { searchGlobal } from "@/app/actions/search-actions";
 
 interface SearchResult {
@@ -20,49 +20,57 @@ interface SearchResult {
   relevance_score: number;
 }
 
-export default function SearchBar() {
+interface SearchBarProps {
+  onExpand?: () => void;
+  onCollapse?: () => void;
+}
+
+export default function SearchBar({ onExpand, onCollapse }: SearchBarProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [synthesis, setSynthesis] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Command-K shortcut
+  // Command-K and Escape key handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         inputRef.current?.focus();
-        setIsOpen(true);
       }
       if (e.key === "Escape") {
         setIsOpen(false);
-        setQuery("");
+        onCollapse?.();
+        inputRef.current?.blur();
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onCollapse]);
 
-  // Close dropdown when clicking outside
+  // Handle click outside
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    function handleClickOutside(event: MouseEvent) {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setIsOpen(false);
+        onCollapse?.();
       }
-    };
+    }
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [onCollapse]);
 
   // Search as user types
   useEffect(() => {
     if (query.trim().length < 2) {
       setResults([]);
+      setSynthesis(null);
       setIsOpen(false);
       return;
     }
@@ -70,13 +78,17 @@ export default function SearchBar() {
     const searchTimeout = setTimeout(async () => {
       setLoading(true);
       setIsOpen(true);
+      setSynthesis(null); // Clear previous synthesis while loading
 
       try {
         // Call server action for search
-        const data = await searchGlobal(query.trim(), 5);
+        const { results: data, synthesis: aiSummary } = await searchGlobal(query.trim(), 5);
 
         // Debug: Log search results
         console.log("Search Results:", data);
+        console.log("AI Synthesis:", aiSummary);
+
+        if (aiSummary) setSynthesis(aiSummary);
 
         // Sort results: exact title matches first, then by relevance
         const sortedResults = ((data || []) as SearchResult[]).sort((a, b) => {
@@ -90,10 +102,11 @@ export default function SearchBar() {
       } catch (err) {
         console.error("Search error:", err);
         setResults([]);
+        setSynthesis(null);
       } finally {
         setLoading(false);
       }
-    }, 300); // Debounce 300ms
+    }, 500); // Increased Debounce to 500ms for AI cost/perf
 
     return () => clearTimeout(searchTimeout);
   }, [query]);
@@ -103,6 +116,7 @@ export default function SearchBar() {
     if (query.trim()) {
       router.push(`/search?q=${encodeURIComponent(query.trim())}`);
       setIsOpen(false);
+      onCollapse?.();
       setQuery("");
     }
   };
@@ -122,6 +136,7 @@ export default function SearchBar() {
     if (url) {
       router.push(url);
       setIsOpen(false);
+      onCollapse?.();
       setQuery("");
     }
   };
@@ -203,7 +218,10 @@ export default function SearchBar() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onFocus={() => query.trim().length >= 2 && setIsOpen(true)}
+            onFocus={() => {
+              if (query.trim().length >= 2) setIsOpen(true);
+              onExpand?.();
+            }}
             placeholder="search, discussions, products or citations...."
             suppressHydrationWarning
             className="w-full text-sm bg-muted-moss border border-translucent-emerald py-2 pl-9 pr-16 text-bone-white placeholder-bone-white/50 focus:border-heart-green focus:outline-none transition-all font-mono"
@@ -214,6 +232,7 @@ export default function SearchBar() {
               onClick={() => {
                 setQuery("");
                 setIsOpen(false);
+                onCollapse?.(); // Optionally collapse on clear
               }}
               className="absolute right-12 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-xs text-bone-white/50 hover:text-bone-white font-mono"
             >
@@ -235,7 +254,7 @@ export default function SearchBar() {
             <div className="flex items-center justify-center p-8">
               <Loader2 size={18} className="animate-spin text-bone-white/70" />
             </div>
-          ) : results.length === 0 ? (
+          ) : (results.length === 0 && !synthesis) ? (
             <div className="p-6 text-center border-b border-translucent-emerald">
               <p className="text-xs text-bone-white/70 font-mono mb-2">
                 No Signal Found
@@ -246,6 +265,19 @@ export default function SearchBar() {
             </div>
           ) : (
             <div className="max-h-96 overflow-y-auto">
+              {/* AI Synthesis Section */}
+              {synthesis && (
+                <div className="p-4 bg-forest-obsidian/80 border-b border-translucent-emerald backdrop-blur-sm">
+                  <div className="flex items-start gap-2.5">
+                    <Sparkles size={16} className="text-sme-gold flex-shrink-0 mt-0.5 animate-pulse" />
+                    <div>
+                      <h4 className="text-[10px] font-mono text-sme-gold uppercase tracking-wider mb-1 font-bold">Laboratory Insight</h4>
+                      <p className="text-xs text-bone-white leading-relaxed font-sans">{synthesis}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {Object.entries(groupedResults).map(([type, typeResults]) => {
                 const { category, color } = getCategoryTag(type);
                 return (
@@ -298,14 +330,16 @@ export default function SearchBar() {
                   </div>
                 );
               })}
-              <div className="border-t border-translucent-emerald bg-forest-obsidian px-3 py-2">
-                <button
-                  onClick={handleSubmit}
-                  className="w-full text-left text-xs font-medium text-bone-white/80 hover:text-bone-white font-mono"
-                >
-                  View all results for &quot;{query}&quot; →
-                </button>
-              </div>
+              {results.length > 0 && (
+                <div className="border-t border-translucent-emerald bg-forest-obsidian px-3 py-2">
+                  <button
+                    onClick={handleSubmit}
+                    className="w-full text-left text-xs font-medium text-bone-white/80 hover:text-bone-white font-mono"
+                  >
+                    View all results for &quot;{query}&quot; →
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

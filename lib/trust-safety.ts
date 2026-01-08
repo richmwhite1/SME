@@ -129,7 +129,7 @@ export async function handleBlacklistedContent(
  */
 export async function logAdminAction(
   adminId: string,
-  actionType: "restore" | "purge" | "ban" | "unban" | "add_blacklist" | "remove_blacklist" | "delete" | "clear_flags" | "grant_sme" | "revoke_sme" | "reset_reputation",
+  actionType: "restore" | "purge" | "ban" | "unban" | "add_blacklist" | "remove_blacklist" | "delete" | "clear_flags" | "grant_sme" | "revoke_sme" | "reset_reputation" | "update_role",
   targetType: "comment" | "user" | "keyword" | "discussion" | "review" | "discussion_comment" | "product_comment",
   targetId: string,
   reason?: string,

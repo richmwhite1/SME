@@ -3,10 +3,11 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { getDb } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { checkVibe, checkVibeForGuest } from "@/lib/vibe-check";
+import { checkVibe, checkVibeForGuest } from "@/lib/ai/gemma-vibe-check";
 import { checkUserBanned, checkKeywordBlacklist, handleBlacklistedContent } from "@/lib/trust-safety";
 import { generateInsight } from "@/lib/ai/insight-engine";
 import { createNotification } from "@/app/actions/notifications";
+import { validateCitation } from "@/lib/citation-validator";
 
 /**
  * Create a comment on a product/protocol
@@ -62,7 +63,10 @@ export async function createProductComment(
   // Guest comments are supported for products with AI moderation
   // Authenticated users bypass moderation
 
-  let result: { success: boolean; error?: string; commentId?: string };
+  let result: { success: boolean; error?: string; commentId?: string } = {
+    success: false,
+    error: "Internal server error: Result was not initialized properly."
+  };
 
   try {
     // Ensure productId is a valid UUID string
@@ -125,9 +129,23 @@ export async function createProductComment(
             };
           }
 
-          // Prepare source metadata if link provided
+          // Validate citation and prepare source metadata if link provided
           let sourceMetadata = null;
-          if (sourceLink) {
+          let citationScreenedOk = false;
+
+          if (sourceLink && sourceLink.trim()) {
+            // Validate citation format and domain
+            const validationResult = validateCitation(sourceLink.trim());
+            citationScreenedOk = validationResult.isValid;
+
+            console.log('Citation validation result:', {
+              citation: sourceLink,
+              isValid: validationResult.isValid,
+              reason: validationResult.reason,
+              format: validationResult.format,
+              domain: validationResult.domain
+            });
+
             sourceMetadata = {
               url: sourceLink,
               addedAt: new Date().toISOString()
@@ -145,7 +163,8 @@ export async function createProductComment(
             post_type: finalPostType,
             pillar_of_truth: finalPillar,
             source_metadata: sourceMetadata,
-            star_rating: starRating || null
+            star_rating: starRating || null,
+            citation_screened_ok: citationScreenedOk
           });
 
           try {
@@ -153,12 +172,12 @@ export async function createProductComment(
             const insertResult = await sql`
               INSERT INTO product_comments (
                 product_id, author_id, content, flag_count, is_flagged, parent_id, is_official_response,
-                post_type, pillar_of_truth, source_metadata, star_rating
+                post_type, pillar_of_truth, source_metadata, star_rating, citation_screened_ok
               )
               VALUES (
                 ${productId}, ${authorId}, ${trimmedContent},
                 ${shouldAutoFlag ? 1 : 0}, ${shouldAutoFlag}, ${parentId || null}, ${isOfficialResponse && canMarkOfficial ? true : false},
-                ${finalPostType}, ${finalPillar}, ${sourceMetadata ? JSON.stringify(sourceMetadata) : null}, ${starRating || null}
+                ${finalPostType}, ${finalPillar}, ${sourceMetadata ? JSON.stringify(sourceMetadata) : null}, ${starRating || null}, ${citationScreenedOk}
               )
               RETURNING id
             `;
@@ -411,7 +430,7 @@ export async function createProductComment(
 
 /**
  * Create a guest comment on a product/protocol
- * Requires AI moderation via OpenAI Moderation API
+ * Requires AI moderation via Gemma/Gemini
  */
 export async function createGuestProductComment(
   productId: string,
@@ -471,12 +490,13 @@ export async function createGuestProductComment(
 
   try {
     // Insert guest comment using raw SQL
+    // Note: Guests cannot provide citations in current implementation, so citation_screened_ok defaults to false
     const result = await sql`
       INSERT INTO product_comments (
-        product_id, author_id, guest_name, content, flag_count, is_flagged, status, star_rating
+        product_id, author_id, guest_name, content, flag_count, is_flagged, status, star_rating, citation_screened_ok
       )
       VALUES (
-        ${productId}, NULL, ${trimmedGuestName}, ${trimmedContent}, 0, false, ${commentStatus}, ${starRating || null}
+        ${productId}, NULL, ${trimmedGuestName}, ${trimmedContent}, 0, false, ${commentStatus}, ${starRating || null}, false
       )
       RETURNING id
     `;

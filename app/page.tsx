@@ -5,7 +5,6 @@ import LatestIntelligence from "@/components/social/LatestIntelligence";
 import VelocityBadge from "@/components/products/VelocityBadge";
 import { Download, Share2 } from "lucide-react";
 import { getDb } from "@/lib/db";
-import LensAwareSearch from "@/components/search/LensAwareSearch";
 import LiveLedger from "@/components/feed/LiveLedger";
 
 export const dynamic = "force-dynamic";
@@ -178,12 +177,6 @@ export default async function Home() {
 
         {/* Lens of Truth Hero Section - REMOVED */}
 
-
-        {/* Lens-Aware Search - Prioritized */}
-        <div className="mb-24">
-          <LensAwareSearch />
-        </div>
-
         {/* Secondary CTAs */}
         <div className="mb-16 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link href="/products">
@@ -206,7 +199,7 @@ export default async function Home() {
                 Community Pulse: Trending Products This Month
               </h2>
             </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {trendingProducts.map((product: TrendingProduct) => {
                 // Handle images array - get first image (matching products page logic)
                 let imageUrl: string | null = null;

@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { Mail, MessageSquare, Send } from "lucide-react";
+import Link from "next/link"; // Added Link
 import { submitContactForm } from "@/app/actions/intake-actions";
 import { useToast } from "@/components/ui/ToastContainer";
 import Button from "@/components/ui/Button";
 import GetCertifiedModal from "@/components/intake/GetCertifiedModal";
-import ListProductWizard from "@/components/intake/ListProductWizard";
 
 export default function ContactPage() {
   const { showToast } = useToast();
@@ -16,7 +16,7 @@ export default function ContactPage() {
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showGetCertified, setShowGetCertified] = useState(false);
-  const [showListProduct, setShowListProduct] = useState(false);
+  // Removed showListProduct state
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,9 +62,10 @@ export default function ContactPage() {
               Apply for SME Certification for your brand
             </p>
           </button>
-          <button
-            onClick={() => setShowListProduct(true)}
-            className="border border-emerald-400/50 bg-emerald-400/10 p-6 text-left transition-all hover:border-emerald-400/70 hover:bg-emerald-400/20 font-mono"
+
+          <Link
+            href="/products/submit"
+            className="block border border-emerald-400/50 bg-emerald-400/10 p-6 text-left transition-all hover:border-emerald-400/70 hover:bg-emerald-400/20 font-mono"
           >
             <h3 className="mb-2 text-lg font-semibold text-emerald-400 uppercase tracking-wider">
               List Your Product
@@ -72,7 +73,7 @@ export default function ContactPage() {
             <p className="text-sm text-bone-white/70">
               Submit your product for listing on the platform
             </p>
-          </button>
+          </Link>
         </div>
 
         {/* Contact Form */}
@@ -162,10 +163,6 @@ export default function ContactPage() {
       <GetCertifiedModal
         isOpen={showGetCertified}
         onClose={() => setShowGetCertified(false)}
-      />
-      <ListProductWizard
-        isOpen={showListProduct}
-        onClose={() => setShowListProduct(false)}
       />
     </main>
   );

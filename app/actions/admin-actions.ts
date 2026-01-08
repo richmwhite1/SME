@@ -548,7 +548,7 @@ export async function getAllUsers() {
 
   try {
     const data = await sql`
-      SELECT id, full_name, username, is_banned, banned_at, ban_reason, created_at, reputation_score, is_sme
+      SELECT id, full_name, username, is_banned, banned_at, ban_reason, created_at, reputation_score, is_sme, user_role
       FROM profiles
       ORDER BY created_at DESC
       LIMIT 100
@@ -834,6 +834,63 @@ export async function toggleSME(userId: string, isSme: boolean) {
   } catch (error) {
     console.error("Error toggling SME:", error);
     throw new Error(`Failed to toggle SME status: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+/**
+ * Update user role
+ * Admin only
+ */
+export async function updateUserRole(userId: string, role: 'standard' | 'sme' | 'sme_admin' | 'admin' | 'business_user') {
+  const adminStatus = await isAdmin();
+  if (!adminStatus) {
+    throw new Error("Only administrators can update user roles");
+  }
+
+  const validRoles = ['standard', 'sme', 'sme_admin', 'admin', 'business_user'];
+  if (!validRoles.includes(role)) {
+    throw new Error(`Invalid role: ${role}`);
+  }
+
+  const sql = getDb();
+
+  try {
+    // Update user_role and corresponding boolean flags for backward compatibility
+    const updates: any = {
+      user_role: role,
+      is_admin: role === 'admin',
+      is_sme: role === 'sme' || role === 'sme_admin' || role === 'admin',
+      is_verified_expert: role === 'sme_admin' || role === 'admin',
+    };
+
+    await sql`
+      UPDATE profiles
+      SET 
+        user_role = ${updates.user_role},
+        is_admin = ${updates.is_admin},
+        is_sme = ${updates.is_sme},
+        is_verified_expert = ${updates.is_verified_expert}
+      WHERE id = ${userId}
+    `;
+
+    // Log admin action
+    const user = await currentUser();
+    if (user) {
+      await logAdminAction(
+        user.id,
+        "update_role",
+        "user",
+        userId,
+        `Changed role to ${role}`,
+        { new_role: role }
+      );
+    }
+
+    revalidatePath("/admin");
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating user role:", error);
+    throw new Error(`Failed to update user role: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
