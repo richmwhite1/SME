@@ -6,11 +6,11 @@ import Toast from "./Toast";
 interface ToastMessage {
   id: string;
   message: string;
-  type: "error" | "success" | "warning";
+  type: "error" | "success" | "warning" | "info";
 }
 
 interface ToastContextType {
-  showToast: (message: string, type?: "error" | "success" | "warning") => void;
+  showToast: (message: string, type?: "error" | "success" | "warning" | "info") => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -18,7 +18,7 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
-  const showToast = (message: string, type: "error" | "success" = "error") => {
+  const showToast = (message: string, type: "error" | "success" | "warning" | "info" = "error") => {
     const id = Math.random().toString(36).substring(7);
     setToasts((prev) => [...prev, { id, message, type }]);
   };
