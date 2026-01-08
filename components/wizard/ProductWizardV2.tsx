@@ -19,8 +19,45 @@ const CATEGORIES = [
 
 const MAX_PHOTOS = 10;
 
-// Reusing the same schema from V2
-const wizardSchema = z.object({
+// Base schema for community listings (simplified)
+const communitySchema = z.object({
+    name: z.string().min(1, "Product name is required"),
+    category: z.string().min(1, "Category is required"),
+    company_blurb: z.string().min(10, "Company blurb must be at least 10 characters"),
+    product_photos: z.array(z.string().url()).max(MAX_PHOTOS, "Maximum 10 photos allowed").optional().default([]),
+    youtube_link: z.string().optional().or(z.literal("")),
+    technical_docs_url: z.string().optional().or(z.literal("")),
+    target_audience: z.string().optional().or(z.literal("")),
+    core_value_proposition: z.string().optional().or(z.literal("")),
+    technical_specs: z.array(z.object({
+        key: z.string(),
+        value: z.string()
+    })).optional().default([]),
+    active_ingredients: z.array(z.object({
+        name: z.string(),
+        dosage: z.string()
+    })).optional().default([]),
+    third_party_lab_link: z.string().optional().or(z.literal("")),
+    excipients: z.array(z.string()).optional().default([]),
+    benefits: z.array(z.object({
+        title: z.string(),
+        type: z.enum(["anecdotal", "evidence_based"]),
+        citation: z.string().optional()
+    })).max(5, "Maximum 5 benefits allowed").optional().default([]),
+    sme_access_notes: z.string().optional(),
+    sme_signals: z.record(z.string(), z.object({
+        verified: z.boolean().optional(),
+        evidence: z.string().optional(),
+    })).optional().default({}),
+    is_brand_owner: z.boolean().default(false),
+    work_email: z.string().optional().or(z.literal("")),
+    linkedin_profile: z.string().optional().or(z.literal("")),
+    company_website: z.string().optional().or(z.literal("")),
+    barcode: z.string().optional(),
+});
+
+// Full schema for brand owners (strict validation)
+const brandSchema = z.object({
     name: z.string().min(1, "Product name is required"),
     category: z.string().min(1, "Category is required"),
     company_blurb: z.string().min(10, "Company blurb must be at least 10 characters"),
@@ -53,10 +90,10 @@ const wizardSchema = z.object({
     work_email: z.string().optional().or(z.literal("")),
     linkedin_profile: z.string().optional().or(z.literal("")),
     company_website: z.string().optional().or(z.literal("")),
-    barcode: z.string().optional(), // NEW
+    barcode: z.string().optional(),
 });
 
-type WizardFormValues = z.infer<typeof wizardSchema>;
+type WizardFormValues = z.infer<typeof brandSchema>; // Use brand schema for type (superset)
 
 const SECTIONS = [
     { id: "narrative", label: "The Narrative", icon: FileText },
@@ -76,12 +113,16 @@ export default function ProductWizardV2() {
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [isUrlModalOpen, setIsUrlModalOpen] = useState(false);
     const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false); // NEW
+    const [userType, setUserType] = useState<"community" | "brand">("community"); // NEW: Default to community flow
 
     // Refs for scrolling
     const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
+    // Dynamic schema based on user type
+    const currentSchema = userType === "community" ? communitySchema : brandSchema;
+
     const form = useForm<WizardFormValues>({
-        resolver: zodResolver(wizardSchema),
+        resolver: zodResolver(currentSchema),
         defaultValues: {
             name: "",
             category: "",
@@ -288,15 +329,60 @@ export default function ProductWizardV2() {
             {/* SMART START HERO */}
             <div className="bg-gradient-to-b from-emerald-900/30 to-[#0a0a0a] border-b border-[#333] pt-12 pb-8 px-6">
                 <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-end gap-6">
-                    <div>
+                    <div className="flex-1">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-900/40 text-emerald-400 text-xs font-semibold mb-4 border border-emerald-800">
                             <Sparkles className="w-3 h-3" /> AI-POWERED INTAKE
                         </div>
                         <h1 className="text-3xl font-bold text-white tracking-tight mb-2">Product Onboarding</h1>
-                        <p className="text-gray-400 max-w-xl">
+                        <p className="text-gray-400 max-w-xl mb-6">
                             Auto-fill this form by uploading your product label or pasting a link.
                             Our AI extracts ingredients, benefits, and specs instantly.
                         </p>
+
+                        {/* USER TYPE TOGGLE */}
+                        <div className="bg-[#111] border border-[#333] rounded-lg p-4 max-w-2xl">
+                            <p className="text-xs uppercase tracking-wider text-gray-500 mb-3">Who are you?</p>
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setUserType("community")}
+                                    className={`p-4 rounded-lg border-2 transition-all text-left ${userType === "community"
+                                        ? "border-emerald-500 bg-emerald-900/20"
+                                        : "border-[#333] bg-[#0a0a0a] hover:border-[#444]"
+                                        }`}
+                                >
+                                    <div className="flex items-start gap-3">
+                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 ${userType === "community" ? "border-emerald-500" : "border-gray-600"
+                                            }`}>
+                                            {userType === "community" && <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />}
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-white mb-1">I'm a Community Member</p>
+                                            <p className="text-xs text-gray-400">Share a product I love (simplified form)</p>
+                                        </div>
+                                    </div>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setUserType("brand")}
+                                    className={`p-4 rounded-lg border-2 transition-all text-left ${userType === "brand"
+                                        ? "border-emerald-500 bg-emerald-900/20"
+                                        : "border-[#333] bg-[#0a0a0a] hover:border-[#444]"
+                                        }`}
+                                >
+                                    <div className="flex items-start gap-3">
+                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 ${userType === "brand" ? "border-emerald-500" : "border-gray-600"
+                                            }`}>
+                                            {userType === "brand" && <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />}
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-white mb-1">I'm a Brand Owner</p>
+                                            <p className="text-xs text-gray-400">Full wizard + verification ($100/mo)</p>
+                                        </div>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="flex gap-3">
@@ -430,24 +516,32 @@ export default function ProductWizardV2() {
                 {/* STICKY SIDEBAR */}
                 <div className="hidden lg:block w-64 h-fit sticky top-8 space-y-2">
                     <p className="text-xs uppercase tracking-wider text-gray-500 mb-4 pl-3">Table of Contents</p>
-                    {SECTIONS.map((section) => {
-                        const Icon = section.icon;
-                        const isActive = activeSection === section.id;
-                        return (
-                            <button
-                                key={section.id}
-                                onClick={() => scrollToSection(section.id)}
-                                className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm transition-all text-left
+                    {SECTIONS
+                        .filter(section => {
+                            // Hide signals and verification for community users
+                            if (userType === "community" && (section.id === "signals" || section.id === "verification")) {
+                                return false;
+                            }
+                            return true;
+                        })
+                        .map((section) => {
+                            const Icon = section.icon;
+                            const isActive = activeSection === section.id;
+                            return (
+                                <button
+                                    key={section.id}
+                                    onClick={() => scrollToSection(section.id)}
+                                    className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm transition-all text-left
                                     ${isActive
-                                        ? "bg-emerald-900/20 text-emerald-400 border-l-2 border-emerald-500"
-                                        : "text-gray-500 hover:text-gray-300 hover:bg-[#111]"
-                                    }`}
-                            >
-                                <Icon className="w-4 h-4" />
-                                {section.label}
-                            </button>
-                        );
-                    })}
+                                            ? "bg-emerald-900/20 text-emerald-400 border-l-2 border-emerald-500"
+                                            : "text-gray-500 hover:text-gray-300 hover:bg-[#111]"
+                                        }`}
+                                >
+                                    <Icon className="w-4 h-4" />
+                                    {section.label}
+                                </button>
+                            );
+                        })}
 
                     <div className="pt-8 border-t border-[#222] mt-8">
                         <button
@@ -626,96 +720,101 @@ export default function ProductWizardV2() {
                         </div>
                     </section>
 
-                    {/* SECTION 5: SIGNALS */}
-                    <section id="signals" ref={el => { if (el) sectionRefs.current['signals'] = el }} className="scroll-mt-24 space-y-6">
-                        <div className="flex items-center gap-3 pb-4 border-b border-[#222]">
-                            <ShieldCheck className="w-6 h-6 text-emerald-500" />
-                            <h2 className="text-xl font-bold text-white">Truth Signals & Verification</h2>
-                        </div>
-                        <div className="bg-[#111] p-6 rounded border border-[#222]">
-                            <p className="text-gray-400 text-sm mb-4">Select signals to verify (upload proof required for each).</p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {['third_party_lab_verified', 'purity_tested', 'source_transparency', 'potency_verified', 'excipient_audit', 'operational_legitimacy'].map(key => {
-                                    const isSelected = !!smeSignals[key];
-                                    const evidence = smeSignals[key]?.evidence;
-
-                                    return (
-                                        <div key={key} className={`p-4 border rounded transition-colors ${isSelected ? 'border-emerald-500 bg-emerald-900/10' : 'border-[#333]'}`}>
-                                            <label className="flex items-center gap-3 cursor-pointer">
-                                                <input type="checkbox" checked={isSelected} onChange={() => {
-                                                    const s = { ...smeSignals };
-                                                    if (s[key]) delete s[key];
-                                                    else s[key] = { verified: false, evidence: "" };
-                                                    setValue("sme_signals", s);
-                                                }} className="w-4 h-4 accent-emerald-500" />
-                                                <span className="capitalize font-medium text-gray-200">{key.replace(/_/g, ' ')}</span>
-                                            </label>
-
-                                            {isSelected && (
-                                                <div className="mt-4 pl-7 space-y-2">
-                                                    <p className="text-xs text-emerald-400">Proof Required via Upload/Link:</p>
-                                                    {evidence ? (
-                                                        <div className="flex items-center justify-between p-2 bg-black/40 border border-emerald-500/30 rounded">
-                                                            <a href={evidence} target="_blank" className="text-xs text-blue-400 hover:underline truncate max-w-[150px]">View Proof</a>
-                                                            <button type="button" onClick={() => {
-                                                                const s = { ...smeSignals }; s[key].evidence = ""; setValue("sme_signals", s);
-                                                            }} className="text-red-500 text-xs">Remove</button>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex gap-2">
-                                                            <CloudinaryUploadWidget
-                                                                maxPhotos={1}
-                                                                currentCount={0}
-                                                                onUpload={(url) => {
-                                                                    const s = { ...smeSignals };
-                                                                    s[key].evidence = url;
-                                                                    setValue("sme_signals", s);
-                                                                }}
-                                                            />
-                                                            <button type="button" onClick={() => {
-                                                                const url = prompt("Paste evidence link (PDF/Doc):");
-                                                                if (url) {
-                                                                    const s = { ...smeSignals };
-                                                                    s[key].evidence = url;
-                                                                    setValue("sme_signals", s);
-                                                                }
-                                                            }} className="text-xs bg-[#222] border border-[#444] px-2 py-1 rounded text-gray-300">Link</button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
+                    {/* SECTION 5: SIGNALS - Only for Brand Owners */}
+                    {userType === "brand" && (
+                        <section id="signals" ref={el => { if (el) sectionRefs.current['signals'] = el }} className="scroll-mt-24 space-y-6">
+                            <div className="flex items-center gap-3 pb-4 border-b border-[#222]">
+                                <ShieldCheck className="w-6 h-6 text-emerald-500" />
+                                <h2 className="text-xl font-bold text-white">Truth Signals & Verification</h2>
                             </div>
-                        </div>
-                    </section>
+                            <div className="bg-[#111] p-6 rounded border border-[#222]">
+                                <p className="text-gray-400 text-sm mb-4">Select signals to verify (upload proof required for each).</p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {['third_party_lab_verified', 'purity_tested', 'source_transparency', 'potency_verified', 'excipient_audit', 'operational_legitimacy'].map(key => {
+                                        const isSelected = !!smeSignals[key];
+                                        const evidence = smeSignals[key]?.evidence;
 
-                    <section id="verification" ref={el => { if (el) sectionRefs.current['verification'] = el }} className="scroll-mt-24 space-y-6 pb-24">
-                        <div className="flex items-center gap-3 pb-4 border-b border-[#222]">
-                            <Check className="w-6 h-6 text-emerald-500" />
-                            <h2 className="text-xl font-bold text-white">Final Verification</h2>
-                        </div>
-                        <div className="flex items-center gap-3 mb-4">
-                            <input type="checkbox" {...register("is_brand_owner")} className="w-5 h-5 accent-emerald-500" />
-                            <label className="text-white">I am the brand owner or authorized representative.</label>
-                        </div>
+                                        return (
+                                            <div key={key} className={`p-4 border rounded transition-colors ${isSelected ? 'border-emerald-500 bg-emerald-900/10' : 'border-[#333]'}`}>
+                                                <label className="flex items-center gap-3 cursor-pointer">
+                                                    <input type="checkbox" checked={isSelected} onChange={() => {
+                                                        const s = { ...smeSignals };
+                                                        if (s[key]) delete s[key];
+                                                        else s[key] = { verified: false, evidence: "" };
+                                                        setValue("sme_signals", s);
+                                                    }} className="w-4 h-4 accent-emerald-500" />
+                                                    <span className="capitalize font-medium text-gray-200">{key.replace(/_/g, ' ')}</span>
+                                                </label>
 
-                        {watch("is_brand_owner") && (
-                            <div className="grid md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
-                                <input {...register("work_email")} placeholder="Work Email" className="bg-[#111] border border-[#333] p-3 text-white rounded" />
-                                <input {...register("company_website")} placeholder="Company Website" className="bg-[#111] border border-[#333] p-3 text-white rounded" />
+                                                {isSelected && (
+                                                    <div className="mt-4 pl-7 space-y-2">
+                                                        <p className="text-xs text-emerald-400">Proof Required via Upload/Link:</p>
+                                                        {evidence ? (
+                                                            <div className="flex items-center justify-between p-2 bg-black/40 border border-emerald-500/30 rounded">
+                                                                <a href={evidence} target="_blank" className="text-xs text-blue-400 hover:underline truncate max-w-[150px]">View Proof</a>
+                                                                <button type="button" onClick={() => {
+                                                                    const s = { ...smeSignals }; s[key].evidence = ""; setValue("sme_signals", s);
+                                                                }} className="text-red-500 text-xs">Remove</button>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex gap-2">
+                                                                <CloudinaryUploadWidget
+                                                                    maxPhotos={1}
+                                                                    currentCount={0}
+                                                                    onUpload={(url) => {
+                                                                        const s = { ...smeSignals };
+                                                                        s[key].evidence = url;
+                                                                        setValue("sme_signals", s);
+                                                                    }}
+                                                                />
+                                                                <button type="button" onClick={() => {
+                                                                    const url = prompt("Paste evidence link (PDF/Doc):");
+                                                                    if (url) {
+                                                                        const s = { ...smeSignals };
+                                                                        s[key].evidence = url;
+                                                                        setValue("sme_signals", s);
+                                                                    }
+                                                                }} className="text-xs bg-[#222] border border-[#444] px-2 py-1 rounded text-gray-300">Link</button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                        )}
+                        </section>
+                    )}
 
-                        <div className="lg:hidden mt-8">
-                            <button onClick={handleSubmit(onSubmit)} disabled={isSubmitting} className="w-full bg-emerald-600 text-white py-4 rounded font-bold text-lg">
-                                {isSubmitting ? "Submitting..." : "Submit Product"}
-                            </button>
-                        </div>
-                    </section>
+                    {/* SECTION 6: VERIFICATION - Only for Brand Owners */}
+                    {userType === "brand" && (
+                        <section id="verification" ref={el => { if (el) sectionRefs.current['verification'] = el }} className="scroll-mt-24 space-y-6 pb-24">
+                            <div className="flex items-center gap-3 pb-4 border-b border-[#222]">
+                                <Check className="w-6 h-6 text-emerald-500" />
+                                <h2 className="text-xl font-bold text-white">Final Verification</h2>
+                            </div>
+                            <div className="flex items-center gap-3 mb-4">
+                                <input type="checkbox" {...register("is_brand_owner")} className="w-5 h-5 accent-emerald-500" />
+                                <label className="text-white">I am the brand owner or authorized representative.</label>
+                            </div>
+
+                            {watch("is_brand_owner") && (
+                                <div className="grid md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
+                                    <input {...register("work_email")} placeholder="Work Email" className="bg-[#111] border border-[#333] p-3 text-white rounded" />
+                                    <input {...register("company_website")} placeholder="Company Website" className="bg-[#111] border border-[#333] p-3 text-white rounded" />
+                                </div>
+                            )}
+
+                            <div className="lg:hidden mt-8">
+                                <button onClick={handleSubmit(onSubmit)} disabled={isSubmitting} className="w-full bg-emerald-600 text-white py-4 rounded font-bold text-lg">
+                                    {isSubmitting ? "Submitting..." : "Submit Product"}
+                                </button>
+                            </div>
+                        </section>
+                    )}
                 </div>
             </div>
-        </div>
+        </div >
     );
 }
