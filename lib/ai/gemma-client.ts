@@ -231,6 +231,52 @@ Respond with ONLY valid JSON:
     }
 
     /**
+     * Generate text from image input (Vision)
+     */
+    async generateWithVision(
+        prompt: string,
+        imageBase64: string,
+        mimeType: string = "image/jpeg",
+        options: GemmaGenerateOptions = {}
+    ): Promise<string> {
+        if (this.provider === 'ollama') {
+            throw new Error("Vision capabilities are currently only supported with Google AI provider.");
+        }
+
+        if (!this.googleClient) {
+            throw new Error('Google AI Client not initialized');
+        }
+
+        try {
+            const model = this.googleClient.getGenerativeModel({
+                model: 'gemini-2.0-flash', // Explicitly use vision-capable model
+                generationConfig: {
+                    temperature: options.temperature ?? 0.3,
+                    maxOutputTokens: options.maxTokens ?? 1000,
+                    responseMimeType: options.jsonMode ? "application/json" : "text/plain",
+                }
+            });
+
+            const imagePart = {
+                inlineData: {
+                    data: imageBase64,
+                    mimeType
+                }
+            };
+
+            const result = await model.generateContent([prompt, imagePart]);
+            const text = result.response.text();
+
+            if (!text) throw new Error('No analysis generated');
+
+            return text.trim();
+        } catch (error) {
+            console.error('Error in Vision analysis:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Extract intent from natural language query
      */
     async extractIntent(query: string): Promise<IntentResult> {

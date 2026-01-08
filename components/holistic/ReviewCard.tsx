@@ -1,6 +1,6 @@
 "use client";
 
-import { Star, Image } from "lucide-react";
+import { Star, Image as ImageIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 import AvatarLink from "@/components/profile/AvatarLink";
@@ -97,11 +97,10 @@ export default function ReviewCard({ review, productTitle, productSlug }: Review
           {[1, 2, 3, 4, 5].map((star) => (
             <Star
               key={star}
-              className={`h-4 w-4 ${
-                star <= review.rating
+              className={`h-4 w-4 ${star <= review.rating
                   ? "fill-heart-green text-heart-green"
                   : "fill-none text-bone-white/30"
-              }`}
+                }`}
             />
           ))}
         </div>
@@ -117,7 +116,7 @@ export default function ReviewCard({ review, productTitle, productSlug }: Review
             className="flex items-center gap-1 text-xs text-sme-gold hover:text-[#9A7209] font-mono transition-colors"
             title="Generate share card image"
           >
-            <Image size={12} />
+            <ImageIcon size={12} />
             <span>Generate Share Card</span>
           </button>
         </div>

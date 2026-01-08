@@ -2,7 +2,7 @@
 
 import { useProductWizardStore } from "@/lib/stores/product-wizard-store";
 import { useState } from "react";
-import { AlertCircle, Plus, X, Image, Video, FileText } from "lucide-react";
+import { AlertCircle, Plus, X, Image as ImageIcon, Video, FileText } from "lucide-react";
 import CloudinaryUploadWidget from "../CloudinaryUploadWidget";
 import PhotoGrid from "../PhotoGrid";
 
@@ -51,14 +51,14 @@ export default function Step2Configuration() {
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="mb-6 border-l-2 border-emerald-500 pl-4">
                 <h2 className="text-xl font-semibold text-white uppercase tracking-wider">II. Visuals & Media</h2>
-                <p className="text-gray-500 text-sm mt-1">The "Show, Don't Tell" Step — Visual assets and documentation</p>
+                <p className="text-gray-500 text-sm mt-1">The &quot;Show, Don&apos;t Tell&quot; Step — Visual assets and documentation</p>
             </div>
 
             {/* Product Photos with Cloudinary */}
             <div className="space-y-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <Image className="w-4 h-4 text-emerald-500" />
+                        <ImageIcon className="w-4 h-4 text-emerald-500" />
                         <label className="text-xs uppercase tracking-wider text-gray-500">
                             Product Photos ({photos.length}/{MAX_PHOTOS})
                         </label>

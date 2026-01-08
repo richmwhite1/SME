@@ -128,8 +128,8 @@ export default function BrandClaimWizard({
                         <div key={s} className="flex items-center flex-1">
                             <div
                                 className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${step >= s
-                                        ? "border-sme-gold bg-sme-gold/10 text-sme-gold"
-                                        : "border-bone-white/30 bg-transparent text-bone-white/30"
+                                    ? "border-sme-gold bg-sme-gold/10 text-sme-gold"
+                                    : "border-bone-white/30 bg-transparent text-bone-white/30"
                                     }`}
                             >
                                 {step > s ? (
@@ -168,7 +168,7 @@ export default function BrandClaimWizard({
                     <div>
                         <h2 className="text-xl font-bold text-bone-white mb-2">Verify Your Work Email</h2>
                         <p className="text-sm text-bone-white/70">
-                            We'll use this to verify your identity and send important updates.
+                            We&apos;ll use this to verify your identity and send important updates.
                         </p>
                     </div>
                     <div>

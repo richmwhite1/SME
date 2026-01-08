@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Award, X, Image } from "lucide-react";
+import { Award, X, Image as ImageIcon } from "lucide-react";
 import SocialCard from "@/components/social/SocialCard";
 import { useShareCard } from "@/components/social/useShareCard";
 
@@ -111,7 +111,7 @@ export default function MilestoneBanner() {
               onClick={handleShareMilestone}
               className="mt-2 flex items-center gap-1.5 text-xs text-sme-gold hover:text-[#9A7209] font-mono transition-colors"
             >
-              <Image size={12} />
+              <ImageIcon size={12} />
               <span>Share Achievement</span>
             </button>
           </div>

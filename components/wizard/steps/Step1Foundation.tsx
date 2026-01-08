@@ -93,7 +93,7 @@ export default function Step1Foundation() {
                     placeholder="A quick 'hook' for the product..."
                     maxLength={100}
                 />
-                <p className="text-xs text-gray-600">A concise, compelling statement that captures the product's essence.</p>
+                <p className="text-xs text-gray-600">A concise, compelling statement that captures the product&apos;s essence.</p>
                 {errors.tagline && <p className="text-red-500 text-xs flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.tagline.message as string}</p>}
             </div>
 
@@ -108,7 +108,7 @@ export default function Step1Foundation() {
                     placeholder="Tell the brand story and product mission. This provides internal context for our SMEs..."
                 />
                 <p className="text-xs text-gray-600">
-                    A descriptive space for the vendor to tell the brand story and product mission. This is the "internal context" for our SMEs.
+                    A descriptive space for the vendor to tell the brand story and product mission. This is the &quot;internal context&quot; for our SMEs.
                 </p>
                 {errors.company_blurb && <p className="text-red-500 text-xs flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.company_blurb.message as string}</p>}
             </div>

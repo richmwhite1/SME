@@ -106,7 +106,7 @@ export default async function BrandClaimPage({ params }: PageProps) {
 
                 {/* Info Box */}
                 <div className="mb-8 border border-bone-white/20 bg-bone-white/5 p-6 rounded-lg font-mono">
-                    <h2 className="text-lg font-bold text-bone-white mb-3">What You'll Get:</h2>
+                    <h2 className="text-lg font-bold text-bone-white mb-3">What You&apos;ll Get:</h2>
                     <ul className="space-y-2 text-sm text-bone-white/70">
                         <li className="flex items-start gap-2">
                             <span className="text-sme-gold">✓</span>
@@ -118,7 +118,7 @@ export default async function BrandClaimPage({ params }: PageProps) {
                         </li>
                         <li className="flex items-start gap-2">
                             <span className="text-sme-gold">✓</span>
-                            <span>Add "Buy Now" links and promo codes</span>
+                            <span>Add &quot;Buy Now&quot; links and promo codes</span>
                         </li>
                         <li className="flex items-start gap-2">
                             <span className="text-sme-gold">✓</span>
