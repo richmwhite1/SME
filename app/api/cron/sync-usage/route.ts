@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { getStripe } from "@/lib/stripe-config";
+import { getStripe, reportMeteredUsage } from "@/lib/stripe-config";
 
 // Force dynamic to ensure it runs every time
 export const dynamic = "force-dynamic";
@@ -119,14 +119,12 @@ export async function GET(req: NextRequest) {
                 // 3. Report usage to Stripe
                 // We use set functionality to ensure idempotency if we run multiple times
                 // timestamp must be within current billing period, so using now is safest
-                await stripe.subscriptionItems.createUsageRecord(
-                    meteredItem.id,
-                    {
-                        quantity: viewCount,
-                        action: "increment",
-                        timestamp: Math.floor(Date.now() / 1000),
-                    }
-                );
+                await reportMeteredUsage({
+                    subscriptionItemId: meteredItem.id,
+                    quantity: viewCount,
+                    action: "increment",
+                    timestamp: Math.floor(Date.now() / 1000),
+                });
 
                 // 4. Mark records as synced
                 await sql`

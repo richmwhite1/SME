@@ -8,7 +8,7 @@ import * as z from "zod";
 import CloudinaryUploadWidget from "./CloudinaryUploadWidget";
 import PhotoGrid from "./PhotoGrid";
 import { submitProductWizard } from "@/app/actions/submit-product-wizard";
-import { analyzeProductLabel } from "@/app/actions/analyze-product"; // NEW
+import { analyzeProductLabel, analyzeProductUrl } from "@/app/actions/analyze-product"; // NEW
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/ToastContainer";
 
@@ -19,7 +19,7 @@ const CATEGORIES = [
 
 const MAX_PHOTOS = 10;
 
-// Reusing the same schema from V2 (omitted for brevity in this reasoning, but will include full schema in file)
+// Reusing the same schema from V2
 const wizardSchema = z.object({
     name: z.string().min(1, "Product name is required"),
     category: z.string().min(1, "Category is required"),
@@ -73,6 +73,7 @@ export default function ProductWizardV2() {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [activeSection, setActiveSection] = useState("narrative");
     const [submitError, setSubmitError] = useState<string | null>(null);
+    const [isUrlModalOpen, setIsUrlModalOpen] = useState(false); // NEW State
 
     // Refs for scrolling
     const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -127,7 +128,44 @@ export default function ProductWizardV2() {
         setActiveSection(id);
     };
 
-    // AI Analysis Handler
+    // Helper to safely merge AI data
+    const mergeAIResult = (data: Partial<WizardFormValues>) => {
+        (Object.keys(data) as Array<keyof WizardFormValues>).forEach(key => {
+            const val = data[key];
+            if (!val) return;
+
+            // 1. Data Cleaning: Technical Specs (Handle Object -> Array mismatch)
+            if (key === 'technical_specs') {
+                if (Array.isArray(val)) {
+                    setValue(key, val, { shouldValidate: true });
+                } else if (typeof val === 'object') {
+                    const specsArray = Object.entries(val).map(([k, v]) => ({ key: k, value: String(v) }));
+                    setValue(key, specsArray, { shouldValidate: true });
+                }
+                return;
+            }
+
+            // 2. Data Cleaning: Arrays (Ensure they are actually arrays)
+            if (['product_photos', 'active_ingredients', 'excipients', 'benefits'].includes(key)) {
+                if (Array.isArray(val)) {
+                    setValue(key, val as any, { shouldValidate: true });
+                }
+                return;
+            }
+
+            // 3. Data Cleaning: SME Signals (Merge with existing)
+            if (key === 'sme_signals' && typeof val === 'object') {
+                const currentSignals = form.getValues('sme_signals') || {};
+                setValue('sme_signals', { ...currentSignals, ...val }, { shouldValidate: true });
+                return;
+            }
+
+            // 4. Default Primitives
+            setValue(key, val as any, { shouldValidate: true });
+        });
+    };
+
+    // AI Analysis Handlers
     const handleLabelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -139,20 +177,7 @@ export default function ProductWizardV2() {
         try {
             const result = await analyzeProductLabel(formData);
             if (result.success && result.data) {
-                // Merge data
-                const currentData = form.getValues();
-                const newData = { ...currentData, ...result.data };
-
-                // Specifically merge arrays to avoid overwrite if user has data (actually overwrite is better for "Start" mode)
-                // But let's assume this is mostly for empty forms or explicit "fill this" action.
-                // We'll reset the form with new data, keeping any existing valid fields if needed? 
-                // For simplicity, we merge into the form.
-
-                (Object.keys(result.data) as Array<keyof WizardFormValues>).forEach(key => {
-                    const val = result.data[key];
-                    if (val) setValue(key, val, { shouldValidate: true });
-                });
-
+                mergeAIResult(result.data);
                 showToast("Product data extracted from label!", "success");
             } else {
                 showToast(result.error || "Failed to analyze label", "error");
@@ -160,6 +185,28 @@ export default function ProductWizardV2() {
         } catch (err) {
             console.error(err);
             showToast("Error analyzing label", "error");
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
+    const handleUrlImport = async (url: string) => {
+        setIsSubmitting(false); // Reset submit state just in case
+        setIsAnalyzing(true);
+        try {
+            showToast("Scraping URL & Extracting Data...", "info");
+            const result = await analyzeProductUrl(url);
+
+            if (result.success && result.data) {
+                mergeAIResult(result.data);
+                showToast("Product data extracted from URL!", "success");
+                setIsUrlModalOpen(false);
+            } else {
+                showToast(result.error || "Failed to analyze URL", "error");
+            }
+        } catch (e) {
+            console.error(e);
+            showToast("Error analyzing URL", "error");
         } finally {
             setIsAnalyzing(false);
         }
@@ -240,7 +287,57 @@ export default function ProductWizardV2() {
                                 {isAnalyzing ? "Analyzing..." : "Upload Label"}
                             </button>
                         </div>
-                        <button className="flex items-center gap-2 bg-[#222] hover:bg-[#333] border border-[#444] text-gray-300 px-5 py-3 rounded font-semibold transition-all">
+
+                        {/* URL Import Modal */}
+                        {isUrlModalOpen && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
+                                <div className="bg-[#111] border border-[#333] rounded-lg w-full max-w-lg shadow-2xl overflow-hidden">
+                                    <div className="bg-[#0a0a0a] border-b border-[#333] px-6 py-4 flex justify-between items-center">
+                                        <h3 className="text-white font-bold flex items-center gap-2">
+                                            <LinkIcon className="w-4 h-4 text-emerald-500" />
+                                            Import from URL
+                                        </h3>
+                                        <button onClick={() => setIsUrlModalOpen(false)} className="text-gray-500 hover:text-white transition-colors">×</button>
+                                    </div>
+                                    <div className="p-6 space-y-4">
+                                        <p className="text-sm text-gray-400">
+                                            Paste a product page URL (e.g. Amazon, Shopify, or Brand site). Our AI will scrape and extract key details.
+                                        </p>
+                                        <input
+                                            autoFocus
+                                            placeholder="https://example.com/products/neuro-vance"
+                                            className="w-full bg-[#000] border border-[#333] p-3 text-white rounded focus:border-emerald-500 outline-none"
+                                            onKeyDown={async (e) => {
+                                                if (e.key === 'Enter') {
+                                                    const target = e.target as HTMLInputElement;
+                                                    if (target.value) handleUrlImport(target.value);
+                                                }
+                                            }}
+                                            id="url-input-modal"
+                                        />
+                                        <div className="flex justify-end gap-3 pt-2">
+                                            <button onClick={() => setIsUrlModalOpen(false)} className="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancel</button>
+                                            <button
+                                                onClick={() => {
+                                                    const input = document.getElementById('url-input-modal') as HTMLInputElement;
+                                                    if (input?.value) handleUrlImport(input.value);
+                                                }}
+                                                disabled={isAnalyzing}
+                                                className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded flex items-center gap-2"
+                                            >
+                                                {isAnalyzing ? "Scanning..." : "Import Product"}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <button
+                            type="button"
+                            onClick={() => setIsUrlModalOpen(true)}
+                            className="flex items-center gap-2 bg-[#222] hover:bg-[#333] border border-[#444] text-gray-300 px-5 py-3 rounded font-semibold transition-all"
+                        >
                             <LinkIcon className="w-4 h-4" />
                             Paste URL
                         </button>
@@ -446,7 +543,7 @@ export default function ProductWizardV2() {
                         </div>
                     </section>
 
-                    {/* SECTION 5 & 6: SIGNALS & VERIFICATION (Simplified for length) */}
+                    {/* SECTION 5: SIGNALS */}
                     <section id="signals" ref={el => sectionRefs.current['signals'] = el} className="scroll-mt-24 space-y-6">
                         <div className="flex items-center gap-3 pb-4 border-b border-[#222]">
                             <ShieldCheck className="w-6 h-6 text-emerald-500" />
@@ -454,19 +551,59 @@ export default function ProductWizardV2() {
                         </div>
                         <div className="bg-[#111] p-6 rounded border border-[#222]">
                             <p className="text-gray-400 text-sm mb-4">Select signals to verify (upload proof required for each).</p>
-                            {/* Reusing logic from V2 via map... implementation needed if we want full fidelity. I'll condense for now. */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {['third_party_lab_verified', 'purity_tested', 'source_transparency'].map(key => (
-                                    <label key={key} className={`flex items-center gap-3 p-3 border rounded cursor-pointer ${smeSignals[key] ? 'border-emerald-500 bg-emerald-900/10' : 'border-[#333]'}`}>
-                                        <input type="checkbox" checked={!!smeSignals[key]} onChange={() => {
-                                            const s = { ...smeSignals };
-                                            if (s[key]) delete s[key];
-                                            else s[key] = { verified: false, evidence: "Pending upload" }; // Simplified
-                                            setValue("sme_signals", s);
-                                        }} className="accent-emerald-500" />
-                                        <span className="capitalize text-sm text-gray-300">{key.replace(/_/g, ' ')}</span>
-                                    </label>
-                                ))}
+                                {['third_party_lab_verified', 'purity_tested', 'source_transparency', 'potency_verified', 'excipient_audit', 'operational_legitimacy'].map(key => {
+                                    const isSelected = !!smeSignals[key];
+                                    const evidence = smeSignals[key]?.evidence;
+
+                                    return (
+                                        <div key={key} className={`p-4 border rounded transition-colors ${isSelected ? 'border-emerald-500 bg-emerald-900/10' : 'border-[#333]'}`}>
+                                            <label className="flex items-center gap-3 cursor-pointer">
+                                                <input type="checkbox" checked={isSelected} onChange={() => {
+                                                    const s = { ...smeSignals };
+                                                    if (s[key]) delete s[key];
+                                                    else s[key] = { verified: false, evidence: "" };
+                                                    setValue("sme_signals", s);
+                                                }} className="w-4 h-4 accent-emerald-500" />
+                                                <span className="capitalize font-medium text-gray-200">{key.replace(/_/g, ' ')}</span>
+                                            </label>
+
+                                            {isSelected && (
+                                                <div className="mt-4 pl-7 space-y-2">
+                                                    <p className="text-xs text-emerald-400">Proof Required via Upload/Link:</p>
+                                                    {evidence ? (
+                                                        <div className="flex items-center justify-between p-2 bg-black/40 border border-emerald-500/30 rounded">
+                                                            <a href={evidence} target="_blank" className="text-xs text-blue-400 hover:underline truncate max-w-[150px]">View Proof</a>
+                                                            <button type="button" onClick={() => {
+                                                                const s = { ...smeSignals }; s[key].evidence = ""; setValue("sme_signals", s);
+                                                            }} className="text-red-500 text-xs">Remove</button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex gap-2">
+                                                            <CloudinaryUploadWidget
+                                                                maxPhotos={1}
+                                                                currentCount={0}
+                                                                onUpload={(url) => {
+                                                                    const s = { ...smeSignals };
+                                                                    s[key].evidence = url;
+                                                                    setValue("sme_signals", s);
+                                                                }}
+                                                            />
+                                                            <button type="button" onClick={() => {
+                                                                const url = prompt("Paste evidence link (PDF/Doc):");
+                                                                if (url) {
+                                                                    const s = { ...smeSignals };
+                                                                    s[key].evidence = url;
+                                                                    setValue("sme_signals", s);
+                                                                }
+                                                            }} className="text-xs bg-[#222] border border-[#444] px-2 py-1 rounded text-gray-300">Link</button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     </section>
