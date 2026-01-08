@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { ChevronRight, Check, Upload, Link as LinkIcon, Camera, Sparkles, FileText, FlaskConical, ShieldCheck, AlertCircle } from "lucide-react";
+import { ChevronRight, Check, Upload, Link as LinkIcon, Camera, Sparkles, FileText, FlaskConical, ShieldCheck, AlertCircle, ScanBarcode } from "lucide-react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import CloudinaryUploadWidget from "./CloudinaryUploadWidget";
 import PhotoGrid from "./PhotoGrid";
 import { submitProductWizard } from "@/app/actions/submit-product-wizard";
-import { analyzeProductLabel, analyzeProductUrl } from "@/app/actions/analyze-product"; // NEW
+import { analyzeProductLabel, analyzeProductUrl, lookupProductByBarcode } from "@/app/actions/analyze-product"; // NEW
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/ToastContainer";
 
@@ -52,7 +52,8 @@ const wizardSchema = z.object({
     is_brand_owner: z.boolean().default(false),
     work_email: z.string().optional().or(z.literal("")),
     linkedin_profile: z.string().optional().or(z.literal("")),
-    company_website: z.string().optional().or(z.literal(""))
+    company_website: z.string().optional().or(z.literal("")),
+    barcode: z.string().optional(), // NEW
 });
 
 type WizardFormValues = z.infer<typeof wizardSchema>;
@@ -73,7 +74,8 @@ export default function ProductWizardV2() {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [activeSection, setActiveSection] = useState("narrative");
     const [submitError, setSubmitError] = useState<string | null>(null);
-    const [isUrlModalOpen, setIsUrlModalOpen] = useState(false); // NEW State
+    const [isUrlModalOpen, setIsUrlModalOpen] = useState(false);
+    const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false); // NEW
 
     // Refs for scrolling
     const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -100,6 +102,7 @@ export default function ProductWizardV2() {
             work_email: "",
             linkedin_profile: "",
             company_website: "",
+            barcode: "",
         },
         mode: "onChange"
     });
@@ -137,7 +140,7 @@ export default function ProductWizardV2() {
             // 1. Data Cleaning: Technical Specs (Handle Object -> Array mismatch)
             if (key === 'technical_specs') {
                 if (Array.isArray(val)) {
-                    setValue(key, val, { shouldValidate: true });
+                    setValue(key, val as any, { shouldValidate: true });
                 } else if (typeof val === 'object') {
                     const specsArray = Object.entries(val).map(([k, v]) => ({ key: k, value: String(v) }));
                     setValue(key, specsArray, { shouldValidate: true });
@@ -207,6 +210,29 @@ export default function ProductWizardV2() {
         } catch (e) {
             console.error(e);
             showToast("Error analyzing URL", "error");
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
+    const handleBarcodeLookup = async (barcode: string) => {
+        setIsSubmitting(false);
+        setIsAnalyzing(true);
+        try {
+            showToast("Looking up Barcode...", "info");
+            const result = await lookupProductByBarcode(barcode);
+
+            if (result.success && result.data) {
+                mergeAIResult(result.data);
+                setValue('barcode', barcode);
+                showToast("Product data found via Barcode!", "success");
+                setIsBarcodeModalOpen(false);
+            } else {
+                showToast(result.error || "Barcode lookup failed", "error");
+            }
+        } catch (e) {
+            console.error(e);
+            showToast("Error looking up barcode", "error");
         } finally {
             setIsAnalyzing(false);
         }
@@ -341,6 +367,60 @@ export default function ProductWizardV2() {
                             <LinkIcon className="w-4 h-4" />
                             Paste URL
                         </button>
+
+                        {/* Barcode Modal */}
+                        {isBarcodeModalOpen && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
+                                <div className="bg-[#111] border border-[#333] rounded-lg w-full max-w-lg shadow-2xl overflow-hidden">
+                                    <div className="bg-[#0a0a0a] border-b border-[#333] px-6 py-4 flex justify-between items-center">
+                                        <h3 className="text-white font-bold flex items-center gap-2">
+                                            <ScanBarcode className="w-4 h-4 text-emerald-500" />
+                                            Scan Barcode
+                                        </h3>
+                                        <button onClick={() => setIsBarcodeModalOpen(false)} className="text-gray-500 hover:text-white transition-colors">×</button>
+                                    </div>
+                                    <div className="p-6 space-y-4">
+                                        <p className="text-sm text-gray-400">
+                                            Enter the product barcode (UPC/EAN) to fetch verified data from standard databases.
+                                        </p>
+                                        <input
+                                            autoFocus
+                                            placeholder="e.g. 058449401018"
+                                            className="w-full bg-[#000] border border-[#333] p-3 text-white rounded focus:border-emerald-500 outline-none font-mono tracking-wider"
+                                            onKeyDown={async (e) => {
+                                                if (e.key === 'Enter') {
+                                                    const target = e.target as HTMLInputElement;
+                                                    if (target.value) handleBarcodeLookup(target.value);
+                                                }
+                                            }}
+                                            id="barcode-input-modal"
+                                        />
+                                        <div className="flex justify-end gap-3 pt-2">
+                                            <button onClick={() => setIsBarcodeModalOpen(false)} className="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancel</button>
+                                            <button
+                                                onClick={() => {
+                                                    const input = document.getElementById('barcode-input-modal') as HTMLInputElement;
+                                                    if (input?.value) handleBarcodeLookup(input.value);
+                                                }}
+                                                disabled={isAnalyzing}
+                                                className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded flex items-center gap-2"
+                                            >
+                                                {isAnalyzing ? "Looking up..." : "Lookup Barcode"}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <button
+                            type="button"
+                            onClick={() => setIsBarcodeModalOpen(true)}
+                            className="flex items-center gap-2 bg-[#222] hover:bg-[#333] border border-[#444] text-gray-300 px-5 py-3 rounded font-semibold transition-all"
+                        >
+                            <ScanBarcode className="w-4 h-4" />
+                            Barcode
+                        </button>
                     </div>
                 </div>
             </div>
@@ -427,6 +507,9 @@ export default function ProductWizardV2() {
                                 <label className="text-xs uppercase tracking-wider text-gray-500">Core Value Proposition</label>
                                 <textarea {...register("core_value_proposition")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded min-h-[100px]" placeholder="Key promise to the consumer..." />
                             </div>
+
+                            {/* Hidden Barcode Field */}
+                            <input type="hidden" {...register("barcode")} />
                         </div>
                     </section>
 
