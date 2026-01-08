@@ -469,7 +469,7 @@ export default function ProductWizardV2() {
                 <div className="flex-1 space-y-16 pb-32">
 
                     {/* SECTION 1: NARRATIVE */}
-                    <section id="narrative" ref={el => sectionRefs.current['narrative'] = el} className="scroll-mt-24 space-y-6">
+                    <section id="narrative" ref={el => { if (el) sectionRefs.current['narrative'] = el }} className="scroll-mt-24 space-y-6">
                         <div className="flex items-center gap-3 pb-4 border-b border-[#222]">
                             <FileText className="w-6 h-6 text-emerald-500" />
                             <h2 className="text-xl font-bold text-white">The Narrative</h2>
@@ -514,7 +514,7 @@ export default function ProductWizardV2() {
                     </section>
 
                     {/* SECTION 2: MEDIA */}
-                    <section id="media" ref={el => sectionRefs.current['media'] = el} className="scroll-mt-24 space-y-6">
+                    <section id="media" ref={el => { if (el) sectionRefs.current['media'] = el }} className="scroll-mt-24 space-y-6">
                         <div className="flex items-center gap-3 pb-4 border-b border-[#222]">
                             <Camera className="w-6 h-6 text-emerald-500" />
                             <h2 className="text-xl font-bold text-white">Media Assets</h2>
@@ -538,7 +538,7 @@ export default function ProductWizardV2() {
                     </section>
 
                     {/* SECTION 3: SPECS */}
-                    <section id="specs" ref={el => sectionRefs.current['specs'] = el} className="scroll-mt-24 space-y-6">
+                    <section id="specs" ref={el => { if (el) sectionRefs.current['specs'] = el }} className="scroll-mt-24 space-y-6">
                         <div className="flex items-center gap-3 pb-4 border-b border-[#222]">
                             <FlaskConical className="w-6 h-6 text-emerald-500" />
                             <h2 className="text-xl font-bold text-white">Ingredients & Specs</h2>
@@ -585,7 +585,7 @@ export default function ProductWizardV2() {
                     </section>
 
                     {/* SECTION 4: BENEFITS */}
-                    <section id="benefits" ref={el => sectionRefs.current['benefits'] = el} className="scroll-mt-24 space-y-6">
+                    <section id="benefits" ref={el => { if (el) sectionRefs.current['benefits'] = el }} className="scroll-mt-24 space-y-6">
                         <div className="flex items-center gap-3 pb-4 border-b border-[#222]">
                             <Sparkles className="w-6 h-6 text-emerald-500" />
                             <h2 className="text-xl font-bold text-white">Potential Benefits</h2>
@@ -627,7 +627,7 @@ export default function ProductWizardV2() {
                     </section>
 
                     {/* SECTION 5: SIGNALS */}
-                    <section id="signals" ref={el => sectionRefs.current['signals'] = el} className="scroll-mt-24 space-y-6">
+                    <section id="signals" ref={el => { if (el) sectionRefs.current['signals'] = el }} className="scroll-mt-24 space-y-6">
                         <div className="flex items-center gap-3 pb-4 border-b border-[#222]">
                             <ShieldCheck className="w-6 h-6 text-emerald-500" />
                             <h2 className="text-xl font-bold text-white">Truth Signals & Verification</h2>
@@ -691,7 +691,7 @@ export default function ProductWizardV2() {
                         </div>
                     </section>
 
-                    <section id="verification" ref={el => sectionRefs.current['verification'] = el} className="scroll-mt-24 space-y-6 pb-24">
+                    <section id="verification" ref={el => { if (el) sectionRefs.current['verification'] = el }} className="scroll-mt-24 space-y-6 pb-24">
                         <div className="flex items-center gap-3 pb-4 border-b border-[#222]">
                             <Check className="w-6 h-6 text-emerald-500" />
                             <h2 className="text-xl font-bold text-white">Final Verification</h2>
