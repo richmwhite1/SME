@@ -36,6 +36,8 @@ export async function analyzeProductLabel(formData: FormData): Promise<AnalyzedP
             5. benefits: Array of potential benefits mentioned (max 5), formatted as { "title": "Supports Immune Health", "type": "anecdotal", "citation": "" }
             6. target_audience: Inferred audience (e.g. "Adults", "Athletes")
             7. excipients: Array of "Other Ingredients" or fillers listed (e.g. "Magnesium Stearate", "Rice Flour")
+            8. allergens: Array of allergens from ["dairy", "eggs", "fish", "shellfish", "tree_nuts", "peanuts", "wheat", "soy", "gluten", "none"]. Look for "Contains:" or "Allergen Warning:" sections. If no allergens found, use ["none"].
+            9. dietary_tags: Array of dietary compliance tags from ["vegan", "vegetarian", "gluten_free", "dairy_free", "kosher", "halal", "paleo", "keto", "non_gmo"]. Look for certification badges or claims.
       
             If a field is not found, leave it empty or null.
             Ensure strict JSON format.
@@ -69,76 +71,124 @@ export async function analyzeProductLabel(formData: FormData): Promise<AnalyzedP
 // ... (existing helper logic)
 
 export async function analyzeProductUrl(url: string): Promise<AnalyzedProductData> {
+    let browser;
     try {
         if (!url) throw new Error("No URL provided");
 
-        // 1. Fetch HTML
-        const res = await fetch(url, {
-            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' }
+        // Dynamic import of Puppeteer (server-side only)
+        const puppeteer = await import('puppeteer');
+
+        // 1. Launch headless browser
+        browser = await puppeteer.default.launch({
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
         });
-        if (!res.ok) throw new Error(`Failed to fetch page: ${res.statusText}`);
-        const html = await res.text();
 
-        // 2. Parse DOM for structured data and images
-        const dom = new JSDOM(html, { url });
-        const document = dom.window.document;
+        const page = await browser.newPage();
 
-        // Extract images
-        const images: string[] = [];
+        // Set viewport and user agent
+        await page.setViewport({ width: 1920, height: 1080 });
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
-        // Open Graph image
-        const ogImage = document.querySelector('meta[property="og:image"]');
-        if (ogImage) {
-            const content = ogImage.getAttribute('content');
-            if (content) images.push(content);
-        }
+        // 2. Navigate to URL with timeout
+        await page.goto(url, {
+            waitUntil: 'networkidle2',
+            timeout: 15000
+        });
 
-        // Product images (common selectors)
-        const productImgSelectors = [
-            'img[data-product-image]',
-            '.product-image img',
-            '#product-image',
-            '[itemprop="image"]',
-            '.product-gallery img',
-            '[data-testid="product-image"]',
-            'img[alt*="product"]'
+        // 3. Click common tab/accordion selectors to reveal hidden content
+        const clickSelectors = [
+            'button:has-text("Ingredients")',
+            'button:has-text("Supplement Facts")',
+            'button:has-text("Nutrition Facts")',
+            '[data-tab="ingredients"]',
+            '[data-accordion="ingredients"]',
+            '.ingredients-tab',
+            '.supplement-facts-tab',
+            'a[href*="ingredients"]',
+            'button[aria-label*="ingredients"]',
+            'div:has-text("Ingredients"):visible',
+            'button:has-text("Details")',
+            'button:has-text("More Info")'
         ];
 
-        productImgSelectors.forEach(selector => {
-            const imgs = document.querySelectorAll(selector);
-            imgs.forEach(img => {
-                const src = img.getAttribute('src') || img.getAttribute('data-src');
-                if (src && !src.includes('placeholder') && !src.includes('loading')) {
-                    try {
-                        const fullUrl = new URL(src, url).href;
-                        images.push(fullUrl);
-                    } catch (e) {
-                        // Invalid URL, skip
-                    }
-                }
-            });
-        });
-
-        // Limit to first 5 unique images
-        const uniqueImages = [...new Set(images)].slice(0, 5);
-
-        // 3. Extract readable content
-        const reader = new Readability(dom.window.document);
-        const article = reader.parse();
-
-        if (!article || !article.textContent) {
-            throw new Error("Could not extract main content from URL");
+        for (const selector of clickSelectors) {
+            try {
+                // Try to click if element exists (non-blocking)
+                await page.click(selector, { timeout: 500 });
+                await page.waitForTimeout(500); // Wait for content to load
+            } catch (e) {
+                // Element not found or not clickable, continue
+            }
         }
 
-        const content = article.textContent.substring(0, 50000); // Limit context
+        // 4. Extract images
+        const images = await page.evaluate((pageUrl) => {
+            const imgs: string[] = [];
 
-        // 4. Enhanced AI Analysis with Gemini Flash
+            // Open Graph image
+            const ogImage = document.querySelector('meta[property="og:image"]');
+            if (ogImage) {
+                const content = ogImage.getAttribute('content');
+                if (content) imgs.push(content);
+            }
+
+            // Product images (common selectors)
+            const selectors = [
+                'img[data-product-image]',
+                '.product-image img',
+                '#product-image',
+                '[itemprop="image"]',
+                '.product-gallery img',
+                '[data-testid="product-image"]',
+                'img[alt*="product" i]',
+                '.product-photos img',
+                '[data-role="product-image"]'
+            ];
+
+            selectors.forEach(selector => {
+                const elements = document.querySelectorAll(selector);
+                elements.forEach(img => {
+                    const src = img.getAttribute('src') || img.getAttribute('data-src');
+                    if (src && !src.includes('placeholder') && !src.includes('loading')) {
+                        try {
+                            const fullUrl = new URL(src, pageUrl).href;
+                            imgs.push(fullUrl);
+                        } catch (e) {
+                            // Invalid URL, skip
+                        }
+                    }
+                });
+            });
+
+            return [...new Set(imgs)].slice(0, 5);
+        }, url);
+
+        // 5. Extract full text content (after JavaScript execution)
+        const content = await page.evaluate(() => {
+            // Remove script, style, and nav elements
+            const elementsToRemove = document.querySelectorAll('script, style, nav, header, footer, .cookie-banner, .popup');
+            elementsToRemove.forEach(el => el.remove());
+
+            return document.body.innerText || document.body.textContent || '';
+        });
+
+        await browser.close();
+        browser = undefined;
+
+        if (!content || content.trim().length < 100) {
+            throw new Error("Could not extract sufficient content from URL");
+        }
+
+        const limitedContent = content.substring(0, 50000); // Limit context for Gemini
+
+        // 6. Enhanced AI Analysis with Gemini Flash
         const gemma = getGemmaClient();
         const prompt = `
 You are analyzing a health/supplement product page. Extract comprehensive product information.
 
 Product Page Content:
-"${content}"
+"${limitedContent}"
 
 Extract the following fields into a strict JSON object:
 
@@ -156,7 +206,7 @@ PRODUCT DETAILS:
 INGREDIENTS (CRITICAL for supplements):
 - active_ingredients: Array of {name, dosage} objects
   * dosage is OPTIONAL - only include if clearly stated
-  * Extract ALL listed active ingredients
+  * Extract ALL listed active ingredients from Supplement Facts or Nutrition Facts panel
   * Example: [{"name": "Magnesium", "dosage": "200mg"}, {"name": "Vitamin D3", "dosage": ""}]
 - excipients: Array of other ingredients/fillers (e.g., ["Hypromellose", "Rice Flour"])
 
@@ -170,6 +220,14 @@ BENEFITS:
 SAFETY & QUALITY:
 - warnings: Any warnings, contraindications, or "consult physician" notes
 - certifications: Array of third-party certifications mentioned (e.g., ["NSF Certified", "GMP", "Organic"])
+- allergens: Array of allergens from ["dairy", "eggs", "fish", "shellfish", "tree_nuts", "peanuts", "wheat", "soy", "gluten", "none"]
+  * Look for "Contains:", "Allergen Warning:", or "Allergen Information:" sections
+  * If no allergens are mentioned, use ["none"]
+  * Example: ["dairy", "soy"] or ["none"]
+- dietary_tags: Array of dietary compliance tags from ["vegan", "vegetarian", "gluten_free", "dairy_free", "kosher", "halal", "paleo", "keto", "non_gmo"]
+  * Look for certification badges, seals, or explicit claims (e.g., "Certified Vegan", "Gluten-Free", "Non-GMO Project Verified")
+  * Only include tags that are explicitly stated or certified
+  * Example: ["vegan", "gluten_free", "non_gmo"]
 
 TECHNICAL SPECS:
 - technical_specs: Array of {key, value} objects for other details
@@ -182,7 +240,9 @@ IMPORTANT RULES:
 3. Distinguish between brand name and product name
 4. Ingredient dosage is optional - extract only if available
 5. All benefits should have type "anecdotal"
-6. Return ONLY valid JSON, no markdown formatting
+6. For allergens: if no allergens are mentioned, use ["none"]
+7. For dietary_tags: only include tags that are explicitly stated or certified
+8. Return ONLY valid JSON, no markdown formatting
 
 Return the JSON object now:
         `;
@@ -204,14 +264,24 @@ Return the JSON object now:
         const data = JSON.parse(jsonStr);
 
         // Add extracted images to the data
-        if (uniqueImages.length > 0) {
-            data.product_photos = uniqueImages;
+        if (images.length > 0) {
+            data.product_photos = images;
         }
 
         return { success: true, data };
 
     } catch (error: any) {
         console.error("Error analyzing product URL:", error);
+
+        // Ensure browser is closed on error
+        if (browser) {
+            try {
+                await browser.close();
+            } catch (e) {
+                // Ignore close errors
+            }
+        }
+
         return { success: false, error: error.message };
     }
 }

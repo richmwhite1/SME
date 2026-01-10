@@ -50,6 +50,14 @@ const communitySchema = z.object({
         type: z.enum(["anecdotal", "evidence_based"]),
         citation: z.string().optional()
     })).max(5, "Maximum 5 benefits allowed").optional().default([]),
+    allergens: z.array(z.enum([
+        "dairy", "eggs", "fish", "shellfish", "tree_nuts",
+        "peanuts", "wheat", "soy", "gluten", "none"
+    ])).optional().default([]),
+    dietary_tags: z.array(z.enum([
+        "vegan", "vegetarian", "gluten_free", "dairy_free",
+        "kosher", "halal", "paleo", "keto", "non_gmo"
+    ])).optional().default([]),
     sme_access_notes: z.string().optional(),
     sme_signals: z.record(z.string(), z.object({
         verified: z.boolean().optional(),
@@ -93,6 +101,14 @@ const brandSchema = z.object({
         type: z.enum(["anecdotal", "evidence_based"]),
         citation: z.string().optional()
     })).max(5, "Maximum 5 benefits allowed"),
+    allergens: z.array(z.enum([
+        "dairy", "eggs", "fish", "shellfish", "tree_nuts",
+        "peanuts", "wheat", "soy", "gluten", "none"
+    ])).optional().default([]),
+    dietary_tags: z.array(z.enum([
+        "vegan", "vegetarian", "gluten_free", "dairy_free",
+        "kosher", "halal", "paleo", "keto", "non_gmo"
+    ])).optional().default([]),
     sme_access_notes: z.string().optional(),
     sme_signals: z.record(z.string(), z.object({
         verified: z.boolean().optional(),
@@ -154,6 +170,8 @@ export default function ProductWizardV2() {
             third_party_lab_link: "",
             excipients: [],
             benefits: [],
+            allergens: [],
+            dietary_tags: [],
             sme_access_notes: "",
             sme_signals: {},
             is_brand_owner: false,
@@ -227,6 +245,41 @@ export default function ProductWizardV2() {
     };
 
     // AI Analysis Handlers
+    const [uploadingSignals, setUploadingSignals] = useState<Record<string, boolean>>({});
+
+    const handleSignalUpload = async (key: string, file: File) => {
+        if (!file) return;
+
+        setUploadingSignals(prev => ({ ...prev, [key]: true }));
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("upload_preset", process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "default_unsigned");
+
+        try {
+            const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+            const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
+                method: "POST",
+                body: formData
+            });
+            const data = await res.json();
+
+            if (data.secure_url) {
+                const s = { ...form.getValues('sme_signals') };
+                if (!s[key]) s[key] = { verified: false, evidence: "" };
+                s[key].evidence = data.secure_url;
+                setValue("sme_signals", s, { shouldValidate: true });
+                showToast("Proof uploaded successfully!", "success");
+            } else {
+                throw new Error(data.error?.message || "Upload failed");
+            }
+        } catch (e) {
+            console.error(e);
+            showToast("Failed to upload proof", "error");
+        } finally {
+            setUploadingSignals(prev => ({ ...prev, [key]: false }));
+        }
+    };
+
     const handleLabelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -338,6 +391,8 @@ export default function ProductWizardV2() {
     const benefits = watch("benefits");
     const excipients = watch("excipients");
     const smeSignals = watch("sme_signals");
+    const allergens = watch("allergens");
+    const dietaryTags = watch("dietary_tags");
 
     return (
         <div className="min-h-screen bg-[#0a0a0a] text-[#e5e5e5] font-mono">
@@ -692,7 +747,84 @@ export default function ProductWizardV2() {
                                     }} className="flex-1 bg-[#111] border border-[#333] p-3 rounded text-sm text-white" />
                                     <button type="button" onClick={() => setValue("technical_specs", technicalSpecs.filter((_, idx) => idx !== i))} className="px-3 text-red-500 hover:bg-red-900/20 rounded">×</button>
                                 </div>
-                            ))}
+                            ))}\n                        </div>
+
+                        {/* Allergen Information */}
+                        <div className="space-y-4 pt-6 border-t border-[#222]">
+                            <label className="text-xs uppercase tracking-wider text-gray-500">Allergen Information</label>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                {["dairy", "eggs", "fish", "shellfish", "tree_nuts", "peanuts", "wheat", "soy", "gluten", "none"].map(allergen => {
+                                    const isSelected = allergens.includes(allergen as any);
+                                    return (
+                                        <label key={allergen} className={`flex items-center gap-2 p-3 rounded border-2 cursor-pointer transition-all ${isSelected ? "border-orange-500 bg-orange-900/20" : "border-[#333] hover:border-[#444]"
+                                            }`}>
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                onChange={(e) => {
+                                                    const current = allergens || [];
+                                                    if (e.target.checked) {
+                                                        setValue("allergens", [...current, allergen as any]);
+                                                    } else {
+                                                        setValue("allergens", current.filter(a => a !== allergen));
+                                                    }
+                                                }}
+                                                className="w-4 h-4 accent-orange-500"
+                                            />
+                                            <span className="text-sm capitalize text-gray-300">{allergen.replace(/_/g, ' ')}</span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                            {allergens.length > 0 && (
+                                <div className="flex flex-wrap gap-2 p-3 bg-orange-900/10 border border-orange-900/30 rounded">
+                                    <span className="text-xs text-orange-400 font-semibold">Selected:</span>
+                                    {allergens.map(a => (
+                                        <span key={a} className="px-2 py-1 bg-orange-900/40 text-orange-300 text-xs rounded capitalize">
+                                            {a.replace(/_/g, ' ')}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Dietary Tags */}
+                        <div className="space-y-4 pt-6 border-t border-[#222]">
+                            <label className="text-xs uppercase tracking-wider text-gray-500">Dietary Compliance Tags</label>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                {["vegan", "vegetarian", "gluten_free", "dairy_free", "kosher", "halal", "paleo", "keto", "non_gmo"].map(tag => {
+                                    const isSelected = dietaryTags.includes(tag as any);
+                                    return (
+                                        <label key={tag} className={`flex items-center gap-2 p-3 rounded border-2 cursor-pointer transition-all ${isSelected ? "border-emerald-500 bg-emerald-900/20" : "border-[#333] hover:border-[#444]"
+                                            }`}>
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                onChange={(e) => {
+                                                    const current = dietaryTags || [];
+                                                    if (e.target.checked) {
+                                                        setValue("dietary_tags", [...current, tag as any]);
+                                                    } else {
+                                                        setValue("dietary_tags", current.filter(t => t !== tag));
+                                                    }
+                                                }}
+                                                className="w-4 h-4 accent-emerald-500"
+                                            />
+                                            <span className="text-sm capitalize text-gray-300">{tag.replace(/_/g, ' ')}</span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                            {dietaryTags.length > 0 && (
+                                <div className="flex flex-wrap gap-2 p-3 bg-emerald-900/10 border border-emerald-900/30 rounded">
+                                    <span className="text-xs text-emerald-400 font-semibold">Selected:</span>
+                                    {dietaryTags.map(t => (
+                                        <span key={t} className="px-2 py-1 bg-emerald-900/40 text-emerald-300 text-xs rounded capitalize">
+                                            {t.replace(/_/g, ' ')}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </section>
 
@@ -775,24 +907,36 @@ export default function ProductWizardV2() {
                                                                 }} className="text-red-500 text-xs">Remove</button>
                                                             </div>
                                                         ) : (
-                                                            <div className="flex gap-2">
-                                                                <CloudinaryUploadWidget
-                                                                    maxPhotos={1}
-                                                                    currentCount={0}
-                                                                    onUpload={(url) => {
-                                                                        const s = { ...smeSignals };
-                                                                        s[key].evidence = url;
-                                                                        setValue("sme_signals", s);
-                                                                    }}
-                                                                />
-                                                                <button type="button" onClick={() => {
-                                                                    const url = prompt("Paste evidence link (PDF/Doc):");
-                                                                    if (url) {
-                                                                        const s = { ...smeSignals };
-                                                                        s[key].evidence = url;
-                                                                        setValue("sme_signals", s);
-                                                                    }
-                                                                }} className="text-xs bg-[#222] border border-[#444] px-2 py-1 rounded text-gray-300">Link</button>
+                                                            <div className="flex flex-col gap-3">
+                                                                <div className="flex gap-2 items-center">
+                                                                    <label className={`flex items-center gap-2 px-4 py-2 bg-[#222] hover:bg-[#333] border border-[#444] rounded cursor-pointer transition-colors text-sm text-gray-300 ${uploadingSignals[key] ? 'opacity-50 pointer-events-none' : ''}`}>
+                                                                        {uploadingSignals[key] ? <span className="animate-spin">⏳</span> : <Upload className="w-4 h-4" />}
+                                                                        {uploadingSignals[key] ? "Uploading..." : "Upload PDF/Image"}
+                                                                        <input
+                                                                            type="file"
+                                                                            className="hidden"
+                                                                            accept=".pdf,.jpg,.jpeg,.png"
+                                                                            onChange={(e) => {
+                                                                                const file = e.target.files?.[0];
+                                                                                if (file) handleSignalUpload(key, file);
+                                                                            }}
+                                                                        />
+                                                                    </label>
+                                                                    <span className="text-gray-500 text-xs">or</span>
+                                                                    <input
+                                                                        type="text"
+                                                                        placeholder="Paste link to proof..."
+                                                                        className="flex-1 bg-[#111] border border-[#333] px-3 py-2 text-sm text-white rounded focus:border-emerald-500 outline-none"
+                                                                        onBlur={(e) => {
+                                                                            if (e.target.value) {
+                                                                                const s = { ...smeSignals };
+                                                                                if (!s[key]) s[key] = { verified: false, evidence: "" };
+                                                                                s[key].evidence = e.target.value;
+                                                                                setValue("sme_signals", s);
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                </div>
                                                             </div>
                                                         )}
                                                     </div>
@@ -821,15 +965,15 @@ export default function ProductWizardV2() {
                                 <ul className="space-y-3">
                                     <li className="flex gap-2">
                                         <Check className="w-5 h-5 text-emerald-500 shrink-0" />
-                                        <span className="text-gray-300 text-sm"><strong>SME Verified Badge:</strong> Stand out with the gold standard of trust.</span>
+                                        <span className="text-gray-300 text-sm"><strong>Verified Business Representative:</strong> Official badge (separate from SME certification).</span>
                                     </li>
                                     <li className="flex gap-2">
                                         <Check className="w-5 h-5 text-emerald-500 shrink-0" />
-                                        <span className="text-gray-300 text-sm"><strong>Analytics Dashboard:</strong> Access deep insights on consumer sentiment.</span>
+                                        <span className="text-gray-300 text-sm"><strong>Enhanced Data Display:</strong> Showcase additional product details and truth signals.</span>
                                     </li>
                                     <li className="flex gap-2">
                                         <Check className="w-5 h-5 text-emerald-500 shrink-0" />
-                                        <span className="text-gray-300 text-sm"><strong>Direct Engagement:</strong> Respond to community reviews and questions.</span>
+                                        <span className="text-gray-300 text-sm"><strong>Path to Certification:</strong> Eligibility for full SME Certification.</span>
                                     </li>
                                 </ul>
                             </div>
@@ -855,6 +999,6 @@ export default function ProductWizardV2() {
                     )}
                 </div>
             </div>
-        </div >
+        </div>
     );
 }

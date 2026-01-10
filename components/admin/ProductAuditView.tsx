@@ -105,6 +105,7 @@ export default function ProductAuditView({ product }: ProductAuditViewProps) {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
     const [isUpdatingPhotos, setIsUpdatingPhotos] = useState(false);
+    const [billingLink, setBillingLink] = useState('');
 
     // Handlers
     const handleRemovePhoto = async (index: number) => {
@@ -672,20 +673,64 @@ export default function ProductAuditView({ product }: ProductAuditViewProps) {
                             </div>
 
                             {adminStatus === 'approved' && (
-                                <div className="animate-in fade-in slide-in-from-top-4 duration-300">
-                                    <label className="mb-2 block font-mono text-xs uppercase tracking-wider text-bone-white/70">
-                                        Certification Tier
-                                    </label>
-                                    <select
-                                        value={certificationTier}
-                                        onChange={(e) => setCertificationTier(e.target.value as any)}
-                                        className="w-full rounded border border-bone-white/20 bg-black/40 p-3 font-mono text-sm text-bone-white focus:border-emerald-500 focus:outline-none"
-                                    >
-                                        <option value="None">Select Tier...</option>
-                                        <option value="Unverified">Unverified</option>
-                                        <option value="Verified">Verified</option>
-                                        <option value="SME Certified">SME Certified</option>
-                                    </select>
+                                <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                                    <div>
+                                        <label className="mb-2 block font-mono text-xs uppercase tracking-wider text-bone-white/70">
+                                            Certification Tier
+                                        </label>
+                                        <select
+                                            value={certificationTier}
+                                            onChange={(e) => setCertificationTier(e.target.value as any)}
+                                            className="w-full rounded border border-bone-white/20 bg-black/40 p-3 font-mono text-sm text-bone-white focus:border-emerald-500 focus:outline-none"
+                                        >
+                                            <option value="None">Select Tier...</option>
+                                            <option value="Unverified">Unverified</option>
+                                            <option value="Verified">Verified</option>
+                                            <option value="SME Certified">SME Certified</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Billing Generation */}
+                                    <div className="pt-4 border-t border-bone-white/10">
+                                        <label className="mb-2 block font-mono text-xs uppercase tracking-wider text-emerald-400">
+                                            Billing & Subscription
+                                        </label>
+                                        {!billingLink ? (
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        // Assuming product.user_email exists or using a prompt for now if data is missing
+                                                        // In a real app, we should fetch the user email.
+                                                        // Using a prompt for safety in this MVP iteration:
+                                                        const email = prompt("Enter Brand Email for Billing Invite:", product.user_email || "");
+                                                        if (!email) return;
+
+                                                        const { createBillingSession } = await import('@/app/actions/billing');
+                                                        const res = await createBillingSession(product.id, email);
+                                                        if (res.success && res.url) {
+                                                            setBillingLink(res.url);
+                                                        } else {
+                                                            alert("Failed: " + res.error);
+                                                        }
+                                                    } catch (e) {
+                                                        console.error(e);
+                                                        alert("Error generating link");
+                                                    }
+                                                }}
+                                                className="w-full rounded border border-emerald-500/50 bg-emerald-900/20 py-2 text-xs font-mono text-emerald-400 hover:bg-emerald-900/40"
+                                            >
+                                                Generate Billing Link ($100/mo)
+                                            </button>
+                                        ) : (
+                                            <div className="rounded bg-black/40 p-2 border border-emerald-500/30">
+                                                <p className="text-[10px] text-emerald-400 mb-1">Billing Link Generated:</p>
+                                                <div className="flex gap-2">
+                                                    <input readOnly value={billingLink} className="flex-1 bg-transparent text-xs text-bone-white outline-none font-mono" />
+                                                    <button onClick={() => navigator.clipboard.writeText(billingLink)} className="text-emerald-500 text-xs hover:underline">Copy</button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             )}
 

@@ -8,11 +8,11 @@ import { getStripe } from "@/lib/stripe-config";
  * Called when a verified product page is viewed
  */
 export async function trackProductView(productId: string) {
-    try {
-        const sql = getDb();
+  try {
+    const sql = getDb();
 
-        // Get product details including brand owner
-        const productResult = await sql`
+    // Get product details including brand owner
+    const productResult = await sql`
       SELECT 
         p.id,
         p.title,
@@ -24,15 +24,15 @@ export async function trackProductView(productId: string) {
       LIMIT 1
     `;
 
-        const product = productResult[0];
+    const product = productResult[0];
 
-        if (!product || !product.is_verified || !product.brand_owner_id) {
-            // Don't track views for unverified products or products without brand owners
-            return { success: false, reason: "Product not eligible for tracking" };
-        }
+    if (!product || !product.is_verified || !product.brand_owner_id) {
+      // Don't track views for unverified products or products without brand owners
+      return { success: false, reason: "Product not eligible for tracking" };
+    }
 
-        // Increment visit count
-        await sql`
+    // Increment visit count
+    await sql`
       UPDATE products
       SET 
         visit_count = COALESCE(visit_count, 0) + 1,
@@ -40,9 +40,9 @@ export async function trackProductView(productId: string) {
       WHERE id = ${product.id}
     `;
 
-        // Insert/update daily metrics
-        const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-        await sql`
+    // Insert/update daily metrics (Legacy Compatibility)
+    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    await sql`
       INSERT INTO product_view_metrics (
         product_id,
         brand_owner_id,
@@ -64,34 +64,58 @@ export async function trackProductView(productId: string) {
         updated_at = NOW()
     `;
 
-        // Note: Stripe reporting is now handled by a daily cron job
-        // app/api/cron/sync-usage/route.ts
+    // [NEW] Unified Analytics Source (product_events)
+    const { headers } = await import("next/headers");
+    const headersList = headers();
+    const ip = headersList.get('x-forwarded-for') || 'unknown';
+    const ua = headersList.get('user-agent') || 'unknown';
 
-        return {
-            success: true,
-            message: "Product view tracked",
-            newCount: (product.visit_count || 0) + 1,
-        };
-    } catch (error) {
-        console.error("❌ Error tracking product view:", error);
-        return {
-            success: false,
-            error: "Failed to track product view",
-        };
-    }
+    // Simple hash for visitor dedup without storing PII
+    const { createHash } = await import("crypto");
+    const visitorId = createHash('sha256').update(ip + ua).digest('hex');
+
+    await sql`
+            INSERT INTO product_events (
+                product_id, 
+                event_type, 
+                visitor_id, 
+                metadata
+            ) VALUES (
+                ${product.id}, 
+                'view', 
+                ${visitorId}, 
+                ${JSON.stringify({ source: 'verified_page_view' })}
+            )
+        `;
+
+    // Note: Stripe reporting is now handled by a daily cron job
+    // app/api/cron/sync-usage/route.ts
+
+    return {
+      success: true,
+      message: "Product view tracked",
+      newCount: (product.visit_count || 0) + 1,
+    };
+  } catch (error) {
+    console.error("❌ Error tracking product view:", error);
+    return {
+      success: false,
+      error: "Failed to track product view",
+    };
+  }
 }
 
 /**
  * Get usage statistics for a brand
  */
 export async function getBrandUsageStats(userId: string) {
-    try {
-        const sql = getDb();
+  try {
+    const sql = getDb();
 
-        // Get current month's usage
-        const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+    // Get current month's usage
+    const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
 
-        const stats = await sql`
+    const stats = await sql`
       SELECT 
         COUNT(DISTINCT pvm.product_id) as products_with_views,
         SUM(pvm.view_count) as total_views,
@@ -101,30 +125,30 @@ export async function getBrandUsageStats(userId: string) {
       AND pvm.view_date >= ${currentMonth}-01
     `;
 
-        const result = stats[0] || {
-            products_with_views: 0,
-            total_views: 0,
-            last_view_date: null,
-        };
+    const result = stats[0] || {
+      products_with_views: 0,
+      total_views: 0,
+      last_view_date: null,
+    };
 
-        // Calculate estimated charge (assuming $0.01 per view)
-        const estimatedCharge = Math.max(100, (result.total_views || 0) * 0.01);
+    // Calculate estimated charge (assuming $0.01 per view)
+    const estimatedCharge = Math.max(100, (result.total_views || 0) * 0.01);
 
-        return {
-            success: true,
-            stats: {
-                productsWithViews: result.products_with_views || 0,
-                totalViews: result.total_views || 0,
-                lastViewDate: result.last_view_date,
-                estimatedCharge,
-                billingPeriod: currentMonth,
-            },
-        };
-    } catch (error) {
-        console.error("❌ Error getting brand usage stats:", error);
-        return {
-            success: false,
-            error: "Failed to get usage stats",
-        };
-    }
+    return {
+      success: true,
+      stats: {
+        productsWithViews: result.products_with_views || 0,
+        totalViews: result.total_views || 0,
+        lastViewDate: result.last_view_date,
+        estimatedCharge,
+        billingPeriod: currentMonth,
+      },
+    };
+  } catch (error) {
+    console.error("❌ Error getting brand usage stats:", error);
+    return {
+      success: false,
+      error: "Failed to get usage stats",
+    };
+  }
 }

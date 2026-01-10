@@ -12,6 +12,9 @@ export async function submitBrandVerification(params: {
   workEmail: string;
   linkedinProfile: string;
   companyWebsite: string;
+  founderComments?: string;
+  intentionStatement: string;
+  labReportUrl?: string;
 }) {
   try {
     const sql = getDb();
@@ -30,6 +33,16 @@ export async function submitBrandVerification(params: {
 
     if (!urlRegex.test(params.companyWebsite)) {
       return { success: false, error: "Invalid company website URL" };
+    }
+
+    // Validate lab report URL if provided
+    if (params.labReportUrl && !urlRegex.test(params.labReportUrl)) {
+      return { success: false, error: "Invalid lab report URL" };
+    }
+
+    // Validate intention statement
+    if (!params.intentionStatement || params.intentionStatement.length < 50) {
+      return { success: false, error: "Intention statement must be at least 50 characters" };
     }
 
     // Check if product exists
@@ -64,10 +77,7 @@ export async function submitBrandVerification(params: {
       return { success: false, error: "User profile not found" };
     }
 
-    const userEmail = userProfile[0].email || params.workEmail;
-    const userName = userProfile[0].full_name || "Brand Representative";
-
-    // Create verification record
+    // Create verification record with new fields
     const verification = await sql`
       INSERT INTO brand_verifications (
         product_id,
@@ -75,6 +85,9 @@ export async function submitBrandVerification(params: {
         work_email,
         linkedin_profile,
         company_website,
+        founder_comments,
+        intention_statement,
+        lab_report_url,
         status
       ) VALUES (
         ${params.productId},
@@ -82,6 +95,9 @@ export async function submitBrandVerification(params: {
         ${params.workEmail},
         ${params.linkedinProfile},
         ${params.companyWebsite},
+        ${params.founderComments || null},
+        ${params.intentionStatement},
+        ${params.labReportUrl || null},
         'pending'
       )
       RETURNING id
@@ -89,20 +105,9 @@ export async function submitBrandVerification(params: {
 
     const verificationId = verification[0].id;
 
-    // Create Stripe checkout session
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    const checkoutSession = await createBrandSubscriptionCheckout({
-      userId,
-      userEmail,
-      productId: params.productId,
-      verificationId,
-      successUrl: `${baseUrl}/brand/verification/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${baseUrl}/products/${params.productId}`,
-    });
-
+    // Return success without Stripe checkout URL
     return {
       success: true,
-      checkoutUrl: checkoutSession.url,
       verificationId,
     };
   } catch (error) {
@@ -155,6 +160,88 @@ export async function getBrandVerificationStatus(verificationId: string) {
 }
 
 /**
+ * Admin: Send payment link for approved brand verification (legacy)
+ * @deprecated Use sendPaymentLinkForOnboarding instead
+ */
+export async function sendPaymentLink(verificationId: string) {
+  try {
+    const sql = getDb();
+    const { userId } = await auth();
+    if (!userId) {
+      return { success: false, error: "Not authenticated" };
+    }
+
+    // Check if user is admin
+    const adminCheck = await sql`
+      SELECT is_admin FROM profiles WHERE id = ${userId}
+    `;
+
+    if (adminCheck.length === 0 || !adminCheck[0].is_admin) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    // Get verification details
+    const verification = await sql`
+      SELECT 
+        bv.id,
+        bv.product_id,
+        bv.user_id,
+        bv.status,
+        bv.payment_link_sent_at,
+        p.email,
+        p.full_name
+      FROM brand_verifications bv
+      JOIN profiles p ON bv.user_id = p.id
+      WHERE bv.id = ${verificationId}
+    `;
+
+    if (verification.length === 0) {
+      return { success: false, error: "Verification not found" };
+    }
+
+    const { product_id, user_id, status, payment_link_sent_at, email, full_name } = verification[0];
+
+    // Check if already approved
+    if (status !== 'approved') {
+      return {
+        success: false,
+        error: "Verification must be approved before sending payment link"
+      };
+    }
+
+    // Create Stripe checkout session
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const checkoutSession = await createBrandSubscriptionCheckout({
+      userId: user_id,
+      userEmail: email,
+      productId: product_id,
+      verificationId,
+      successUrl: `${baseUrl}/brand/verification/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl: `${baseUrl}/brand/dashboard`,
+    });
+
+    // Update payment_link_sent_at timestamp
+    await sql`
+      UPDATE brand_verifications
+      SET payment_link_sent_at = NOW()
+      WHERE id = ${verificationId}
+    `;
+
+    return {
+      success: true,
+      checkoutUrl: checkoutSession.url,
+      message: "Payment link generated successfully",
+    };
+  } catch (error) {
+    console.error("Error sending payment link:", error);
+    return {
+      success: false,
+      error: "Failed to generate payment link",
+    };
+  }
+}
+
+/**
  * Admin: Approve brand verification
  */
 export async function approveBrandVerification(verificationId: string) {
@@ -180,7 +267,7 @@ export async function approveBrandVerification(verificationId: string) {
         bv.id,
         bv.product_id,
         bv.user_id,
-        bv.subscription_status
+        bv.status
       FROM brand_verifications bv
       WHERE bv.id = ${verificationId}
     `;
@@ -189,17 +276,18 @@ export async function approveBrandVerification(verificationId: string) {
       return { success: false, error: "Verification not found" };
     }
 
-    const { product_id, user_id, subscription_status } = verification[0];
+    const { status } = verification[0];
 
-    // Check if subscription is active
-    if (subscription_status !== 'active') {
+    // Check if already approved
+    if (status === 'approved') {
       return {
         success: false,
-        error: "Cannot approve: subscription is not active"
+        error: "Verification is already approved"
       };
     }
 
-    // Update verification status
+    // Update verification status to approved
+    // User role and product verification will be updated after payment via webhook
     await sql`
       UPDATE brand_verifications
       SET 
@@ -209,25 +297,9 @@ export async function approveBrandVerification(verificationId: string) {
       WHERE id = ${verificationId}
     `;
 
-    // Update user role to business_user
-    await sql`
-      UPDATE profiles
-      SET role = 'business_user'
-      WHERE id = ${user_id}
-    `;
-
-    // Update product: set is_verified = true and brand_owner_id
-    await sql`
-      UPDATE products
-      SET 
-        is_verified = true,
-        brand_owner_id = ${user_id}
-      WHERE id = ${product_id}
-    `;
-
     return {
       success: true,
-      message: "Brand verification approved successfully",
+      message: "Brand verification approved. You can now send the payment link.",
     };
   } catch (error) {
     console.error("Error approving brand verification:", error);
@@ -286,7 +358,98 @@ export async function rejectBrandVerification(
 }
 
 /**
+ * Admin: Send payment link for approved product onboarding (brand claim)
+ */
+export async function sendPaymentLinkForOnboarding(onboardingId: string) {
+  try {
+    const sql = getDb();
+    const { userId } = await auth();
+    if (!userId) {
+      return { success: false, error: "Not authenticated" };
+    }
+
+    // Check if user is admin
+    const adminCheck = await sql`
+      SELECT is_admin FROM profiles WHERE id = ${userId}
+    `;
+
+    if (adminCheck.length === 0 || !adminCheck[0].is_admin) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    // Get onboarding details
+    const onboarding = await sql`
+      SELECT 
+        po.id,
+        po.product_id,
+        po.user_id,
+        po.verification_status,
+        po.submission_type,
+        po.payment_link_sent_at,
+        p.email,
+        p.full_name
+      FROM product_onboarding po
+      JOIN profiles p ON po.user_id = p.id
+      WHERE po.id = ${onboardingId}
+    `;
+
+    if (onboarding.length === 0) {
+      return { success: false, error: "Onboarding record not found" };
+    }
+
+    const { product_id, user_id, verification_status, submission_type, payment_link_sent_at, email, full_name } = onboarding[0];
+
+    // Check if already verified
+    if (verification_status !== 'verified') {
+      return {
+        success: false,
+        error: "Onboarding must be verified before sending payment link"
+      };
+    }
+
+    // Only send payment links for brand claims
+    if (submission_type !== 'brand_claim') {
+      return {
+        success: false,
+        error: "Payment links are only for brand claims"
+      };
+    }
+
+    // Create Stripe checkout session
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const checkoutSession = await createBrandSubscriptionCheckout({
+      userId: user_id,
+      userEmail: email,
+      productId: product_id,
+      verificationId: onboardingId, // Use onboarding ID as verification ID
+      successUrl: `${baseUrl}/brand/verification/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl: `${baseUrl}/brand/dashboard`,
+    });
+
+    // Update payment_link_sent_at timestamp
+    await sql`
+      UPDATE product_onboarding
+      SET payment_link_sent_at = NOW()
+      WHERE id = ${onboardingId}
+    `;
+
+    return {
+      success: true,
+      checkoutUrl: checkoutSession.url,
+      message: "Payment link generated successfully",
+    };
+  } catch (error) {
+    console.error("Error sending payment link for onboarding:", error);
+    return {
+      success: false,
+      error: "Failed to generate payment link",
+    };
+  }
+}
+
+/**
  * Handle Stripe webhook for brand verification subscription
+ * Supports both brand_verifications and product_onboarding tables
  */
 export async function handleBrandVerificationWebhook(event: any) {
   const sql = getDb();
@@ -301,32 +464,134 @@ export async function handleBrandVerificationWebhook(event: any) {
           const subscriptionId = session.subscription;
           const customerId = session.customer;
 
-          // Update verification with Stripe data
-          await sql`
-            UPDATE brand_verifications
-            SET 
-              stripe_subscription_id = ${subscriptionId},
-              stripe_customer_id = ${customerId},
-              subscription_status = 'active'
-            WHERE id = ${verificationId}
-          `;
+          // Use atomic transaction for all updates
+          await sql.begin(async (sql) => {
+            // Try product_onboarding first (new system)
+            const onboarding = await sql`
+              SELECT product_id, verification_status, submission_type
+              FROM product_onboarding
+              WHERE id = ${verificationId}
+            `;
 
-          // Create subscription record
-          await sql`
-            INSERT INTO stripe_subscriptions (
-              user_id,
-              stripe_subscription_id,
-              stripe_customer_id,
-              subscription_type,
-              status
-            ) VALUES (
-              ${userId},
-              ${subscriptionId},
-              ${customerId},
-              'brand_base',
-              'active'
-            )
-          `;
+            if (onboarding.length > 0) {
+              // New system: product_onboarding
+              const { product_id, verification_status, submission_type } = onboarding[0];
+
+              // Update onboarding with Stripe data
+              await sql`
+                UPDATE product_onboarding
+                SET 
+                  stripe_subscription_id = ${subscriptionId},
+                  stripe_customer_id = ${customerId},
+                  subscription_status = 'active'
+                WHERE id = ${verificationId}
+              `;
+
+              // Create subscription record
+              await sql`
+                INSERT INTO stripe_subscriptions (
+                  user_id,
+                  stripe_subscription_id,
+                  stripe_customer_id,
+                  subscription_type,
+                  status
+                ) VALUES (
+                  ${userId},
+                  ${subscriptionId},
+                  ${customerId},
+                  'brand_base',
+                  'active'
+                )
+                ON CONFLICT (stripe_subscription_id) DO UPDATE
+                SET status = 'active'
+              `;
+
+              // If verified AND brand_claim AND payment complete, finalize
+              if (verification_status === 'verified' && submission_type === 'brand_claim') {
+                // Update user role to BRAND_REP
+                await sql`
+                  UPDATE profiles
+                  SET is_brand_rep = true,
+                      role = 'BRAND_REP'
+                  WHERE id = ${userId}
+                `;
+
+                // Update product: set is_verified = true and brand_owner_id
+                await sql`
+                  UPDATE products
+                  SET 
+                    is_verified = true,
+                    brand_owner_id = ${userId}
+                  WHERE id = ${product_id}
+                `;
+
+                console.log('✅ Brand claim payment completed:', userId, 'product:', product_id);
+              }
+            } else {
+              // Fallback: Legacy brand_verifications table
+              const verification = await sql`
+                SELECT product_id, status
+                FROM brand_verifications
+                WHERE id = ${verificationId}
+              `;
+
+              if (verification.length === 0) {
+                console.error('❌ Verification not found:', verificationId);
+                return;
+              }
+
+              const { product_id, status } = verification[0];
+
+              // Update verification with Stripe data
+              await sql`
+                UPDATE brand_verifications
+                SET 
+                  stripe_subscription_id = ${subscriptionId},
+                  stripe_customer_id = ${customerId},
+                  subscription_status = 'active'
+                WHERE id = ${verificationId}
+              `;
+
+              // Create subscription record
+              await sql`
+                INSERT INTO stripe_subscriptions (
+                  user_id,
+                  stripe_subscription_id,
+                  stripe_customer_id,
+                  subscription_type,
+                  status
+                ) VALUES (
+                  ${userId},
+                  ${subscriptionId},
+                  ${customerId},
+                  'brand_base',
+                  'active'
+                )
+                ON CONFLICT (stripe_subscription_id) DO UPDATE
+                SET status = 'active'
+              `;
+
+              // If approved AND payment complete, finalize
+              if (status === 'approved') {
+                await sql`
+                  UPDATE profiles
+                  SET is_brand_rep = true,
+                      role = 'BRAND_REP'
+                  WHERE id = ${userId}
+                `;
+
+                await sql`
+                  UPDATE products
+                  SET 
+                    is_verified = true,
+                    brand_owner_id = ${userId}
+                  WHERE id = ${product_id}
+                `;
+
+                console.log('✅ Legacy brand verification completed:', userId, 'product:', product_id);
+              }
+            }
+          });
         }
         break;
       }
@@ -336,14 +601,19 @@ export async function handleBrandVerificationWebhook(event: any) {
         const subscriptionId = subscription.id;
         const status = subscription.status;
 
-        // Update verification subscription status
+        // Update both tables
         await sql`
           UPDATE brand_verifications
           SET subscription_status = ${status}
           WHERE stripe_subscription_id = ${subscriptionId}
         `;
 
-        // Update subscription record
+        await sql`
+          UPDATE product_onboarding
+          SET subscription_status = ${status}
+          WHERE stripe_subscription_id = ${subscriptionId}
+        `;
+
         await sql`
           UPDATE stripe_subscriptions
           SET 
@@ -360,29 +630,31 @@ export async function handleBrandVerificationWebhook(event: any) {
         const subscription = event.data.object;
         const subscriptionId = subscription.id;
 
-        // Update verification subscription status
+        // Update both tables
         await sql`
           UPDATE brand_verifications
           SET subscription_status = 'canceled'
           WHERE stripe_subscription_id = ${subscriptionId}
         `;
 
-        // Update subscription record
+        await sql`
+          UPDATE product_onboarding
+          SET subscription_status = 'canceled'
+          WHERE stripe_subscription_id = ${subscriptionId}
+        `;
+
         await sql`
           UPDATE stripe_subscriptions
           SET status = 'canceled'
           WHERE stripe_subscription_id = ${subscriptionId}
         `;
-
-        // Optionally: Remove is_verified from product
-        // This depends on your business logic
         break;
       }
     }
 
     return { success: true };
   } catch (error) {
-    console.error("Error handling webhook:", error);
+    console.error("❌ Error handling webhook:", error);
     return { success: false, error: "Webhook handling failed" };
   }
 }

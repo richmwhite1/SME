@@ -45,6 +45,19 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'images-na.ssl-images-amazon.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'drinkag1.com',
+      },
+      // Wildcard pattern for scraped product images from any domain
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+      {
+        protocol: 'http',
+        hostname: '**',
+      },
     ],
     unoptimized: false,
   },

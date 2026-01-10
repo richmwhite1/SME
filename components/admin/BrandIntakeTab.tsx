@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle, XCircle, ExternalLink, Mail, Linkedin, Globe } from "lucide-react";
-import { approveBrandVerification, rejectBrandVerification } from "@/app/actions/brand-verification-actions";
+import { CheckCircle, XCircle, ExternalLink, Mail, Linkedin, Globe, Send, FileText, MessageSquare } from "lucide-react";
+import { approveBrandVerification, rejectBrandVerification, sendPaymentLink } from "@/app/actions/brand-verification-actions";
 
 interface BrandVerification {
     id: string;
@@ -15,7 +15,12 @@ interface BrandVerification {
     work_email: string;
     linkedin_profile: string;
     company_website: string;
-    subscription_status: string;
+    founder_comments?: string | null;
+    intention_statement: string;
+    lab_report_url?: string | null;
+    status: string;
+    subscription_status: string | null;
+    payment_link_sent_at: string | null;
     created_at: string;
 }
 
@@ -27,6 +32,7 @@ export default function BrandIntakeTab({ verifications }: BrandIntakeTabProps) {
     const [processing, setProcessing] = useState<string | null>(null);
     const [rejecting, setRejecting] = useState<string | null>(null);
     const [rejectionReason, setRejectionReason] = useState("");
+    const [sendingPayment, setSendingPayment] = useState<string | null>(null);
 
     const handleApprove = async (verificationId: string) => {
         if (!confirm("Are you sure you want to approve this brand verification?")) {
@@ -75,6 +81,30 @@ export default function BrandIntakeTab({ verifications }: BrandIntakeTabProps) {
         }
     };
 
+    const handleSendPaymentLink = async (verificationId: string) => {
+        if (!confirm("Send payment link to the applicant?")) {
+            return;
+        }
+
+        setSendingPayment(verificationId);
+        try {
+            const result = await sendPaymentLink(verificationId);
+            if (result.success && result.checkoutUrl) {
+                // Copy link to clipboard
+                await navigator.clipboard.writeText(result.checkoutUrl);
+                alert(`Payment link copied to clipboard!\n\nYou can also send it manually:\n${result.checkoutUrl}`);
+                window.location.reload();
+            } else {
+                alert(`Error: ${result.error}`);
+            }
+        } catch (error) {
+            console.error("Error sending payment link:", error);
+            alert("Failed to generate payment link");
+        } finally {
+            setSendingPayment(null);
+        }
+    };
+
     if (verifications.length === 0) {
         return (
             <div className="p-8 text-center text-gray-500">
@@ -111,8 +141,8 @@ export default function BrandIntakeTab({ verifications }: BrandIntakeTabProps) {
                             <div className="flex items-center gap-2">
                                 <span
                                     className={`px-3 py-1 text-xs font-semibold rounded ${verification.subscription_status === "active"
-                                            ? "bg-emerald-900/30 text-emerald-400 border border-emerald-500/30"
-                                            : "bg-yellow-900/30 text-yellow-400 border border-yellow-500/30"
+                                        ? "bg-emerald-900/30 text-emerald-400 border border-emerald-500/30"
+                                        : "bg-yellow-900/30 text-yellow-400 border border-yellow-500/30"
                                         }`}
                                 >
                                     {verification.subscription_status === "active"
@@ -186,10 +216,51 @@ export default function BrandIntakeTab({ verifications }: BrandIntakeTabProps) {
                                         rel="noopener noreferrer"
                                         className="text-white hover:text-emerald-400 flex items-center gap-1"
                                     >
-                                        {verification.company_website} <ExternalLink className="w-3 h-3" />
                                     </a>
                                 </div>
                             </div>
+
+                            {/* Intention Statement */}
+                            <div className="flex items-start gap-3 p-3 bg-[#111] border border-[#222] rounded">
+                                <MessageSquare className="w-4 h-4 text-gray-500 mt-1" />
+                                <div className="flex-1">
+                                    <p className="text-xs text-gray-600">Intention Statement</p>
+                                    <p className="text-white text-sm mt-1 whitespace-pre-wrap">
+                                        {verification.intention_statement}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Founder Comments (if provided) */}
+                            {verification.founder_comments && (
+                                <div className="flex items-start gap-3 p-3 bg-[#111] border border-[#222] rounded">
+                                    <FileText className="w-4 h-4 text-gray-500 mt-1" />
+                                    <div className="flex-1">
+                                        <p className="text-xs text-gray-600">Founder Comments</p>
+                                        <p className="text-white text-sm mt-1 whitespace-pre-wrap">
+                                            {verification.founder_comments}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Lab Report (if provided) */}
+                            {verification.lab_report_url && (
+                                <div className="flex items-center gap-3 p-3 bg-[#111] border border-[#222] rounded">
+                                    <FileText className="w-4 h-4 text-gray-500" />
+                                    <div className="flex-1">
+                                        <p className="text-xs text-gray-600">Lab Report</p>
+                                        <a
+                                            href={verification.lab_report_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-white hover:text-emerald-400 flex items-center gap-1"
+                                        >
+                                            {verification.lab_report_url} <ExternalLink className="w-3 h-3" />
+                                        </a>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Actions */}
@@ -224,32 +295,73 @@ export default function BrandIntakeTab({ verifications }: BrandIntakeTabProps) {
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => handleApprove(verification.id)}
-                                    disabled={
-                                        processing === verification.id ||
-                                        verification.subscription_status !== "active"
-                                    }
-                                    className="flex items-center gap-2 px-6 py-3 bg-emerald-600/20 border border-emerald-500/50 text-emerald-400 font-semibold rounded hover:bg-emerald-600/30 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    <CheckCircle className="w-4 h-4" />
-                                    {processing === verification.id ? "Approving..." : "Approve Brand Account"}
-                                </button>
-                                <button
-                                    onClick={() => setRejecting(verification.id)}
-                                    disabled={processing === verification.id}
-                                    className="flex items-center gap-2 px-6 py-3 bg-red-600/20 border border-red-500/50 text-red-400 font-semibold rounded hover:bg-red-600/30 disabled:opacity-50"
-                                >
-                                    <XCircle className="w-4 h-4" />
-                                    Reject
-                                </button>
-                            </div>
-                        )}
+                            <div className="space-y-3">
+                                {/* Status Badge */}
+                                <div className="flex items-center gap-2">
+                                    <span
+                                        className={`px-3 py-1 text-xs font-semibold rounded ${verification.status === 'approved'
+                                                ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-500/30'
+                                                : 'bg-yellow-900/30 text-yellow-400 border border-yellow-500/30'
+                                            }`}
+                                    >
+                                        {verification.status === 'approved' ? '✓ Approved' : 'Pending Review'}
+                                    </span>
+                                    {verification.payment_link_sent_at && (
+                                        <span className="px-3 py-1 text-xs font-semibold rounded bg-blue-900/30 text-blue-400 border border-blue-500/30">
+                                            Payment Link Sent {new Date(verification.payment_link_sent_at).toLocaleDateString()}
+                                        </span>
+                                    )}
+                                    {verification.subscription_status === 'active' && (
+                                        <span className="px-3 py-1 text-xs font-semibold rounded bg-emerald-900/30 text-emerald-400 border border-emerald-500/30">
+                                            ✓ Payment Complete
+                                        </span>
+                                    )}
+                                </div>
 
-                        {verification.subscription_status !== "active" && (
-                            <div className="p-3 bg-yellow-900/10 border border-yellow-500/30 rounded text-yellow-400 text-sm">
-                                ⚠️ Cannot approve until subscription is active
+                                {/* Action Buttons */}
+                                <div className="flex gap-3">
+                                    {verification.status !== 'approved' ? (
+                                        <>
+                                            <button
+                                                onClick={() => handleApprove(verification.id)}
+                                                disabled={processing === verification.id}
+                                                className="flex items-center gap-2 px-6 py-3 bg-emerald-600/20 border border-emerald-500/50 text-emerald-400 font-semibold rounded hover:bg-emerald-600/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                <CheckCircle className="w-4 h-4" />
+                                                {processing === verification.id ? "Approving..." : "Approve Application"}
+                                            </button>
+                                            <button
+                                                onClick={() => setRejecting(verification.id)}
+                                                disabled={processing === verification.id}
+                                                className="flex items-center gap-2 px-6 py-3 bg-red-600/20 border border-red-500/50 text-red-400 font-semibold rounded hover:bg-red-600/30 disabled:opacity-50"
+                                            >
+                                                <XCircle className="w-4 h-4" />
+                                                Reject
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            {verification.subscription_status !== 'active' && (
+                                                <button
+                                                    onClick={() => handleSendPaymentLink(verification.id)}
+                                                    disabled={sendingPayment === verification.id}
+                                                    className="flex items-center gap-2 px-6 py-3 bg-blue-600/20 border border-blue-500/50 text-blue-400 font-semibold rounded hover:bg-blue-600/30 disabled:opacity-50"
+                                                >
+                                                    <Send className="w-4 h-4" />
+                                                    {sendingPayment === verification.id ? "Generating..." : "Send Payment Link"}
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => setRejecting(verification.id)}
+                                                disabled={processing === verification.id}
+                                                className="flex items-center gap-2 px-6 py-3 bg-red-600/20 border border-red-500/50 text-red-400 font-semibold rounded hover:bg-red-600/30 disabled:opacity-50"
+                                            >
+                                                <XCircle className="w-4 h-4" />
+                                                Revoke
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </div>

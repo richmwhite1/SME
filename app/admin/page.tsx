@@ -141,34 +141,6 @@ export default async function UnifiedAdminPage() {
     productIntake = [];
   }
 
-  // Fetch brand verifications
-  let brandVerifications;
-  try {
-    brandVerifications = await sql`
-      SELECT 
-        bv.id,
-        bv.product_id,
-        pr.title as product_title,
-        pr.slug as product_slug,
-        bv.user_id,
-        p.full_name as user_name,
-        p.email as user_email,
-        bv.work_email,
-        bv.linkedin_profile,
-        bv.company_website,
-        bv.subscription_status,
-        bv.created_at
-      FROM brand_verifications bv
-      JOIN products pr ON bv.product_id = pr.id
-      JOIN profiles p ON bv.user_id = p.id
-      WHERE bv.status = 'pending'
-      ORDER BY bv.created_at ASC
-    `;
-  } catch (error) {
-    console.error("Error fetching brand verifications:", error);
-    brandVerifications = [];
-  }
-
   // Fetch SME certifications
   let smeCertifications;
   try {
@@ -262,7 +234,6 @@ export default async function UnifiedAdminPage() {
           contactSubmissions={contactSubmissions}
           brandApplications={brandApplications}
           productIntake={productIntake}
-          brandVerifications={brandVerifications}
           smeCertifications={smeCertifications}
         />
       </div>

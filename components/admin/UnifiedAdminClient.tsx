@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Package, AlertTriangle, Users, Award, Shield, Inbox, Building2 } from "lucide-react";
+import { Package, AlertTriangle, Users, Award, Shield, Inbox, Sparkles } from "lucide-react";
 import AdminDashboardClient from "./AdminDashboardClient";
 import ModerationClient from "./ModerationClient";
 import SafetyUsersTab from "./SafetyUsersTab";
 import IntakeTab from "./IntakeTab";
-import BrandIntakeTab from "./BrandIntakeTab";
 import SMEAuditTab from "./SMEAuditTab";
+import ProductScraperPanel from "./ProductScraperPanel";
 import { restoreFromQueue, purgeFromQueue } from "@/app/actions/admin-actions";
 
 interface Product {
@@ -168,11 +168,10 @@ interface UnifiedAdminClientProps {
   contactSubmissions: ContactSubmission[];
   brandApplications: BrandApplication[];
   productIntake: ProductIntake[];
-  brandVerifications: BrandVerification[];
   smeCertifications: SMECertification[];
 }
 
-type Tab = "products" | "moderation" | "safety" | "intake" | "brand_intake" | "certifications";
+type Tab = "products" | "moderation" | "safety" | "intake" | "certifications" | "scraper";
 
 export default function UnifiedAdminClient({
   products,
@@ -183,17 +182,16 @@ export default function UnifiedAdminClient({
   contactSubmissions,
   brandApplications,
   productIntake,
-  brandVerifications,
   smeCertifications,
 }: UnifiedAdminClientProps) {
   const [activeTab, setActiveTab] = useState<Tab>("products");
 
   const tabs = [
     { id: "products" as Tab, label: "Products", icon: Package },
+    { id: "scraper" as Tab, label: "Product Scraper", icon: Sparkles },
     { id: "moderation" as Tab, label: "Moderation", icon: AlertTriangle },
     { id: "safety" as Tab, label: "Safety & Users", icon: Shield },
     { id: "intake" as Tab, label: "Business Intake", icon: Inbox },
-    { id: "brand_intake" as Tab, label: "Brand Intake", icon: Building2 },
     { id: "certifications" as Tab, label: "SME Audit Queue", icon: Award },
   ];
 
@@ -233,6 +231,10 @@ export default function UnifiedAdminClient({
             {/* Product Management */}
             <AdminDashboardClient products={products} flaggedContent={flaggedContent} />
           </div>
+        )}
+
+        {activeTab === "scraper" && (
+          <ProductScraperPanel />
         )}
 
         {activeTab === "moderation" && (
@@ -302,10 +304,6 @@ export default function UnifiedAdminClient({
             brandApplications={brandApplications}
             productIntake={productIntake}
           />
-        )}
-
-        {activeTab === "brand_intake" && (
-          <BrandIntakeTab verifications={brandVerifications} />
         )}
 
         {activeTab === "certifications" && (

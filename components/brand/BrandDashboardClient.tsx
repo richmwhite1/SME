@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Package, Edit } from 'lucide-react';
 import SMECertificationModal from '@/components/brand/SMECertificationModal';
 import ProductEditModal from '@/components/brand/ProductEditModal';
@@ -9,6 +10,15 @@ interface Product {
     id: string;
     title: string;
     slug: string;
+    tagline?: string;
+    description?: string;
+    manufacturer?: string;
+    price?: string;
+    serving_info?: string;
+    warnings?: string;
+    ingredients?: string;
+    product_photos?: string[];
+    tech_docs?: any;
     is_verified: boolean;
     is_sme_certified: boolean;
     discount_code: string | null;
@@ -101,14 +111,14 @@ export default function BrandDashboardClient({ products, isSubscriptionActive }:
                                 </div>
 
                                 <div className="flex flex-col gap-2 ml-4">
-                                    <a
+                                    <Link
                                         href={`/products/${product.slug}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="px-4 py-2 bg-[#1a1a1a] border border-[#333] text-white text-sm font-semibold rounded hover:bg-[#222] text-center"
                                     >
                                         View Product
-                                    </a>
+                                    </Link>
 
                                     <button
                                         onClick={() => setEditingProduct(product)}
@@ -134,8 +144,20 @@ export default function BrandDashboardClient({ products, isSubscriptionActive }:
                 <ProductEditModal
                     productId={editingProduct.id}
                     productTitle={editingProduct.title}
-                    currentBuyUrl={editingProduct.buy_url}
-                    currentDiscountCode={editingProduct.discount_code}
+                    initialData={{
+                        title: editingProduct.title,
+                        tagline: editingProduct.tagline,
+                        description: editingProduct.description,
+                        manufacturer: editingProduct.manufacturer,
+                        price: editingProduct.price,
+                        serving_info: editingProduct.serving_info,
+                        warnings: editingProduct.warnings,
+                        ingredients: editingProduct.ingredients,
+                        product_photos: editingProduct.product_photos,
+                        tech_docs_url: editingProduct.tech_docs?.url,
+                        buy_url: editingProduct.buy_url,
+                        discount_code: editingProduct.discount_code,
+                    }}
                     isSubscriptionActive={isSubscriptionActive}
                     onClose={() => setEditingProduct(null)}
                     onSuccess={handleEditSuccess}
