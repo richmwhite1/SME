@@ -107,7 +107,7 @@ export default function ProductQuadrantGrid({
                     <div>
                         <div className="text-xs uppercase tracking-wider text-bone-white/50 mb-2">Core Promise</div>
                         <p className="text-sm text-bone-white/90 leading-relaxed italic border-l-2 border-heart-green pl-3">
-                            "{coreValueProposition || 'Provides standard nutritional support.'}"
+                            &ldquo;{coreValueProposition || 'Provides standard nutritional support.'}&rdquo;
                         </p>
                     </div>
 

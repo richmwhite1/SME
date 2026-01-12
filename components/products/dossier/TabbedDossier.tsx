@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { FileText, Users, Activity, Microscope, ArrowRight, Download, ExternalLink, ShieldAlert, Award } from "lucide-react";
+import { FileText, Users, Activity, Microscope, ArrowRight, Download, ExternalLink, ShieldAlert, Award, ShieldCheck } from "lucide-react";
 import DualTrackRadar from "@/components/sme/DualTrackRadar";
 import ProductComments from "@/components/products/ProductComments";
 
