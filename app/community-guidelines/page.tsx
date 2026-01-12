@@ -98,7 +98,7 @@ export default function CommunityGuidelinesPage() {
                         <div className="bg-white rounded-xl shadow-lg p-8">
                             <h3 className="text-2xl font-bold text-red-600 mb-6 flex items-center gap-3">
                                 <XCircle className="w-8 h-8" />
-                                Don't Do This
+                                Don&apos;t Do This
                             </h3>
                             <ul className="space-y-4">
                                 {[
@@ -159,10 +159,10 @@ export default function CommunityGuidelinesPage() {
                         </h3>
                         <div className="bg-green-50 rounded-lg p-4 border border-green-200">
                             <p className="text-slate-700 italic mb-3">
-                                "Magnesium glycinate has been shown to improve sleep quality in several studies.
+                                &quot;Magnesium glycinate has been shown to improve sleep quality in several studies.
                                 A 2012 randomized controlled trial found that 500mg daily improved subjective sleep
                                 quality in elderly participants (Abbasi et al., 2012). However, results may vary
-                                based on individual magnesium status."
+                                based on individual magnesium status.&quot;
                             </p>
                             <p className="text-sm text-green-700 font-medium">
                                 ✓ Cites specific study<br />
@@ -179,9 +179,9 @@ export default function CommunityGuidelinesPage() {
                         </h3>
                         <div className="bg-red-50 rounded-lg p-4 border border-red-200">
                             <p className="text-slate-700 italic mb-3">
-                                "Magnesium cures insomnia! I read somewhere that everyone should take it.
-                                It's completely safe and has no side effects. Big Pharma doesn't want you
-                                to know about this!"
+                                &quot;Magnesium cures insomnia! I read somewhere that everyone should take it.
+                                It&apos;s completely safe and has no side effects. Big Pharma doesn&apos;t want you
+                                to know about this!&quot;
                             </p>
                             <p className="text-sm text-red-700 font-medium">
                                 ✗ No citations<br />
@@ -295,7 +295,7 @@ export default function CommunityGuidelinesPage() {
             <section className="py-16 bg-gradient-to-r from-green-600 to-emerald-700 text-white">
                 <div className="max-w-4xl mx-auto px-4 text-center">
                     <h2 className="text-4xl font-bold mb-6">
-                        Let's Build a Better Community Together
+                        Let&apos;s Build a Better Community Together
                     </h2>
                     <p className="text-xl text-green-100 mb-8 max-w-2xl mx-auto">
                         By following these guidelines, we create a space where everyone can learn,

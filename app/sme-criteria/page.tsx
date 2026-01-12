@@ -90,7 +90,7 @@ export default function SMECriteriaPage() {
                             <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
                                 <p className="text-sm text-blue-900">
                                     <strong>Verification:</strong> Credentials are reviewed by our admin team.
-                                    You'll need to provide proof of qualifications.
+                                    You&apos;ll need to provide proof of qualifications.
                                 </p>
                             </div>
                         </div>

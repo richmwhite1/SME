@@ -678,7 +678,7 @@ export default function ProductWizardV2() {
 
                         {/* Secondary Categories */}
                         <SecondaryCategoriesSelector
-                            value={watch("secondary_categories") || EMPTY_SECONDARY_CATEGORIES}
+                            value={(watch("secondary_categories") as SecondaryCategories) || EMPTY_SECONDARY_CATEGORIES}
                             onChange={(value) => setValue("secondary_categories", value, { shouldValidate: true })}
                         />
 
@@ -1088,13 +1088,13 @@ function SecondaryCategoriesSelector({ value, onChange }: SecondaryCategoriesSel
 
     const toggleItem = (type: keyof SecondaryCategories, item: string) => {
         const currentItems = value[type] || [];
-        const newItems = currentItems.includes(item)
-            ? currentItems.filter(i => i !== item)
-            : [...currentItems, item];
+        const newItems = (currentItems as string[]).includes(item)
+            ? (currentItems as string[]).filter(i => i !== item)
+            : [...(currentItems as string[]), item];
 
         onChange({
             ...value,
-            [type]: newItems
+            [type]: newItems as any
         });
     };
 
@@ -1188,7 +1188,7 @@ function SecondaryCategoriesSelector({ value, onChange }: SecondaryCategoriesSel
             {/* Options Grid */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-64 overflow-y-auto p-2">
                 {getFilteredOptions(activeTab).map(option => {
-                    const isSelected = value[activeTab]?.includes(option) || false;
+                    const isSelected = (value[activeTab] as string[])?.includes(option) || false;
                     return (
                         <button
                             key={option}

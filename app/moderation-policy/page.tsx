@@ -280,7 +280,7 @@ export default async function ModerationPolicyPage() {
                     </h2>
                     <p className="text-xl text-purple-100 mb-8 max-w-2xl mx-auto">
                         If you have questions about our moderation policy or need to report an issue,
-                        we're here to help.
+                        we&apos;re here to help.
                     </p>
                     <div className="flex flex-wrap gap-4 justify-center">
                         <Link
