@@ -219,9 +219,11 @@ export default function HeroSection({
                     {/* Upvote Button (Large) */}
                     <div className="w-full sm:w-auto">
                         <VoteControl
-                            initialUpvotes={upvoteCount}
-                            productId={productId}
-                            variant="large"
+                            resourceId={productId}
+                            resourceType="product"
+                            initialUpvoteCount={upvoteCount}
+                            initialUserVote={null}
+                            size="lg"
                         />
                     </div>
                 </div>
