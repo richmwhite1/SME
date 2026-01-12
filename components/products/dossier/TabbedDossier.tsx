@@ -164,8 +164,8 @@ export default function TabbedDossier(props: TabbedDossierProps) {
                         <div className="bg-black/20 rounded-xl p-4 md:p-6">
                             <ProductComments
                                 productId={props.productId}
-                                comments={props.comments}
-                                currentUser={null}
+                                productSlug={props.productSlug}
+                                initialComments={props.comments}
                             />
                         </div>
                     </div>
