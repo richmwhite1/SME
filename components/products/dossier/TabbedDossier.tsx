@@ -229,15 +229,21 @@ export default function TabbedDossier(props: TabbedDossierProps) {
                                 </div>
                                 <div className="grid grid-cols-3 gap-4">
                                     <dt className="text-bone-white/50">Excipients</dt>
-                                    <dd className="col-span-2 text-bone-white">{props.excipients?.join(", ") || "None listed"}</dd>
+                                    <dd className="col-span-2 text-bone-white">
+                                        {Array.isArray(props.excipients) ? props.excipients.join(", ") : (props.excipients || "None listed")}
+                                    </dd>
                                 </div>
                                 <div className="grid grid-cols-3 gap-4">
                                     <dt className="text-bone-white/50">Allergens</dt>
-                                    <dd className="col-span-2 text-bone-white">{props.allergens?.join(", ") || "None listed"}</dd>
+                                    <dd className="col-span-2 text-bone-white">
+                                        {Array.isArray(props.allergens) ? props.allergens.join(", ") : (props.allergens || "None listed")}
+                                    </dd>
                                 </div>
                                 <div className="grid grid-cols-3 gap-4">
                                     <dt className="text-bone-white/50">Dietary</dt>
-                                    <dd className="col-span-2 text-bone-white">{props.dietaryTags?.join(", ").replace(/_/g, " ") || "N/A"}</dd>
+                                    <dd className="col-span-2 text-bone-white">
+                                        {Array.isArray(props.dietaryTags) ? props.dietaryTags.join(", ").replace(/_/g, " ") : (props.dietaryTags ? String(props.dietaryTags).replace(/_/g, " ") : "N/A")}
+                                    </dd>
                                 </div>
                             </dl>
                         </div>
