@@ -1,32 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { BookOpen, MessageCircle, FileText, Beaker, ShieldCheck } from "lucide-react";
-import SMEAuditsList from "@/components/sme/SMEAuditsList";
+import React, { useState } from "react";
+import { FileText, Users, Activity, Microscope, ArrowRight, Download, ExternalLink, ShieldAlert, Award } from "lucide-react";
+import DualTrackRadar from "@/components/sme/DualTrackRadar";
 import ProductComments from "@/components/products/ProductComments";
-import SubmitExpertAudit from "@/components/sme/SubmitExpertAudit";
-import BenefitsEditor from "@/components/products/BenefitsEditor";
-import CommunityBenefits from "@/components/products/CommunityBenefits";
-import DosageUsageSection from "@/components/products/dossier/DosageUsageSection";
-import VerificationDocuments from "@/components/products/dossier/VerificationDocuments";
-import { type SMEReview } from "@/app/actions/product-sme-review-actions";
-import { Comment } from "@/types/comment";
 
 interface TabbedDossierProps {
     productId: string;
     productSlug: string;
     isSME: boolean;
-    // Tab 1: Expert Audits
-    smeReviews: SMEReview[];
-    // Tab 2 & 3: Comments (split by has_citation)
-    comments: Comment[];
-    // Tab 4: Specs
+    smeReviews: any[];
+    avgSMEScores: any;
+    smeReviewCount: number;
+    comments: any[];
     ingredients?: string | null;
     aiSummary?: string | null;
-    isVerified?: boolean;
-    officialBenefits?: any[];
-    communityBenefits?: any[];
-    // New fields for enhanced specs display
+    isVerified: boolean;
+    officialBenefits: any[];
+    communityBenefits: any[];
     manufacturer?: string | null;
     price?: string | null;
     servingInfo?: string | null;
@@ -38,444 +29,240 @@ interface TabbedDossierProps {
     technicalDocsUrl?: string | null;
     allergens?: string[] | null;
     dietaryTags?: string[] | null;
-    // Phase 2: Dosage & Usage fields
     servingSize?: string | null;
     servingsPerContainer?: string | null;
     form?: string | null;
     recommendedDosage?: string | null;
     bestTimeTake?: string | null;
     storageInstructions?: string | null;
-    // Phase 2: Verification documents
     coaUrl?: string | null;
     labReportUrl?: string | null;
     certificationVaultUrls?: string[] | null;
+    brandOwnerId?: string | null;
 }
 
-type TabType = "expert_audits" | "evidence_insights" | "community_experience" | "specs";
-
-export default function TabbedDossier({
-    productId,
-    productSlug,
-    isSME,
-    smeReviews,
-    comments,
-    ingredients,
-    aiSummary,
-    isVerified = false,
-    officialBenefits = [],
-    communityBenefits = [],
-    manufacturer,
-    price,
-    servingInfo,
-    targetAudience,
-    coreValueProposition,
-    technicalSpecs,
-    excipients,
-    certifications,
-    technicalDocsUrl,
-    allergens,
-    dietaryTags,
-    // Phase 2 props
-    servingSize,
-    servingsPerContainer,
-    form,
-    recommendedDosage,
-    bestTimeTake,
-    storageInstructions,
-    coaUrl,
-    labReportUrl,
-    certificationVaultUrls,
-}: TabbedDossierProps) {
-    const [activeTab, setActiveTab] = useState<TabType>("expert_audits");
-
-    // Filter comments by citation
-    const verifiedInsights = comments.filter((c) => c.has_citation === true);
-    const communityExperience = comments.filter((c) => !c.has_citation);
+export default function TabbedDossier(props: TabbedDossierProps) {
+    const [activeTab, setActiveTab] = useState<"expert_audits" | "evidence" | "community" | "specs">("expert_audits");
 
     const tabs = [
-        {
-            id: "expert_audits" as TabType,
-            label: "Expert Audits",
-            icon: BookOpen,
-            count: smeReviews.length,
-            color: "sme-gold",
-        },
-        {
-            id: "evidence_insights" as TabType,
-            label: "Evidence & Insights",
-            icon: Beaker,
-            count: verifiedInsights.length,
-            color: "emerald-400",
-        },
-        {
-            id: "community_experience" as TabType,
-            label: "Community Experience",
-            icon: MessageCircle,
-            count: communityExperience.length,
-            color: "purple-400",
-        },
-        {
-            id: "specs" as TabType,
-            label: "Specs",
-            icon: FileText,
-            count: null,
-            color: "blue-400",
-        },
-    ];
+        { id: "expert_audits", label: "Expert Audits", icon: Microscope },
+        { id: "evidence", label: "Evidence & Insights", icon: Activity },
+        { id: "community", label: "Community Experience", icon: Users },
+        { id: "specs", label: "Specs", icon: FileText },
+    ] as const;
 
     return (
-        <div className="mb-8 md:mb-12">
-            {/* Tab Switcher */}
-            <div className="border-b border-white/10 mb-6 md:mb-8">
-                {/* Scrollable container for mobile */}
-                <div className="overflow-x-auto scrollbar-hide -mb-px">
-                    <div className="flex gap-2 min-w-max md:min-w-0 md:flex-wrap snap-x snap-mandatory">
-                        {tabs.map((tab) => {
-                            const Icon = tab.icon;
-                            const isActive = activeTab === tab.id;
-                            return (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
-                                    className={`
-                                        snap-start
-                                        flex items-center gap-2 px-4 md:px-6 py-3 md:py-3.5 
-                                        font-mono text-xs md:text-sm uppercase tracking-wide 
-                                        transition-all border-b-2 whitespace-nowrap
-                                        min-h-[44px]
-                                        ${isActive
-                                            ? `border-${tab.color} text-${tab.color} bg-white/5`
-                                            : "border-transparent text-bone-white/50 hover:text-bone-white/80 hover:bg-white/5"
-                                        }
-                                    `}
-                                >
-                                    <Icon size={16} className="flex-shrink-0" />
-                                    <span className="font-semibold">{tab.label}</span>
-                                    {tab.count !== null && (
-                                        <span className="text-xs opacity-60">({tab.count})</span>
-                                    )}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
+        <div className="bg-forest-obsidian/50 border border-translucent-emerald/30 rounded-xl overflow-hidden shadow-2xl backdrop-blur-sm">
+
+            {/* Tab Navigation */}
+            <div className="flex border-b border-translucent-emerald/30 overflow-x-auto scrollbar-hide">
+                {tabs.map((tab) => {
+                    const isActive = activeTab === tab.id;
+                    const Icon = tab.icon;
+                    return (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`flex items-center gap-2 px-6 py-4 text-sm font-mono tracking-wide transition-all border-b-2 whitespace-nowrap ${isActive
+                                ? "border-sme-gold text-sme-gold bg-sme-gold/5"
+                                : "border-transparent text-bone-white/60 hover:text-bone-white hover:bg-white/5"
+                                }`}
+                        >
+                            <Icon size={16} />
+                            {tab.label}
+                        </button>
+                    );
+                })}
             </div>
 
             {/* Tab Content */}
-            <div className="min-h-[400px]">
-                {/* Tab 1: Expert Audits */}
+            <div className="p-6 md:p-8 min-h-[400px]">
+
+                {/* 1. EXPERT AUDITS TAB */}
                 {activeTab === "expert_audits" && (
-                    <div className="space-y-8">
-                        {/* Submit Expert Audit Form (for SMEs) */}
-                        <SubmitExpertAudit productId={productId} isSME={isSME} />
-
-                        {/* SME Audits List */}
-                        <SMEAuditsList reviews={smeReviews} />
-                    </div>
-                )}
-
-                {/* Tab 2: Evidence & Insights (Verified Insight stream) */}
-                {activeTab === "evidence_insights" && (
-                    <div>
-                        <div className="mb-6 p-4 bg-emerald-900/20 border border-emerald-500/30 rounded-lg">
-                            <div className="flex items-center gap-2 mb-2">
-                                <Beaker className="w-5 h-5 text-emerald-400" />
-                                <h3 className="font-serif text-lg font-bold text-emerald-300">
-                                    Verified Insight Stream
-                                </h3>
-                            </div>
-                            <p className="text-sm text-bone-white/70 font-mono">
-                                Posts backed by citations, research, or documented evidence from the SME Evidence Vault
-                            </p>
+                    <div className="space-y-12">
+                        <div className="text-center max-w-2xl mx-auto mb-8">
+                            <h2 className="text-2xl font-serif text-bone-white mb-2">9-Pillar Analysis</h2>
+                            <p className="text-bone-white/60">Comprehensive evaluation by verified Subject Matter Experts.</p>
                         </div>
-                        <ProductComments
-                            productId={productId}
-                            productSlug={productSlug}
-                            initialComments={verifiedInsights}
-                        />
-                    </div>
-                )}
 
-                {/* Tab 3: Community Experience */}
-                {activeTab === "community_experience" && (
-                    <div>
-                        <div className="mb-6 p-4 bg-purple-900/20 border border-purple-500/30 rounded-lg">
-                            <div className="flex items-center gap-2 mb-2">
-                                <MessageCircle className="w-5 h-5 text-purple-400" />
-                                <h3 className="font-serif text-lg font-bold text-purple-300">
-                                    Community Experience
-                                </h3>
-                            </div>
-                            <p className="text-sm text-bone-white/70 font-mono">
-                                Personal experiences, anecdotal reports, and subjective observations from the community
-                            </p>
-                        </div>
-                        <ProductComments
-                            productId={productId}
-                            productSlug={productSlug}
-                            initialComments={communityExperience}
-                        />
-                    </div>
-                )}
-
-                {/* Tab 4: Specs */}
-                {activeTab === "specs" && (
-                    <div className="space-y-8">
-                        {/* Dosage & Usage Section (NEW - Phase 2) */}
-                        <div className="border border-translucent-emerald bg-muted-moss p-6 md:p-8 rounded-lg">
-                            <DosageUsageSection
-                                servingSize={servingSize}
-                                servingsPerContainer={servingsPerContainer}
-                                form={form}
-                                recommendedDosage={recommendedDosage}
-                                bestTimeTake={bestTimeTake}
-                                storageInstructions={storageInstructions}
+                        {/* 9-Pillar Radar Chart (Moved from Hero) */}
+                        <div className="max-w-3xl mx-auto mb-8">
+                            <DualTrackRadar
+                                smeScores={props.avgSMEScores}
+                                smeReviewCount={props.smeReviewCount}
                             />
                         </div>
 
-                        {/* Verification Documents (NEW - Phase 2) */}
-                        <VerificationDocuments
-                            coaUrl={coaUrl}
-                            labReportUrl={labReportUrl}
-                            technicalDocsUrl={technicalDocsUrl}
-                            certificationVaultUrls={certificationVaultUrls}
-                        />
+                        {/* SME Reviews List (Placeholder or Component) */}
+                        <div className="border-t border-translucent-emerald/30 pt-8">
+                            <h3 className="text-lg font-mono text-sme-gold mb-4">Expert Reviews ({props.smeReviewCount})</h3>
+                            {props.smeReviewCount > 0 ? (
+                                <div className="space-y-4">
+                                    <p className="text-bone-white/60 italic">Detailed reviews available for authorized members.</p>
+                                </div>
+                            ) : (
+                                <div className="text-center p-8 bg-white/5 rounded-lg border border-dashed border-white/10">
+                                    <Microscope size={32} className="mx-auto text-bone-white/20 mb-3" />
+                                    <p className="text-bone-white/50">No expert audits filed yet.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
 
-                        {/* Product Overview */}
-                        {(manufacturer || price || servingInfo || targetAudience || coreValueProposition) && (
-                            <div className="border border-translucent-emerald bg-muted-moss p-6 md:p-8 rounded-lg">
-                                <h3 className="mb-6 font-serif text-xl md:text-2xl font-bold text-bone-white border-b border-white/10 pb-4">
-                                    Product Overview
-                                </h3>
-                                <div className="grid gap-4 md:gap-6">
-                                    {manufacturer && (
-                                        <div>
-                                            <span className="text-xs font-mono uppercase tracking-wider text-emerald-400 block mb-2">Manufacturer</span>
-                                            <p className="text-bone-white/90 text-sm md:text-base">{manufacturer}</p>
+                {/* 2. EVIDENCE & INSIGHTS TAB */}
+                {activeTab === "evidence" && (
+                    <div className="space-y-8">
+                        <div>
+                            <h2 className="text-2xl font-serif text-bone-white mb-6">Scientific & Clinical Evidence</h2>
+
+                            {/* Official Benefits (Claims) */}
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8">
+                                {props.officialBenefits.map((benefit: any, idx: number) => (
+                                    <div key={idx} className="bg-white/5 p-4 rounded-lg border border-translucent-emerald/20">
+                                        <div className="flex items-start justify-between mb-2">
+                                            <h4 className="font-semibold text-emerald-400">{benefit.benefit_title}</h4>
+                                            {benefit.is_verified && <CheckCircle size={14} className="text-emerald-500" />}
                                         </div>
-                                    )}
-                                    {targetAudience && (
-                                        <div>
-                                            <span className="text-xs font-mono uppercase tracking-wider text-emerald-400 block mb-2">Target Audience</span>
-                                            <p className="text-bone-white/90 text-sm md:text-base">{targetAudience}</p>
-                                        </div>
-                                    )}
-                                    {coreValueProposition && (
-                                        <div>
-                                            <span className="text-xs font-mono uppercase tracking-wider text-emerald-400 block mb-2">Core Value Proposition</span>
-                                            <p className="text-bone-white/90 text-sm md:text-base leading-relaxed">{coreValueProposition}</p>
-                                        </div>
-                                    )}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                                        {price && (
-                                            <div>
-                                                <span className="text-xs font-mono uppercase tracking-wider text-emerald-400 block mb-2">Price</span>
-                                                <p className="text-bone-white/90 font-semibold text-sm md:text-base">{price}</p>
-                                            </div>
-                                        )}
-                                        {servingInfo && (
-                                            <div>
-                                                <span className="text-xs font-mono uppercase tracking-wider text-emerald-400 block mb-2">Serving Information</span>
-                                                <p className="text-bone-white/90 text-sm md:text-base">{servingInfo}</p>
-                                            </div>
+                                        <p className="text-sm text-bone-white/70 mb-3">{benefit.content || "Verified efficacy claim."}</p>
+                                        {benefit.citation_url && (
+                                            <a href={benefit.citation_url} target="_blank" rel="noopener noreferrer" className="text-xs text-sme-gold hover:underline flex items-center gap-1">
+                                                <ExternalLink size={10} /> Source
+                                            </a>
                                         )}
                                     </div>
-                                </div>
+                                ))}
                             </div>
-                        )}
 
-                        {/* Active Ingredients */}
-                        {ingredients && (
-                            <div className="border border-translucent-emerald bg-muted-moss p-6 md:p-8 rounded-lg">
-                                <h3 className="mb-4 font-serif text-xl md:text-2xl font-bold text-bone-white border-b border-white/10 pb-4">
-                                    Active Ingredients
-                                </h3>
-                                <p className="text-bone-white/80 leading-relaxed whitespace-pre-wrap text-sm md:text-base">
-                                    {ingredients}
-                                </p>
-                            </div>
-                        )}
-
-                        {/* Excipients & Inactive Ingredients */}
-                        {excipients && Array.isArray(excipients) && excipients.length > 0 && (
-                            <div className="border border-translucent-emerald bg-muted-moss p-6 md:p-8 rounded-lg">
-                                <h3 className="mb-4 font-serif text-xl md:text-2xl font-bold text-bone-white border-b border-white/10 pb-4">
-                                    Excipients & Inactive Ingredients
-                                </h3>
-                                <p className="text-xs md:text-sm text-bone-white/60 mb-4 font-mono">
-                                    Inactive ingredients that may be important for sensitive users
-                                </p>
-                                <div className="flex flex-wrap gap-2">
-                                    {excipients.map((excipient, index) => (
-                                        <span
-                                            key={index}
-                                            className="px-3 py-1.5 bg-white/5 border border-white/20 text-bone-white/80 text-xs md:text-sm rounded-full"
-                                        >
-                                            {excipient}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Technical Specifications */}
-                        {technicalSpecs && Object.keys(technicalSpecs).length > 0 && (
-                            <div className="border border-translucent-emerald bg-muted-moss p-6 md:p-8 rounded-lg">
-                                <h3 className="mb-4 font-serif text-xl md:text-2xl font-bold text-bone-white border-b border-white/10 pb-4">
-                                    Technical Specifications
-                                </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {Object.entries(technicalSpecs).map(([key, value]) => (
-                                        <div key={key} className="bg-white/5 border border-white/10 p-4 rounded">
-                                            <span className="text-xs font-mono uppercase tracking-wider text-emerald-400 block mb-1">
-                                                {key}
-                                            </span>
-                                            <p className="text-bone-white/90 text-sm md:text-base">{value}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Allergens & Dietary Compliance */}
-                        {((allergens && Array.isArray(allergens) && allergens.filter(a => a !== "none").length > 0) || (dietaryTags && Array.isArray(dietaryTags) && dietaryTags.length > 0)) && (
-                            <div className="border border-translucent-emerald bg-muted-moss p-6 md:p-8 rounded-lg">
-                                <h3 className="mb-6 font-serif text-xl md:text-2xl font-bold text-bone-white border-b border-white/10 pb-4">
-                                    Allergens & Dietary Compliance
-                                </h3>
-
-                                {allergens && Array.isArray(allergens) && allergens.filter(a => a !== "none").length > 0 && (
-                                    <div className="mb-6">
-                                        <span className="text-xs font-mono uppercase tracking-wider text-orange-400 block mb-3">
-                                            ⚠️ Contains Allergens
-                                        </span>
-                                        <div className="flex flex-wrap gap-2">
-                                            {allergens.filter(a => a !== "none").map((allergen) => (
-                                                <span
-                                                    key={allergen}
-                                                    className="px-3 py-1.5 bg-orange-500/20 border border-orange-500/40 text-orange-200 text-xs md:text-sm font-semibold rounded-full capitalize"
-                                                >
-                                                    {allergen.replace(/_/g, " ")}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {dietaryTags && Array.isArray(dietaryTags) && dietaryTags.length > 0 && (
-                                    <div>
-                                        <span className="text-xs font-mono uppercase tracking-wider text-emerald-400 block mb-3">
-                                            ✓ Dietary Compliance
-                                        </span>
-                                        <div className="flex flex-wrap gap-2">
-                                            {dietaryTags.map((tag) => (
-                                                <span
-                                                    key={tag}
-                                                    className="px-3 py-1.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-xs md:text-sm font-semibold rounded-full capitalize"
-                                                >
-                                                    {tag.replace(/_/g, " ")}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Certifications */}
-                        {certifications && Array.isArray(certifications) && certifications.length > 0 && (
-                            <div className="border border-translucent-emerald bg-muted-moss p-6 md:p-8 rounded-lg">
-                                <h3 className="mb-4 font-serif text-xl md:text-2xl font-bold text-bone-white border-b border-white/10 pb-4">
-                                    Certifications
-                                </h3>
-                                <div className="flex flex-wrap gap-3">
-                                    {certifications.map((cert, index) => (
-                                        <div
-                                            key={index}
-                                            className="flex items-center gap-2 px-4 py-2 bg-sme-gold/10 border border-sme-gold/30 rounded-lg"
-                                        >
-                                            <ShieldCheck className="w-4 h-4 text-sme-gold" />
-                                            <span className="text-bone-white/90 text-sm md:text-base font-semibold">{cert}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Technical Documentation */}
-                        {technicalDocsUrl && (
-                            <div className="border border-blue-500/30 bg-blue-900/10 p-6 md:p-8 rounded-lg">
-                                <h3 className="mb-4 font-serif text-xl md:text-2xl font-bold text-bone-white border-b border-white/10 pb-4">
-                                    📄 Technical Documentation
-                                </h3>
-                                <p className="text-bone-white/70 text-sm md:text-base mb-4">
-                                    View detailed white papers, studies, and technical specifications
-                                </p>
-                                <a
-                                    href={technicalDocsUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg transition-colors"
-                                >
-                                    <FileText className="w-4 h-4" />
-                                    Download Technical Docs
-                                </a>
-                            </div>
-                        )}
-
-                        {/* Benefits Section */}
-                        <div className="space-y-6">
-                            <h3 className="font-serif text-xl md:text-2xl font-bold text-bone-white border-b border-white/10 pb-4">
-                                Benefits & Evidence
-                            </h3>
-
-                            {/* Official Benefits (Verified Brands Only) */}
-                            <BenefitsEditor
-                                productId={productId}
-                                isVerified={isVerified}
-                                initialBenefits={officialBenefits}
-                            />
-
-                            {/* Community-Suggested Benefits */}
-                            <CommunityBenefits
-                                productId={productId}
-                                initialBenefits={communityBenefits}
-                            />
-                        </div>
-
-                        {/* AI Summary / Expert Notebook */}
-                        {aiSummary && (
-                            <div className="border border-translucent-emerald bg-muted-moss p-6 md:p-8 rounded-lg">
-                                <h3 className="mb-4 font-serif text-xl md:text-2xl font-bold text-bone-white border-b border-white/10 pb-4">
-                                    Expert Notebook
-                                </h3>
-                                <div className="prose prose-slate max-w-none 
-                  prose-headings:font-serif prose-headings:text-bone-white prose-headings:font-bold
-                  prose-p:text-bone-white/80 prose-p:leading-relaxed prose-p:mb-4
-                  prose-strong:text-bone-white prose-strong:font-semibold
-                  prose-ul:text-bone-white/80 prose-ul:leading-relaxed
-                  prose-li:text-bone-white/80 prose-li:my-2
-                  prose-a:text-heart-green hover:prose-a:text-emerald-300 transition-colors
-                  prose-code:text-emerald-200 prose-code:bg-emerald-950/30 prose-code:px-1 prose-code:rounded
-                  prose-blockquote:border-l-emerald-500/50 prose-blockquote:text-white/60">
-                                    <div dangerouslySetInnerHTML={{ __html: aiSummary }} />
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Empty State */}
-                        {!ingredients && !aiSummary && officialBenefits.length === 0 && communityBenefits.length === 0 &&
-                            !manufacturer && !technicalSpecs && !excipients && !certifications && (
-                                <div className="text-center py-16 bg-white/5 border border-white/10 rounded-lg">
-                                    <FileText className="w-12 h-12 text-bone-white/20 mx-auto mb-4" />
-                                    <p className="text-bone-white/60 font-mono text-sm">
-                                        No specifications available yet.
+                            {/* AI Summary */}
+                            {props.aiSummary && (
+                                <div className="bg-pagemind-blue/10 border border-pagemind-blue/30 p-6 rounded-xl">
+                                    <h3 className="text-pagemind-blue font-mono text-sm uppercase mb-3 flex items-center gap-2">
+                                        <Activity size={16} /> AI Research Synthesis
+                                    </h3>
+                                    <p className="text-bone-white/80 leading-relaxed text-sm md:text-base">
+                                        {props.aiSummary}
                                     </p>
                                 </div>
                             )}
+                        </div>
                     </div>
                 )}
+
+                {/* 3. COMMUNITY EXPERIENCE TAB */}
+                {activeTab === "community" && (
+                    <div className="space-y-8">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-2xl font-serif text-bone-white">Community Experience</h2>
+                            <div className="text-sm font-mono text-sme-gold px-3 py-1 bg-sme-gold/10 rounded-full border border-sme-gold/20">
+                                {props.comments.length} Contributions
+                            </div>
+                        </div>
+
+                        {/* Comments Component */}
+                        <div className="bg-black/20 rounded-xl p-4 md:p-6">
+                            <ProductComments
+                                productId={props.productId}
+                                comments={props.comments}
+                                currentUser={null}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {/* 4. SPECS TAB */}
+                {activeTab === "specs" && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
+                        {/* Column 1: Technical & Formulation */}
+                        <div className="space-y-6">
+                            <h3 className="font-mono text-sme-gold flex items-center gap-2 border-b border-white/10 pb-2">
+                                <FileText size={16} /> Formulation Details
+                            </h3>
+
+                            <dl className="space-y-4 text-sm">
+                                <div className="grid grid-cols-3 gap-4">
+                                    <dt className="text-bone-white/50">Form</dt>
+                                    <dd className="col-span-2 text-bone-white">{props.form || "N/A"}</dd>
+                                </div>
+                                <div className="grid grid-cols-3 gap-4">
+                                    <dt className="text-bone-white/50">Ingredients</dt>
+                                    <dd className="col-span-2 text-bone-white break-words">
+                                        {props.ingredients || (props.activeIngredients ? JSON.stringify(props.activeIngredients) : "See label")}
+                                    </dd>
+                                </div>
+                                <div className="grid grid-cols-3 gap-4">
+                                    <dt className="text-bone-white/50">Excipients</dt>
+                                    <dd className="col-span-2 text-bone-white">{props.excipients?.join(", ") || "None listed"}</dd>
+                                </div>
+                                <div className="grid grid-cols-3 gap-4">
+                                    <dt className="text-bone-white/50">Allergens</dt>
+                                    <dd className="col-span-2 text-bone-white">{props.allergens?.join(", ") || "None listed"}</dd>
+                                </div>
+                                <div className="grid grid-cols-3 gap-4">
+                                    <dt className="text-bone-white/50">Dietary</dt>
+                                    <dd className="col-span-2 text-bone-white">{props.dietaryTags?.join(", ").replace(/_/g, " ") || "N/A"}</dd>
+                                </div>
+                            </dl>
+                        </div>
+
+                        {/* Column 2: Usage & Verification */}
+                        <div className="space-y-6">
+                            <h3 className="font-mono text-sme-gold flex items-center gap-2 border-b border-white/10 pb-2">
+                                <ShieldCheck size={16} /> Usage & Safety
+                            </h3>
+
+                            <dl className="space-y-4 text-sm">
+                                <div className="grid grid-cols-3 gap-4">
+                                    <dt className="text-bone-white/50">Serving Size</dt>
+                                    <dd className="col-span-2 text-bone-white">{props.servingSize || "N/A"}</dd>
+                                </div>
+                                <div className="grid grid-cols-3 gap-4">
+                                    <dt className="text-bone-white/50">Dosage</dt>
+                                    <dd className="col-span-2 text-bone-white">{props.recommendedDosage || "As directed"}</dd>
+                                </div>
+                                <div className="grid grid-cols-3 gap-4">
+                                    <dt className="text-bone-white/50">Best Time</dt>
+                                    <dd className="col-span-2 text-bone-white">{props.bestTimeTake || "Anytime"}</dd>
+                                </div>
+                                <div className="grid grid-cols-3 gap-4">
+                                    <dt className="text-bone-white/50">Storage</dt>
+                                    <dd className="col-span-2 text-bone-white">{props.storageInstructions || "Cool, dry place"}</dd>
+                                </div>
+                                {props.warnings && (
+                                    <div className="grid grid-cols-3 gap-4 bg-red-900/10 p-2 rounded">
+                                        <dt className="text-red-400">Warnings</dt>
+                                        <dd className="col-span-2 text-red-200">{props.warnings}</dd>
+                                    </div>
+                                )}
+                            </dl>
+
+                            <div className="pt-4 space-y-3">
+                                {props.technicalDocsUrl && (
+                                    <a href={props.technicalDocsUrl} target="_blank" className="flex items-center gap-2 text-sme-gold hover:text-white transition-colors text-sm border border-sme-gold/30 p-2 rounded hover:bg-sme-gold/10">
+                                        <FileText size={16} /> Technical Documentation
+                                    </a>
+                                )}
+                                {props.labReportUrl && (
+                                    <a href={props.labReportUrl} target="_blank" className="flex items-center gap-2 text-emerald-400 hover:text-white transition-colors text-sm border border-emerald-500/30 p-2 rounded hover:bg-emerald-500/10">
+                                        <Microscope size={16} /> Lab Analysis Report
+                                    </a>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
             </div>
         </div>
     );
+}
+
+function CheckCircle({ size, className }: { size: number, className?: string }) {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+        </svg>
+    )
 }

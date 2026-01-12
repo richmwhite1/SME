@@ -4,27 +4,15 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import ProductImageGallery from "@/components/products/ProductImageGallery";
 import HeroSection from "@/components/products/dossier/HeroSection";
-import SignalGrid from "@/components/products/dossier/SignalGrid";
 import TabbedDossier from "@/components/products/dossier/TabbedDossier";
 import TheVault from "@/components/products/dossier/TheVault";
 import SearchBar from "@/components/search/SearchBar";
 import ProductViewTracker from "@/components/products/ProductViewTracker";
 import StickyCTABar from "@/components/products/StickyCTABar";
-import SafetyInfoCard from "@/components/products/dossier/SafetyInfoCard";
-import DietaryBadges from "@/components/products/dossier/DietaryBadges";
-import QuickFactsGrid from "@/components/products/dossier/QuickFactsGrid";
 import ProductVideo from "@/components/products/dossier/ProductVideo";
-import IngredientsBreakdown from "@/components/products/dossier/IngredientsBreakdown";
-import ProductCategoryCard from "@/components/products/dossier/ProductCategoryCard";
-import TruthSignalsExpanded from "@/components/products/dossier/TruthSignalsExpanded";
 import { getDb } from "@/lib/db";
 import { getSMEReviews, getAverageSMEScores, checkIsSME } from "@/app/actions/product-sme-review-actions";
-import DualTrackRadar from "@/components/sme/DualTrackRadar";
-import ReactMarkdown from "react-markdown";
-import SubmitExpertAudit from "@/components/sme/SubmitExpertAudit";
-import SMEAuditsList from "@/components/sme/SMEAuditsList";
-import BenefitsEditor from "@/components/products/BenefitsEditor";
-import CommunityBenefits from "@/components/products/CommunityBenefits";
+
 
 // Force dynamic rendering to bypass caching issues
 export const dynamic = "force-dynamic";
@@ -160,6 +148,7 @@ interface Product {
   youtube_link?: string | null;
   core_value_proposition?: string | null;
   technical_specs?: Record<string, string> | null;
+  active_ingredients?: any[] | null;
   excipients?: string[] | null;
   certifications?: string[] | null;
   technical_docs_url?: string | null;
@@ -296,6 +285,19 @@ export default async function ProductDetailPage({
     const safeImages = imagesArray.filter(img =>
       !!img && (img.startsWith('http://') || img.startsWith('https://'))
     );
+
+    // Parse active_ingredients if it's a string
+    let activeIngredients: any[] = [];
+    if (Array.isArray(typedProduct.active_ingredients)) {
+      activeIngredients = typedProduct.active_ingredients;
+    } else if (typeof typedProduct.active_ingredients === 'string') {
+      try {
+        // @ts-ignore
+        activeIngredients = JSON.parse(typedProduct.active_ingredients);
+      } catch (e) {
+        console.error("Failed to parse active_ingredients", e);
+      }
+    }
 
     // 4. Fetch SME reviews (with error handling for unauthenticated users)
     let smeReviews: any[] = [];
@@ -502,7 +504,7 @@ export default async function ProductDetailPage({
               </Link>
             </div>
 
-            {/* HERO SECTION (2-Column: 40% Gallery + 60% Stats) */}
+            {/* HERO SECTION - Enhanced with Quadrants */}
             <HeroSection
               title={typedProduct.title}
               brand={typedProduct.brand}
@@ -517,65 +519,40 @@ export default async function ProductDetailPage({
               discountCode={typedProduct.discount_code}
               smeTrustScore={avgSMEScore}
               communitySentiment={typedProduct.community_consensus_score}
-              dietaryTags={typedProduct.dietary_tags}
+              // New Quadrant Data
+              activeIngredients={activeIngredients}
+              servingSize={typedProduct.serving_size}
+
+              servingsPerContainer={typedProduct.servings_per_container}
+              form={typedProduct.form}
               price={typedProduct.price}
+              coreValueProposition={typedProduct.core_value_proposition}
+              officialBenefits={benefits.filter(b => b.source_type === 'official')}
+              allergens={typedProduct.allergens}
+              dietaryTags={typedProduct.dietary_tags}
+              warnings={typedProduct.warnings}
+              manufacturer={typedProduct.manufacturer}
+              certifications={typedProduct.certifications}
+              labTested={!!typedProduct.lab_report_url || typedProduct.third_party_lab_verified}
               servingInfo={typedProduct.serving_info}
               targetAudience={typedProduct.target_audience}
             />
 
-            {/* SAFETY INFORMATION CARD */}
-            <SafetyInfoCard
-              allergens={typedProduct.allergens}
-              warnings={typedProduct.warnings}
-            />
-
-            {/* PRODUCT VIDEO (YouTube or Rumble) */}
-            <ProductVideo
-              videoUrl={typedProduct.youtube_link || typedProduct.founder_video_url}
-              productTitle={typedProduct.title}
-            />
-
-            {/* PRODUCT CATEGORY - What It's For */}
-            <ProductCategoryCard
-              category={typedProduct.category}
-              problemSolved={typedProduct.problem_solved}
-              aiSummary={typedProduct.ai_summary}
-              targetAudience={typedProduct.target_audience}
-            />
-
-            {/* INGREDIENTS BREAKDOWN */}
-            <IngredientsBreakdown
-              ingredients={typedProduct.ingredients}
-              servingSize={typedProduct.serving_size}
-              form={typedProduct.form}
-              coaUrl={typedProduct.coa_url}
-            />
-
-            {/* TRUTH SIGNALS (Enhanced with Justifications) */}
-            <TruthSignalsExpanded
-              signals={signals}
-              labReportUrl={typedProduct.lab_report_url}
-              coaUrl={typedProduct.coa_url}
-            />
-
-            {/* 9-PILLAR RADAR CHART (Positioned prominently) */}
-            <DualTrackRadar
-              smeScores={avgSMEScores}
-              smeReviewCount={avgSMEScores.reviewCount}
-            />
-
-            {/* TABBED DOSSIER (4 Tabs: Expert Audits, Evidence & Insights, Community Experience, Specs) */}
+            {/* TABBED DOSSIER */}
             <TabbedDossier
               productId={typedProduct.id}
               productSlug={typedProduct.slug}
               isSME={isSME}
               smeReviews={smeReviews}
+              avgSMEScores={avgSMEScores}
+              smeReviewCount={avgSMEScores.reviewCount}
               comments={serializedComments}
               ingredients={typedProduct.ingredients}
               aiSummary={typedProduct.ai_summary}
               isVerified={typedProduct.is_verified || false}
               officialBenefits={benefits.filter(b => b.source_type === 'official')}
               communityBenefits={communityBenefits}
+              // New Props for Tabbed View
               manufacturer={typedProduct.manufacturer}
               price={typedProduct.price}
               servingInfo={typedProduct.serving_info}
@@ -596,7 +573,18 @@ export default async function ProductDetailPage({
               coaUrl={typedProduct.coa_url}
               labReportUrl={typedProduct.lab_report_url}
               certificationVaultUrls={typedProduct.certification_vault_urls}
+              brandOwnerId={typedProduct.brand_owner_id}
             />
+
+            {/* Founder Video (Video is now lower down) */}
+            {(typedProduct.youtube_link || typedProduct.founder_video_url) && (
+              <div className="mt-8 mb-8">
+                <ProductVideo
+                  videoUrl={typedProduct.youtube_link || typedProduct.founder_video_url}
+                  productTitle={typedProduct.title}
+                />
+              </div>
+            )}
 
             {/* THE VAULT */}
             <TheVault urls={typedProduct.certification_vault_urls} />
