@@ -199,8 +199,9 @@ export default function HeroSection({
                     {buyUrl ? (
                         <div className="w-full sm:flex-1">
                             <BuyNowButton
-                                url={buyUrl}
-                                price={price}
+                                productId={productId}
+                                productTitle={title}
+                                buyUrl={buyUrl}
                                 discountCode={discountCode}
                             />
                             {discountCode && (
