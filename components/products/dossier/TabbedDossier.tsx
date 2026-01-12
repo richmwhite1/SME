@@ -4,6 +4,8 @@ import React, { useState } from "react";
 import { FileText, Users, Activity, Microscope, ArrowRight, Download, ExternalLink, ShieldAlert, Award, ShieldCheck } from "lucide-react";
 import DualTrackRadar from "@/components/sme/DualTrackRadar";
 import ProductComments from "@/components/products/ProductComments";
+import NinePillarExpandable from "@/components/products/dossier/NinePillarExpandable";
+import EmptyState from "@/components/ui/EmptyState";
 
 interface TabbedDossierProps {
     productId: string;
@@ -95,6 +97,14 @@ export default function TabbedDossier(props: TabbedDossierProps) {
                             />
                         </div>
 
+                        {/* Detailed Pillar Breakdown - Expandable */}
+                        <div className="mb-8">
+                            <NinePillarExpandable
+                                avgScores={props.avgSMEScores}
+                                reviewCount={props.smeReviewCount}
+                            />
+                        </div>
+
                         {/* SME Reviews List (Placeholder or Component) */}
                         <div className="border-t border-translucent-emerald/30 pt-8">
                             <h3 className="text-lg font-mono text-sme-gold mb-4">Expert Reviews ({props.smeReviewCount})</h3>
@@ -103,10 +113,20 @@ export default function TabbedDossier(props: TabbedDossierProps) {
                                     <p className="text-bone-white/60 italic">Detailed reviews available for authorized members.</p>
                                 </div>
                             ) : (
-                                <div className="text-center p-8 bg-white/5 rounded-lg border border-dashed border-white/10">
-                                    <Microscope size={32} className="mx-auto text-bone-white/20 mb-3" />
-                                    <p className="text-bone-white/50">No expert audits filed yet.</p>
-                                </div>
+                                <EmptyState
+                                    icon={Microscope}
+                                    title="No Expert Audits Yet"
+                                    description="Be the first to share your professional analysis of this product! Expert audits help the community make informed decisions based on scientific evidence and real-world experience."
+                                    variant="encouraging"
+                                    primaryCTA={{
+                                        label: "Become an SME",
+                                        href: "/settings?tab=sme"
+                                    }}
+                                    secondaryCTA={{
+                                        label: "Learn About SME Status",
+                                        href: "/how-it-works#sme"
+                                    }}
+                                />
                             )}
                         </div>
                     </div>
@@ -119,22 +139,37 @@ export default function TabbedDossier(props: TabbedDossierProps) {
                             <h2 className="text-2xl font-serif text-bone-white mb-6">Scientific & Clinical Evidence</h2>
 
                             {/* Official Benefits (Claims) */}
-                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8">
-                                {props.officialBenefits.map((benefit: any, idx: number) => (
-                                    <div key={idx} className="bg-white/5 p-4 rounded-lg border border-translucent-emerald/20">
-                                        <div className="flex items-start justify-between mb-2">
-                                            <h4 className="font-semibold text-emerald-400">{benefit.benefit_title}</h4>
-                                            {benefit.is_verified && <CheckCircle size={14} className="text-emerald-500" />}
+                            {props.officialBenefits.length > 0 ? (
+                                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8">
+                                    {props.officialBenefits.map((benefit: any, idx: number) => (
+                                        <div key={idx} className="bg-white/5 p-4 rounded-lg border border-translucent-emerald/20">
+                                            <div className="flex items-start justify-between mb-2">
+                                                <h4 className="font-semibold text-emerald-400">{benefit.benefit_title}</h4>
+                                                {benefit.is_verified && <CheckCircle size={14} className="text-emerald-500" />}
+                                            </div>
+                                            <p className="text-sm text-bone-white/70 mb-3">{benefit.content || "Verified efficacy claim."}</p>
+                                            {benefit.citation_url && (
+                                                <a href={benefit.citation_url} target="_blank" rel="noopener noreferrer" className="text-xs text-sme-gold hover:underline flex items-center gap-1">
+                                                    <ExternalLink size={10} /> Source
+                                                </a>
+                                            )}
                                         </div>
-                                        <p className="text-sm text-bone-white/70 mb-3">{benefit.content || "Verified efficacy claim."}</p>
-                                        {benefit.citation_url && (
-                                            <a href={benefit.citation_url} target="_blank" rel="noopener noreferrer" className="text-xs text-sme-gold hover:underline flex items-center gap-1">
-                                                <ExternalLink size={10} /> Source
-                                            </a>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="mb-8">
+                                    <EmptyState
+                                        icon={Activity}
+                                        title="No Scientific Evidence Yet"
+                                        description="Help build the evidence base for this product! Share peer-reviewed studies, clinical trials, or verified research that supports or questions this product's claims."
+                                        variant="encouraging"
+                                        primaryCTA={{
+                                            label: "Submit Evidence",
+                                            href: `/products/${props.productSlug}?action=add-evidence`
+                                        }}
+                                    />
+                                </div>
+                            )}
 
                             {/* AI Summary */}
                             {props.aiSummary && (

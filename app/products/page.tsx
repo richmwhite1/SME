@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getDb } from '@/lib/db';
 
 import ProductsClient from '@/components/products/ProductsClient';
+import PillarProgressBar from '@/components/products/PillarProgressBar';
 
 import {
   ShieldCheck,
@@ -32,6 +33,18 @@ interface Product {
 interface ProductWithMetrics extends Product {
   reviewCount: number;
   activityScore: number;
+  avgSMEScores: {
+    purity: number | null;
+    bioavailability: number | null;
+    potency: number | null;
+    evidence: number | null;
+    sustainability: number | null;
+    experience: number | null;
+    safety: number | null;
+    transparency: number | null;
+    synergy: number | null;
+  };
+  smeReviewCount: number;
 }
 
 // Helper to safely parse images
@@ -68,7 +81,7 @@ async function getProducts(searchParams: { search?: string; category?: string; c
   const { search, category, certified } = searchParams;
 
   try {
-    // Build the query with filters
+    // Build the query with filters - now including SME scores
     const productsResult = await sql`
       SELECT 
         id, 
@@ -79,7 +92,17 @@ async function getProducts(searchParams: { search?: string; category?: string; c
         product_photos,
         tags, 
         is_sme_certified, 
-        created_at
+        created_at,
+        avg_sme_purity,
+        avg_sme_bioavailability,
+        avg_sme_potency,
+        avg_sme_evidence,
+        avg_sme_sustainability,
+        avg_sme_experience,
+        avg_sme_safety,
+        avg_sme_transparency,
+        avg_sme_synergy,
+        sme_review_count
       FROM products
       WHERE admin_status = 'approved'
       ${search ? sql`AND (title ILIKE ${'%' + search + '%'} OR problem_solved ILIKE ${'%' + search + '%'})` : sql``}
@@ -110,7 +133,19 @@ async function getProducts(searchParams: { search?: string; category?: string; c
       is_sme_certified: p.is_sme_certified,
       created_at: p.created_at,
       reviewCount: metricsMap.get(p.id) || 0,
-      activityScore: (metricsMap.get(p.id) || 0) * 10
+      activityScore: (metricsMap.get(p.id) || 0) * 10,
+      avgSMEScores: {
+        purity: p.avg_sme_purity ? Number(p.avg_sme_purity) : null,
+        bioavailability: p.avg_sme_bioavailability ? Number(p.avg_sme_bioavailability) : null,
+        potency: p.avg_sme_potency ? Number(p.avg_sme_potency) : null,
+        evidence: p.avg_sme_evidence ? Number(p.avg_sme_evidence) : null,
+        sustainability: p.avg_sme_sustainability ? Number(p.avg_sme_sustainability) : null,
+        experience: p.avg_sme_experience ? Number(p.avg_sme_experience) : null,
+        safety: p.avg_sme_safety ? Number(p.avg_sme_safety) : null,
+        transparency: p.avg_sme_transparency ? Number(p.avg_sme_transparency) : null,
+        synergy: p.avg_sme_synergy ? Number(p.avg_sme_synergy) : null,
+      },
+      smeReviewCount: p.sme_review_count || 0
     }));
 
     return products;
@@ -265,13 +300,12 @@ export default async function ProductsPage({
                         <h3 className="font-serif text-lg text-bone-white group-hover:text-sme-gold transition-colors mb-2 line-clamp-2">
                           {product.title}
                         </h3>
-                        <div className="flex items-center gap-4 text-xs font-mono text-bone-white/50">
-                          <span className="flex items-center gap-1">
-                            <Activity className="w-3 h-3" /> {product.activityScore}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Users className="w-3 h-3" /> {product.reviewCount}
-                          </span>
+                        <div className="mt-2">
+                          <PillarProgressBar
+                            avgScores={product.avgSMEScores}
+                            reviewCount={product.smeReviewCount}
+                            compact={true}
+                          />
                         </div>
                       </div>
                     </Link>
@@ -325,15 +359,23 @@ export default async function ProductsPage({
                         {product.problem_solved}
                       </p>
 
-                      <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                        <div className="flex items-center gap-3">
-                          {product.is_sme_certified && (
-                            <ShieldCheck className="w-4 h-4 text-sme-gold" />
-                          )}
+                      <div className="pt-4 border-t border-white/5 space-y-3">
+                        <PillarProgressBar
+                          avgScores={product.avgSMEScores}
+                          reviewCount={product.smeReviewCount}
+                          compact={false}
+                        />
+
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            {product.is_sme_certified && (
+                              <ShieldCheck className="w-4 h-4 text-sme-gold" />
+                            )}
+                          </div>
+                          <span className="text-sm font-mono text-sme-gold group-hover:translate-x-1 transition-transform flex items-center gap-1">
+                            View <ArrowRight className="w-3 h-3" />
+                          </span>
                         </div>
-                        <span className="text-sm font-mono text-sme-gold group-hover:translate-x-1 transition-transform flex items-center gap-1">
-                          View <ArrowRight className="w-3 h-3" />
-                        </span>
                       </div>
                     </div>
                   </Link>
