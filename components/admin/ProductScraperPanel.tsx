@@ -205,7 +205,7 @@ export default function ProductScraperPanel() {
                 <ul className="font-mono text-xs text-bone-white/70 space-y-1.5 list-disc list-inside">
                     <li>Paste a product URL from any e-commerce site or brand website</li>
                     <li>AI will extract: name, description, ingredients, and brand name</li>
-                    <li>Product will be added with status "unclaimed"</li>
+                    <li>Product will be added with status &quot;unclaimed&quot;</li>
                     <li>Duplicate products are detected automatically by slug</li>
                 </ul>
             </div>

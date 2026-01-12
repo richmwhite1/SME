@@ -29,6 +29,7 @@ export default function SearchBar({ onExpand, onCollapse }: SearchBarProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [activeFilter, setActiveFilter] = useState("All");
   const [synthesis, setSynthesis] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -193,19 +194,53 @@ export default function SearchBar({ onExpand, onCollapse }: SearchBarProps) {
   };
 
   // Group results by type
-  const groupedResults = results.reduce(
-    (acc, result) => {
-      if (!acc[result.result_type]) {
-        acc[result.result_type] = [];
-      }
-      acc[result.result_type].push(result);
-      return acc;
-    },
-    {} as Record<string, SearchResult[]>
-  );
+  const groupedResults = results
+    .filter(r => {
+      if (activeFilter === "All") return true;
+      if (activeFilter === "Products") return r.result_type === "Product";
+      if (activeFilter === "Discussions") return r.result_type === "Discussion";
+      if (activeFilter === "Evidence") return r.result_type === "Resource" || r.result_type === "Evidence";
+      return true;
+    })
+    .reduce(
+      (acc, result) => {
+        if (!acc[result.result_type]) {
+          acc[result.result_type] = [];
+        }
+        acc[result.result_type].push(result);
+        return acc;
+      },
+      {} as Record<string, SearchResult[]>
+    );
 
   return (
     <div ref={searchRef} className="relative w-full">
+      {/* Filter Chips */}
+      <div className="flex items-center gap-2 mb-2 overflow-x-auto pb-1 no-scrollbar">
+        {["All", "Products", "Discussions", "Evidence"].map((filter) => {
+          const isSelected = (activeFilter === "All" && filter === "All") ||
+            (activeFilter === filter);
+          return (
+            <button
+              key={filter}
+              type="button"
+              onClick={() => {
+                setActiveFilter(filter);
+                inputRef.current?.focus();
+              }}
+              className={`
+                px-3 py-1 text-[10px] uppercase tracking-wider font-mono rounded-full border transition-all
+                ${isSelected
+                  ? "bg-sme-gold text-forest-obsidian border-sme-gold font-bold"
+                  : "bg-transparent text-bone-white/60 border-translucent-emerald hover:border-sme-gold/50 hover:text-bone-white"}
+              `}
+            >
+              {filter}
+            </button>
+          );
+        })}
+      </div>
+
       <form onSubmit={handleSubmit} className="relative">
         <div className="relative">
           {/* Subtle search icon */}
@@ -222,9 +257,9 @@ export default function SearchBar({ onExpand, onCollapse }: SearchBarProps) {
               if (query.trim().length >= 2) setIsOpen(true);
               onExpand?.();
             }}
-            placeholder="search, discussions, products or citations...."
+            placeholder={activeFilter === 'All' ? "search products, discussions & evidence..." : `search ${activeFilter.toLowerCase()}...`}
             suppressHydrationWarning
-            className="w-full text-sm bg-muted-moss border border-translucent-emerald py-2 pl-9 pr-16 text-bone-white placeholder-bone-white/50 focus:border-heart-green focus:outline-none transition-all font-mono"
+            className="w-full text-sm bg-muted-moss border border-translucent-emerald py-3 pl-9 pr-16 text-bone-white placeholder-bone-white/30 focus:border-heart-green focus:outline-none transition-all font-mono shadow-inner shadow-black/20 rounded-md"
           />
           {query && (
             <button
@@ -240,7 +275,7 @@ export default function SearchBar({ onExpand, onCollapse }: SearchBarProps) {
             </button>
           )}
           {/* Command-K hint - subtle */}
-          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 text-bone-white/50 text-[10px] font-mono">
+          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 text-bone-white/30 text-[10px] font-mono border border-bone-white/10 px-1.5 py-0.5 rounded">
             ⌘K
           </div>
         </div>

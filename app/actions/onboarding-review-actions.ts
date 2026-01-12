@@ -355,7 +355,7 @@ export async function getReviewStats() {
       FROM product_onboarding
     `;
 
-        return stats[0] || {
+        return (stats[0] as any) || {
             pending_count: 0,
             verified_count: 0,
             rejected_count: 0,

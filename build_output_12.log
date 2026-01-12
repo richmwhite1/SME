@@ -1,0 +1,314 @@
+  ▲ Next.js 14.2.35
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+
+./app/api/og/compare/route.tsx
+111:17  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+269:17  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./app/api/og/trending/route.tsx
+226:23  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./app/page.tsx
+371:25  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./app/products/page.tsx
+249:29  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+301:29  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/admin/ProductEditModal.tsx
+273:49  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/admin/VerificationModal.tsx
+104:21  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/brand/ProductEditModal.tsx
+251:37  Warning: Image elements must have an alt prop, either with meaningful text, or an empty string for decorative images.  jsx-a11y/alt-text
+258:49  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/comments/CitationSearch.tsx
+93:6  Warning: React Hook useEffect has a missing dependency: 'handleKeyDown'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+114:6  Warning: React Hook useCallback has a missing dependency: 'handleSelectResult'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/comments/SourcePreviewCard.tsx
+113:25  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/discussions/DiscussionComments.tsx
+159:6  Warning: React Hook useEffect has a missing dependency: 'fetchComments'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/layout/NotificationCenter.tsx
+57:6  Warning: React Hook useEffect has a missing dependency: 'fetchNotifications'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+341:35  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/notifications/NotificationCenter.tsx
+57:6  Warning: React Hook useEffect has a missing dependency: 'fetchNotifications'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+352:35  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/products/CompareButton.tsx
+45:6  Warning: React Hook useEffect has a missing dependency: 'updateComparisonState'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+53:6  Warning: React Hook useEffect has a missing dependency: 'updateComparisonState'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/products/SwapSpecimenModal.tsx
+43:6  Warning: React Hook useEffect has a missing dependency: 'fetchProducts'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+59:6  Warning: React Hook useEffect has missing dependencies: 'debounceTimer' and 'fetchProducts'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/sme/SMEAuditsList.tsx
+88:37  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/wizard/steps/Step1Foundation.tsx
+28:8  Warning: React Hook useEffect has a missing dependency: 'formValues'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+28:9  Warning: React Hook useEffect has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked.  react-hooks/exhaustive-deps
+
+./components/wizard/steps/Step3Integration.tsx
+31:8  Warning: React Hook useEffect has a missing dependency: 'formValues'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+31:9  Warning: React Hook useEffect has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked.  react-hooks/exhaustive-deps
+
+./components/wizard/steps/Step4TruthSignals.tsx
+34:8  Warning: React Hook useEffect has a missing dependency: 'smeSignals'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+34:9  Warning: React Hook useEffect has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked.  react-hooks/exhaustive-deps
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/basic-features/eslint#disabling-rules
+   Collecting page data ...
+   Generating static pages (0/57) ...
+   Generating static pages (14/57) 
+Error generating OG image: B [Error]: Dynamic server usage: Route /api/og/compare couldn't be rendered statically because it used `request.url`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at V (/Users/richardwhite/Library/Mobile Documents/com~apple~CloudDocs/SME v3/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:21778)
+    at Object.get (/Users/richardwhite/Library/Mobile Documents/com~apple~CloudDocs/SME v3/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:29465)
+    at x (/Users/richardwhite/Library/Mobile Documents/com~apple~CloudDocs/SME v3/.next/server/app/api/og/compare/route.js:1:958)
+    at /Users/richardwhite/Library/Mobile Documents/com~apple~CloudDocs/SME v3/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:38417
+    at /Users/richardwhite/Library/Mobile Documents/com~apple~CloudDocs/SME v3/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/richardwhite/Library/Mobile Documents/com~apple~CloudDocs/SME v3/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:7062)
+    at ContextAPI.with (/Users/richardwhite/Library/Mobile Documents/com~apple~CloudDocs/SME v3/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:518)
+    at NoopTracer.startActiveSpan (/Users/richardwhite/Library/Mobile Documents/com~apple~CloudDocs/SME v3/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:18093)
+    at ProxyTracer.startActiveSpan (/Users/richardwhite/Library/Mobile Documents/com~apple~CloudDocs/SME v3/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:18854)
+    at /Users/richardwhite/Library/Mobile Documents/com~apple~CloudDocs/SME v3/node_modules/next/dist/server/lib/trace/tracer.js:122:103 {
+  description: "Route /api/og/compare couldn't be rendered statically because it used `request.url`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+}
+   Generating static pages (28/57) 
+   Generating static pages (42/57) 
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '42P07',
+  message: 'relation "community_milestones" already exists, skipping',
+  file: 'parse_utilcmd.c',
+  line: '207',
+  routine: 'transformCreateStmt'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '42701',
+  message: 'column "metadata" of relation "community_milestones" already exists, skipping',
+  file: 'tablecmds.c',
+  line: '7471',
+  routine: 'check_for_column_name_collision'
+}
+Error fetching sitemap data: g: column "is_flagged" does not exist
+    at H (/Users/richardwhite/Library/Mobile Documents/com~apple~CloudDocs/SME v3/.next/server/app/sitemap.xml/route.js:4:2302)
+    at /Users/richardwhite/Library/Mobile Documents/com~apple~CloudDocs/SME v3/.next/server/app/sitemap.xml/route.js:4:3347
+    at TLSSocket.eB (/Users/richardwhite/Library/Mobile Documents/com~apple~CloudDocs/SME v3/.next/server/app/sitemap.xml/route.js:4:3352)
+    at TLSSocket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)
+    at TLSWrap.callbackTrampoline (node:internal/async_hooks:130:17)
+    at /Users/richardwhite/Library/Mobile Documents/com~apple~CloudDocs/SME v3/.next/server/app/sitemap.xml/route.js:1:1519
+    at new m (/Users/richardwhite/Library/Mobile Documents/com~apple~CloudDocs/SME v3/.next/server/app/sitemap.xml/route.js:1:1561)
+    at n (/Users/richardwhite/Library/Mobile Documents/com~apple~CloudDocs/SME v3/.next/server/app/sitemap.xml/route.js:21:8234)
+    at ek (/Users/richardwhite/Library/Mobile Documents/com~apple~CloudDocs/SME v3/.next/server/app/sitemap.xml/route.js:21:12497) {
+  severity_local: 'ERROR',
+  severity: 'ERROR',
+  code: '42703',
+  position: '80',
+  file: 'parse_relation.c',
+  line: '3716',
+  routine: 'errorMissingColumn'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '42701',
+  message: 'column "milestone_type" of relation "community_milestones" already exists, skipping',
+  file: 'tablecmds.c',
+  line: '7471',
+  routine: 'check_for_column_name_collision'
+}
+Error generating trending OG image: u: column "is_flagged" does not exist
+    at G (/Users/richardwhite/Library/Mobile Documents/com~apple~CloudDocs/SME v3/.next/server/chunks/8937.js:4:2302)
+    at /Users/richardwhite/Library/Mobile Documents/com~apple~CloudDocs/SME v3/.next/server/chunks/8937.js:4:3344
+    at TLSSocket.e$ (/Users/richardwhite/Library/Mobile Documents/com~apple~CloudDocs/SME v3/.next/server/chunks/8937.js:4:3349)
+    at TLSSocket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)
+    at TLSWrap.callbackTrampoline (node:internal/async_hooks:130:17)
+    at /Users/richardwhite/Library/Mobile Documents/com~apple~CloudDocs/SME v3/.next/server/chunks/8937.js:1:704
+    at new c (/Users/richardwhite/Library/Mobile Documents/com~apple~CloudDocs/SME v3/.next/server/chunks/8937.js:1:746)
+    at n (/Users/richardwhite/Library/Mobile Documents/com~apple~CloudDocs/SME v3/.next/server/chunks/8937.js:21:8433)
+    at g (/Users/richardwhite/Library/Mobile Documents/com~apple~CloudDocs/SME v3/.next/server/app/api/og/trending/route.js:1:1019) {
+  severity_local: 'ERROR',
+  severity: 'ERROR',
+  code: '42703',
+  position: '117',
+  file: 'parse_relation.c',
+  line: '3716',
+  routine: 'errorMissingColumn'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '42P07',
+  message: 'relation "idx_milestones_is_displayed" already exists, skipping',
+  file: 'index.c',
+  line: '889',
+  routine: 'index_create'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '42P07',
+  message: 'relation "idx_milestones_achieved_at" already exists, skipping',
+  file: 'index.c',
+  line: '889',
+  routine: 'index_create'
+}
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '42P07',
+  message: 'relation "idx_milestones_type" already exists, skipping',
+  file: 'index.c',
+  line: '889',
+  routine: 'index_create'
+}
+ ✓ Generating static pages (57/57)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                    Size     First Load JS
+┌ ƒ /                                          3.81 kB         119 kB
+├ ƒ /_not-found                                162 B          87.7 kB
+├ ƒ /admin                                     22.7 kB         220 kB
+├ ƒ /admin/add-product                         151 B           127 kB
+├ ƒ /admin/approval/[id]                       9.25 kB         102 kB
+├ ƒ /admin/audit                               4.32 kB        91.9 kB
+├ ƒ /admin/dashboard                           4.97 kB        92.6 kB
+├ ƒ /admin/onboard                             150 B           127 kB
+├ ƒ /admin/products/[id]                       5.43 kB        98.2 kB
+├ ƒ /admin/review                              4.33 kB        95.5 kB
+├ ƒ /admin/sme-test                            162 B          87.7 kB
+├ ƒ /api/admin/demote-test-user                0 B                0 B
+├ ƒ /api/admin/migrate-user-roles              0 B                0 B
+├ ○ /api/admin/migratemilestones               0 B                0 B
+├ ƒ /api/admin/run-migration                   0 B                0 B
+├ ƒ /api/admin/run-sme-migration               0 B                0 B
+├ ƒ /api/admin/scrape-product                  0 B                0 B
+├ ƒ /api/admin/seed-test-user                  0 B                0 B
+├ ƒ /api/ai/moderate                           0 B                0 B
+├ ƒ /api/ai/search                             0 B                0 B
+├ ƒ /api/ai/suggest-tags                       0 B                0 B
+├ ƒ /api/check-schema                          0 B                0 B
+├ ƒ /api/consolidate-schema                    0 B                0 B
+├ ƒ /api/cron/sync-usage                       0 B                0 B
+├ ƒ /api/db-setup                              0 B                0 B
+├ ƒ /api/debug-check-product                   0 B                0 B
+├ ○ /api/debug-env                             0 B                0 B
+├ ƒ /api/discussions/comments                  0 B                0 B
+├ ƒ /api/feed/check-new                        0 B                0 B
+├ ƒ /api/feed/notifications                    0 B                0 B
+├ ƒ /api/fix-columns                           0 B                0 B
+├ ƒ /api/fix-products-schema                   0 B                0 B
+├ ƒ /api/fix-schema                            0 B                0 B
+├ ƒ /api/init-db                               0 B                0 B
+├ ƒ /api/init-schema                           0 B                0 B
+├ ƒ /api/init-topics                           0 B                0 B
+├ ƒ /api/messages                              0 B                0 B
+├ ƒ /api/metadata                              0 B                0 B
+├ ƒ /api/migrate-live-ledger                   0 B                0 B
+├ ƒ /api/migrate-sme-summons                   0 B                0 B
+├ ƒ /api/migrate-to-products                   0 B                0 B
+├ ƒ /api/migrations/add-expert-config          0 B                0 B
+├ ƒ /api/migrations/add-product-category       0 B                0 B
+├ ƒ /api/migrations/add-product-created-by     0 B                0 B
+├ ƒ /api/migrations/add-sme-signals            0 B                0 B
+├ ƒ /api/migrations/rebuild-onboarding-wizard  0 B                0 B
+├ ƒ /api/milestones/latest                     0 B                0 B
+├ ƒ /api/notifications                         0 B                0 B
+├ ƒ /api/og/compare                            0 B                0 B
+├ ƒ /api/og/trending                           0 B                0 B
+├ ƒ /api/production-seed                       0 B                0 B
+├ ƒ /api/products/by-id                        0 B                0 B
+├ ƒ /api/profile                               0 B                0 B
+├ ƒ /api/profile/username                      0 B                0 B
+├ ƒ /api/progress/verified-count               0 B                0 B
+├ ƒ /api/quick-seed                            0 B                0 B
+├ ƒ /api/reputation                            0 B                0 B
+├ ƒ /api/resources/popover                     0 B                0 B
+├ ƒ /api/run-expert-profile-migration          0 B                0 B
+├ ƒ /api/seed                                  0 B                0 B
+├ ƒ /api/seed-live-ledger                      0 B                0 B
+├ ƒ /api/seed-products                         0 B                0 B
+├ ƒ /api/setup-db                              0 B                0 B
+├ ƒ /api/setup-search                          0 B                0 B
+├ ƒ /api/stats                                 0 B                0 B
+├ ƒ /api/stats/verified-count                  0 B                0 B
+├ ƒ /api/sync-profile                          0 B                0 B
+├ ƒ /api/sync-user                             0 B                0 B
+├ ƒ /api/temp-migrate                          0 B                0 B
+├ ƒ /api/topics                                0 B                0 B
+├ ƒ /api/topics/followed                       0 B                0 B
+├ ƒ /api/topics/master                         0 B                0 B
+├ ƒ /api/topics/trending                       0 B                0 B
+├ ƒ /api/track/click                           0 B                0 B
+├ ƒ /api/track/view                            0 B                0 B
+├ ƒ /api/webhooks/clerk                        0 B                0 B
+├ ƒ /api/webhooks/stripe                       0 B                0 B
+├ ƒ /brand-standards                           199 B          96.5 kB
+├ ƒ /brand/dashboard                           8.76 kB         105 kB
+├ ƒ /community                                 4.53 kB         113 kB
+├ ƒ /community/[id]                            162 B          87.7 kB
+├ ƒ /compare                                   6.09 kB         108 kB
+├ ƒ /contact                                   3.72 kB         107 kB
+├ ƒ /disclaimer                                199 B          96.5 kB
+├ ƒ /discussions                               4.81 kB         138 kB
+├ ƒ /discussions/[id]                          7.87 kB         169 kB
+├ ƒ /discussions/new                           4.99 kB         130 kB
+├ ƒ /expert-profile                            5.35 kB        92.9 kB
+├ ƒ /feed                                      4.78 kB         148 kB
+├ ƒ /how-it-works                              199 B          96.5 kB
+├ ƒ /leaderboard                               720 B           102 kB
+├ ƒ /messages                                  2.59 kB         119 kB
+├ ƒ /products                                  1.42 kB        97.7 kB
+├ ƒ /products/[id]                             26.6 kB         270 kB
+├ ƒ /products/[id]/claim                       3.65 kB        91.2 kB
+├ ƒ /products/submit                           33.8 kB         127 kB
+├ ƒ /profile/[id]                              162 B          87.7 kB
+├ ƒ /resources                                 4.72 kB         132 kB
+├ ƒ /search                                    206 B          96.5 kB
+├ ƒ /settings                                  3.35 kB        98.1 kB
+├ ○ /sitemap.xml                               0 B                0 B
+├ ƒ /sme-dashboard                             3.26 kB         108 kB
+├ ƒ /standards                                 4.51 kB         108 kB
+├ ƒ /terms                                     206 B          96.5 kB
+├ ƒ /topic/[name]                              2.36 kB         141 kB
+├ ƒ /topics/[topic]                            212 B           139 kB
+├ ƒ /u/[username]                              4.92 kB         135 kB
+└ ƒ /u/me                                      162 B          87.7 kB
++ First Load JS shared by all                  87.6 kB
+  ├ chunks/2117-b79376fdc45e65cd.js            31.9 kB
+  ├ chunks/fd9d1056-f67079b48a973ccb.js        53.6 kB
+  └ other shared chunks (total)                2.04 kB
+
+
+ƒ Middleware                                   61.2 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

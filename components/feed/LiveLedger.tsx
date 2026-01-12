@@ -1,4 +1,6 @@
 import { getDb } from "@/lib/db";
+import Link from "next/link";
+import { ExternalLink } from "lucide-react";
 
 // Revalidate every 60 seconds
 export const revalidate = 60;
@@ -9,6 +11,8 @@ interface ActivityEntry {
     target_name: string;
     detail: string;
     created_at: string;
+    target_slug?: string | null;
+    target_id?: string | null;
 }
 
 // Helper function to format relative time
@@ -34,17 +38,44 @@ function getRelativeTime(timestamp: string): string {
     }
 }
 
-// Helper function to format activity label
-function getActivityLabel(entry: ActivityEntry): string {
+// Helper function to format activity label with clickable links
+function getActivityLabel(entry: ActivityEntry): JSX.Element {
+    const productLink = entry.target_slug ? (
+        <Link
+            href={`/products/${entry.target_slug}`}
+            className="text-sme-gold hover:underline font-semibold"
+        >
+            {entry.target_name}
+        </Link>
+    ) : (
+        <span className="font-semibold">{entry.target_name}</span>
+    );
+
     switch (entry.activity_type) {
         case 'signal':
-            return `${entry.actor_name} verified the ${entry.detail} signal for ${entry.target_name}`;
+            return (
+                <span>
+                    {entry.actor_name} verified the {entry.detail} signal for {productLink}
+                </span>
+            );
         case 'promotion':
-            return `${entry.target_name} was promoted to ${entry.detail} via Peer Vouching`;
+            return (
+                <span>
+                    {productLink} was promoted to {entry.detail} via Peer Vouching
+                </span>
+            );
         case 'certification':
-            return `${entry.target_name} was officially awarded ${entry.detail} status by the Admin`;
+            return (
+                <span>
+                    {productLink} was officially awarded {entry.detail} status by the Admin
+                </span>
+            );
         default:
-            return `${entry.actor_name} performed an action on ${entry.target_name}`;
+            return (
+                <span>
+                    {entry.actor_name} performed an action on {productLink}
+                </span>
+            );
     }
 }
 
@@ -52,14 +83,66 @@ async function fetchLedgerActivity(): Promise<ActivityEntry[]> {
     const sql = getDb();
 
     try {
+        // Modified query to include product slug for signal activities
         const activities = await sql<ActivityEntry[]>`
-      SELECT 
-        activity_type,
-        actor_name,
-        target_name,
-        detail,
-        created_at
-      FROM live_ledger_activity
+      WITH activity_feed AS (
+        -- 1. PROMOTION ACTIVITY
+        SELECT 
+          'promotion' AS activity_type,
+          COALESCE(voucher.display_name, voucher.full_name, voucher.username, 'Anonymous') AS actor_name,
+          COALESCE(target.display_name, target.full_name, target.username, 'Anonymous') AS target_name,
+          'SME Status' AS detail,
+          v.created_at,
+          NULL::text AS target_slug,
+          NULL::uuid AS target_id
+        FROM vouches v
+        JOIN profiles voucher ON v.voucher_id = voucher.id
+        JOIN profiles target ON v.target_user_id = target.id
+        WHERE target.reputation_tier >= 3
+        
+        UNION ALL
+        
+        -- 2. CERTIFICATION ACTIVITY
+        SELECT 
+          'certification' AS activity_type,
+          'Admin' AS actor_name,
+          COALESCE(p.display_name, p.full_name, p.username, 'Anonymous') AS target_name,
+          CASE 
+            WHEN app.expertise_lens = 'Scientific' THEN '🧬 Scientific Expert'
+            WHEN app.expertise_lens = 'Alternative' THEN '🪵 Alternative Expert'
+            WHEN app.expertise_lens = 'Esoteric' THEN '👁️ Esoteric Expert'
+            ELSE 'Expert'
+          END AS detail,
+          app.reviewed_at AS created_at,
+          NULL::text AS target_slug,
+          NULL::uuid AS target_id
+        FROM sme_applications app
+        JOIN profiles p ON app.user_id = p.id
+        WHERE app.status = 'approved' AND app.reviewed_at IS NOT NULL
+        
+        UNION ALL
+        
+        -- 3. SIGNAL ACTIVITY (with product slug)
+        SELECT 
+          'signal' AS activity_type,
+          'Community' AS actor_name,
+          p.title AS target_name,
+          CASE 
+            WHEN p.certification_tier = 'Gold' THEN '🏆 Gold'
+            WHEN p.certification_tier = 'Silver' THEN '🥈 Silver'
+            WHEN p.certification_tier = 'Bronze' THEN '🥉 Bronze'
+            ELSE '✓ Verified'
+          END AS detail,
+          p.updated_at AS created_at,
+          p.slug AS target_slug,
+          p.id AS target_id
+        FROM products p
+        WHERE p.certification_tier IS NOT NULL 
+          AND p.certification_tier != 'None'
+          AND p.admin_status = 'approved'
+      )
+      SELECT * FROM activity_feed
+      ORDER BY created_at DESC
       LIMIT 15
     `;
 
@@ -125,10 +208,18 @@ export default async function LiveLedger() {
                                         <span className="text-bone-white/90">{label}</span>
                                     </p>
                                 </div>
-                                <div className="flex-shrink-0">
+                                <div className="flex items-center gap-2 flex-shrink-0">
                                     <span className="text-xs text-bone-white/50 font-mono whitespace-nowrap">
                                         {relativeTime}
                                     </span>
+                                    {entry.target_slug && entry.activity_type === 'signal' && (
+                                        <Link
+                                            href={`/products/${entry.target_slug}`}
+                                            className="text-xs text-bone-white/50 hover:text-sme-gold transition-colors flex items-center gap-1"
+                                        >
+                                            <ExternalLink size={12} />
+                                        </Link>
+                                    )}
                                 </div>
                             </div>
                         </div>

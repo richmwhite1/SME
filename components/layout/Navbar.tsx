@@ -4,7 +4,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
 import Link from "next/link";
-import { Library, Menu, X } from "lucide-react";
+import { Library, Menu, X, Plus, ChevronDown, Info } from "lucide-react";
 import AdminNavLink from "./AdminNavLink";
 import SearchBar from "@/components/search/SearchBar";
 import NotificationCenter from "@/components/notifications/NotificationCenter";
@@ -97,6 +97,37 @@ export default function Navbar() {
           >
             Community
           </PrefetchLink>
+          <PrefetchLink
+            href="/how-it-works"
+            className={`min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors font-mono text-xs uppercase tracking-wider active:scale-95 ${getLinkStyles('/how-it-works')}`}
+          >
+            How it Works
+          </PrefetchLink>
+
+          {/* Submit Dropdown */}
+          <div className="relative group">
+            <button className="min-h-[44px] px-4 flex items-center gap-1.5 text-bone-white/70 hover:text-bone-white transition-colors font-mono text-xs uppercase tracking-wider active:scale-95 border border-translucent-emerald hover:border-sme-gold">
+              <Plus size={14} />
+              <span>Submit</span>
+              <ChevronDown size={12} className="group-hover:rotate-180 transition-transform" />
+            </button>
+            <div className="absolute right-0 mt-1 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+              <div className="bg-muted-moss border border-translucent-emerald shadow-lg">
+                <Link
+                  href="/products/submit"
+                  className="block px-4 py-3 text-sm font-mono text-bone-white/70 hover:text-bone-white hover:bg-forest-obsidian transition-colors border-b border-translucent-emerald/30"
+                >
+                  + Add Product
+                </Link>
+                <Link
+                  href="/discussions/new"
+                  className="block px-4 py-3 text-sm font-mono text-bone-white/70 hover:text-bone-white hover:bg-forest-obsidian transition-colors"
+                >
+                  + Start Discussion
+                </Link>
+              </div>
+            </div>
+          </div>
 
           <SMEDashboardLink />
           <AdminNavLink />
@@ -164,12 +195,39 @@ export default function Navbar() {
               <Library size={12} />
               <span>SME Citations</span>
             </PrefetchLink>
+
+            {/* Submit Section */}
+            <div className="pt-3 pb-2 border-t border-translucent-emerald/30">
+              <div className="text-xs text-bone-white/50 font-mono uppercase tracking-wider mb-2">Submit</div>
+              <Link
+                href="/products/submit"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block transition-colors font-mono text-xs uppercase tracking-wider py-2 text-bone-white/70 hover:text-bone-white active:scale-95 pl-2"
+              >
+                + Add Product
+              </Link>
+              <Link
+                href="/discussions/new"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block transition-colors font-mono text-xs uppercase tracking-wider py-2 text-bone-white/70 hover:text-bone-white active:scale-95 pl-2"
+              >
+                + Start Discussion
+              </Link>
+            </div>
+
             <PrefetchLink
               href="/community"
               onClick={() => setMobileMenuOpen(false)}
               className={`block transition-colors font-mono text-xs uppercase tracking-wider py-2 active:scale-95 ${getLinkStyles('/community')}`}
             >
               Community
+            </PrefetchLink>
+            <PrefetchLink
+              href="/how-it-works"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block transition-colors font-mono text-xs uppercase tracking-wider py-2 active:scale-95 ${getLinkStyles('/how-it-works')}`}
+            >
+              How it Works
             </PrefetchLink>
 
             <div className="pt-2 border-t border-translucent-emerald">

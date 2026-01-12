@@ -327,7 +327,7 @@ export default function BrandClaimWizard({
                             value={formData.founderComments}
                             onChange={(e) => setFormData({ ...formData, founderComments: e.target.value })}
                             className="w-full bg-black border border-bone-white/30 p-3 text-bone-white focus:border-sme-gold focus:outline-none rounded min-h-[120px]"
-                            placeholder="Tell us about your product, your journey, or anything else you'd like to share..."
+                            placeholder="Tell us about your product, your journey, or anything else you&apos;d like to share..."
                         />
                         {validationErrors.founderComments && (
                             <p className="mt-2 text-sm text-red-400">{validationErrors.founderComments}</p>
@@ -356,7 +356,7 @@ export default function BrandClaimWizard({
                     <div>
                         <h2 className="text-xl font-bold text-bone-white mb-2">Brand Intention Statement</h2>
                         <p className="text-sm text-bone-white/70">
-                            Describe your brand's mission, values, and what you aim to achieve with this product.
+                            Describe your brand&apos;s mission, values, and what you aim to achieve with this product.
                         </p>
                     </div>
                     <div>
@@ -483,11 +483,11 @@ export default function BrandClaimWizard({
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-sme-gold font-bold">2.</span>
-                                <span>If approved, you'll receive a payment link via email</span>
+                                <span>If approved, you&apos;ll receive a payment link via email</span>
                             </li>
                             <li className="flex items-start gap-2">
                                 <span className="text-sme-gold font-bold">3.</span>
-                                <span>After payment, you'll gain full access to your brand dashboard</span>
+                                <span>After payment, you&apos;ll gain full access to your brand dashboard</span>
                             </li>
                         </ol>
                     </div>

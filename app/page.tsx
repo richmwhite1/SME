@@ -2,10 +2,10 @@ import Link from "next/link";
 import Button from "@/components/ui/Button";
 import ProductListCard from "@/components/holistic/ProductListCard";
 import LatestIntelligence from "@/components/social/LatestIntelligence";
-import VelocityBadge from "@/components/products/VelocityBadge";
-import { Download, Share2 } from "lucide-react";
 import { getDb } from "@/lib/db";
 import LiveLedger from "@/components/feed/LiveLedger";
+import { MessageSquare, ArrowRight, ThumbsUp, Activity } from "lucide-react";
+import SearchBar from "@/components/search/SearchBar";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +51,19 @@ interface Product {
   velocity_count?: number;
 }
 
+interface TrendingDiscussion {
+  id: string;
+  title: string;
+  slug: string;
+  tags: string[];
+  upvote_count: number;
+  message_count: number;
+  author_name: string;
+  author_avatar?: string;
+  created_at: string;
+  top_emojis: string[] | null;
+}
+
 async function fetchTrendingProducts(): Promise<TrendingProduct[]> {
   const sql = getDb();
 
@@ -66,7 +79,7 @@ async function fetchTrendingProducts(): Promise<TrendingProduct[]> {
     startOfWeek.setHours(0, 0, 0, 0);
 
     // Fetch products with aggregated metrics
-    const products = await sql<Product[]>`
+    const products = await sql`
       SELECT 
         p.id,
         p.title,
@@ -118,7 +131,7 @@ async function fetchTrendingProducts(): Promise<TrendingProduct[]> {
       ORDER BY 
         (COALESCE(r.review_count, 0) + COALESCE(c.comment_count, 0)) DESC,
         COALESCE(rv.velocity_count, 0) DESC
-      LIMIT 6
+      LIMIT 8
     `;
 
     // Map to TrendingProduct format
@@ -149,113 +162,153 @@ async function fetchTrendingProducts(): Promise<TrendingProduct[]> {
   }
 }
 
+async function fetchTrendingDiscussions(): Promise<TrendingDiscussion[]> {
+  const sql = getDb();
+  try {
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const discussions = await sql`
+SELECT
+d.id,
+  d.title,
+  d.slug,
+  d.tags,
+  d.upvote_count,
+  d.created_at,
+  COALESCE(p.display_name, p.full_name, p.username) as author_name,
+  p.avatar_url as author_avatar,
+  (SELECT COUNT(*) FROM discussion_comments dc WHERE dc.discussion_id = d.id):: int as message_count,
+  (
+    SELECT json_agg(emoji) 
+    FROM (
+      SELECT emoji 
+      FROM comment_reactions cr 
+      JOIN discussion_comments dc ON cr.comment_id = dc.id 
+      WHERE dc.discussion_id = d.id 
+      GROUP BY emoji 
+      ORDER BY COUNT(*) DESC 
+      LIMIT 3
+    ) e
+  ) as top_emojis
+      FROM discussions d
+      LEFT JOIN profiles p ON d.author_id = p.id
+      WHERE d.is_flagged = FALSE
+      ORDER BY(d.upvote_count + (SELECT COUNT(*) FROM discussion_comments dc WHERE dc.discussion_id = d.id)) DESC
+      LIMIT 6
+  `;
+    return discussions as unknown as TrendingDiscussion[];
+  } catch (error) {
+    console.error("Error fetching trending discussions:", error);
+    return [];
+  }
+}
+
 export default async function Home() {
-  const trendingProducts = await fetchTrendingProducts();
+  const [trendingProducts, trendingDiscussions] = await Promise.all([
+    fetchTrendingProducts(),
+    fetchTrendingDiscussions(),
+  ]);
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] bg-forest-obsidian px-6 py-16">
-      <div className="mx-auto max-w-6xl">
-        {/* Header Section */}
-        <div className="mb-8 text-center max-w-4xl mx-auto">
-          <h1 className="mb-4 text-3xl md:text-4xl font-serif font-semibold text-bone-white tracking-tight">
-            A community driven forum where evidence meets experience.
-          </h1>
-          <p className="text-base text-bone-white/70 font-mono max-w-2xl mx-auto">
-            Explore community vetted products and insights from the community and subject matter experts (SME&apos;s) that are willing to help.
-          </p>
-        </div>
+    <main className="min-h-[calc(100vh-4rem)] bg-forest-obsidian px-6 py-12 md:py-20">
+      <div className="mx-auto max-w-7xl">
+        {/* Hero Section - Reordered for Layout Shift */}
+        <div className="flex flex-col items-center text-center max-w-5xl mx-auto mb-20 space-y-10">
 
-        {/* Recent Insights Section */}
-        <div className="mb-12">
-          <LatestIntelligence className="max-w-2xl mx-auto" />
-        </div>
+          {/* Main Value Proposition - Enhanced Visibility */}
+          <div className="space-y-6">
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-serif font-bold text-bone-white tracking-tight leading-tight drop-shadow-lg">
+              Where Evidence Meets <br className="hidden md:block" />
+              <span className="text-sme-gold italic">Experience</span>
+            </h1>
+            <p className="text-lg md:text-2xl text-bone-white/80 font-mono max-w-3xl mx-auto leading-relaxed">
+              A community-driven protocol for vetting health products, sharing biological data, and discovering what actually works.
+            </p>
+          </div>
 
-        {/* Live Activity Feed */}
-        <div className="mb-12">
-          <LiveLedger />
-        </div>
-
-        {/* Lens of Truth Hero Section - REMOVED */}
-
-        {/* Secondary CTAs */}
-        <div className="mb-16 flex flex-col items-center justify-center gap-4 sm:flex-row">
-          <Link href="/products">
-            <Button variant="primary" className="text-lg px-8 py-4 border border-sme-gold bg-sme-gold text-forest-obsidian hover:bg-[#9A7209] hover:border-[#9A7209] font-mono uppercase tracking-wider">
-              Browse All Products
-            </Button>
-          </Link>
-          <Link href="/discussions">
-            <Button variant="outline" className="text-lg px-8 py-4 border border-translucent-emerald bg-muted-moss text-bone-white hover:bg-forest-obsidian hover:border-heart-green font-mono uppercase tracking-wider">
-              Join the Community
-            </Button>
-          </Link>
-        </div>
-
-        {/* Trending Products Section */}
-        {trendingProducts.length > 0 && (
-          <div className="mt-16">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="font-serif text-3xl font-semibold text-bone-white">
-                Community Pulse: Trending Products This Month
-              </h2>
+          {/* Expanded Search Bar Area */}
+          <div className="w-full max-w-2xl mx-auto z-20">
+            <div className="relative group">
+              <div className="absolute -inset-1 bg-gradient-to-r from-sme-gold/20 via-heart-green/20 to-third-eye-indigo/20 rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
+              <div className="relative">
+                <SearchBar />
+              </div>
             </div>
-            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {trendingProducts.map((product: TrendingProduct) => {
+            <div className="mt-3 flex flex-wrap justify-center gap-2 text-xs font-mono text-bone-white/50">
+              <span>Popular:</span>
+              <Link href="/search?q=magnesium" className="hover:text-sme-gold transition-colors">Magnesium</Link>
+              <span className="opacity-30">•</span>
+              <Link href="/search?q=sleep" className="hover:text-sme-gold transition-colors">Sleep</Link>
+              <span className="opacity-30">•</span>
+              <Link href="/search?q=longevity" className="hover:text-sme-gold transition-colors">Longevity</Link>
+            </div>
+          </div>
+
+          {/* How it Works CTA */}
+          <div className="mb-6 -mt-10">
+            <Link href="/how-it-works" className="inline-flex items-center gap-2 text-sme-gold hover:text-[#9A7209] transition-colors font-mono text-sm tracking-wide uppercase border-b border-transparent hover:border-[#9A7209]">
+              <span className="w-5 h-5 rounded-full border border-current flex items-center justify-center text-[10px] font-bold">?</span>
+              New? See how it works
+            </Link>
+          </div>
+
+          {/* Primary CTAs */}
+          <div className="flex flex-col sm:flex-row gap-5 pt-4 w-full sm:w-auto">
+            <Link href="/products/submit" className="w-full sm:w-auto">
+              <Button variant="primary" className="w-full text-lg px-8 py-6 border border-sme-gold bg-sme-gold/10 text-sme-gold hover:bg-sme-gold hover:text-forest-obsidian font-mono uppercase tracking-widest transition-all duration-300 backdrop-blur-sm">
+                + Share Evidence
+              </Button>
+            </Link>
+            <Link href="/discussions/new" className="w-full sm:w-auto">
+              <Button variant="outline" className="w-full text-lg px-8 py-6 border border-translucent-emerald bg-muted-moss/50 text-bone-white hover:bg-forest-obsidian hover:border-heart-green font-mono uppercase tracking-widest transition-all duration-300">
+                Start Discussion
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Content Section: Community Pulse (Products) */}
+        <section className="mb-24">
+          <div className="flex items-end justify-between mb-8 border-b border-translucent-emerald/30 pb-4">
+            <div>
+              <h2 className="text-2xl md:text-3xl font-serif font-semibold text-bone-white flex items-center gap-3">
+                <span className="text-heart-green">●</span> Top Verified Products
+              </h2>
+              <p className="mt-2 text-sm text-bone-white/60 font-mono">
+                Highest rated by community consensus and lab verification.
+              </p>
+            </div>
+            <Link href="/products" className="hidden sm:flex items-center gap-2 text-sm font-mono text-sme-gold hover:text-white transition-colors group">
+              View All <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </div>
+
+          {trendingProducts.length > 0 ? (
+            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {trendingProducts.slice(0, 4).map((product: TrendingProduct) => {
                 // Handle images array - get first image (matching products page logic)
                 let imageUrl: string | null = null;
                 let imagesArray: string[] = [];
-
                 if (product.images) {
                   if (Array.isArray(product.images)) {
-                    // Direct array - expected format from PostgreSQL TEXT[]
-                    imagesArray = product.images.filter((img): img is string =>
-                      typeof img === 'string' && img.length > 0
-                    );
+                    imagesArray = product.images.filter((img): img is string => typeof img === 'string' && img.length > 0);
                   } else if (typeof product.images === 'string') {
-                    // String format - try to parse
                     try {
                       const parsed = JSON.parse(product.images);
-                      if (Array.isArray(parsed)) {
-                        imagesArray = parsed.filter((img: any): img is string =>
-                          typeof img === 'string' && img.length > 0
-                        );
-                      } else {
-                        // PostgreSQL array format: {url1,url2}
-                        const arrayMatch = (product.images as string).match(/^\{([^}]*)\}$/);
-                        if (arrayMatch) {
-                          imagesArray = arrayMatch[1]
-                            .split(',')
-                            .map((s: string) => s.trim().replace(/^"|"$/g, ''))
-                            .filter((img: string): img is string => img.length > 0);
-                        }
-                      }
+                      if (Array.isArray(parsed)) imagesArray = parsed.filter((img: any): img is string => typeof img === 'string' && img.length > 0);
                     } catch (e) {
-                      // Try PostgreSQL array format directly
                       const arrayMatch = (product.images as string).match(/^\{([^}]*)\}$/);
-                      if (arrayMatch) {
-                        imagesArray = arrayMatch[1]
-                          .split(',')
-                          .map((s: string) => s.trim().replace(/^"|"$/g, ''))
-                          .filter((img: string): img is string => img.length > 0);
-                      }
+                      if (arrayMatch) imagesArray = arrayMatch[1].split(',').map(s => s.trim().replace(/^"|"$/g, '')).filter(img => img.length > 0);
                     }
                   }
                 }
-
-                // Use the first image from the array, ensuring it's a valid URL
-                const firstImage = imagesArray.length > 0
-                  ? (imagesArray[0] && typeof imagesArray[0] === 'string' && (imagesArray[0].startsWith('http://') || imagesArray[0].startsWith('https://'))
-                    ? imagesArray[0]
-                    : null)
-                  : null;
-
+                const firstImage = imagesArray.length > 0 ? (imagesArray[0] && typeof imagesArray[0] === 'string' && (imagesArray[0].startsWith('http') || imagesArray[0].startsWith('/')) ? imagesArray[0] : null) : null;
                 imageUrl = firstImage;
 
                 return (
-                  <div
-                    key={product.id}
-                    className="relative transition-all duration-300 hover:border-translucent-emerald"
-                  >
+                  <div key={product.id} className="group relative">
                     <ProductListCard
                       title={product.title}
                       problemSolved={product.problem_solved}
@@ -279,14 +332,122 @@ export default async function Home() {
                 );
               })}
             </div>
+          ) : (
+            <div className="text-center py-12 border border-dashed border-translucent-emerald rounded-lg">
+              <p className="text-bone-white/50 font-mono">No trending products yet.</p>
+            </div>
+          )}
+          <div className="mt-8 text-center sm:hidden">
+            <Link href="/products">
+              <Button variant="outline" className="w-full">View All Products</Button>
+            </Link>
           </div>
-        )}
+        </section>
 
-        {trendingProducts.length === 0 && (
-          <div className="mt-8 text-center text-bone-white/70 font-mono">
-            No trending products this month. Check back soon!
+        {/* Content Section: Trending Discussions */}
+        <section className="mb-24">
+          <div className="flex items-end justify-between mb-8 border-b border-translucent-emerald/30 pb-4">
+            <div>
+              <h2 className="text-2xl md:text-3xl font-serif font-semibold text-bone-white flex items-center gap-3">
+                <span className="text-third-eye-indigo">●</span> Active Discussions
+              </h2>
+              <p className="mt-2 text-sm text-bone-white/60 font-mono">
+                Current topics sparking debate among experts and users.
+              </p>
+            </div>
+            <Link href="/discussions" className="hidden sm:flex items-center gap-2 text-sm font-mono text-sme-gold hover:text-white transition-colors group">
+              Join Conversation <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+            </Link>
           </div>
-        )}
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {trendingDiscussions.map((discussion) => (
+              <Link key={discussion.id} href={`/discussions/${discussion.id}`} className="group">
+                <div className="h-full flex flex-col border border-translucent-emerald bg-muted-moss/30 p-6 rounded-lg hover:border-sme-gold/50 hover:bg-forest-obsidian transition-all duration-300">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex gap-2 text-xs font-mono text-bone-white/50">
+                      {discussion.tags.slice(0, 2).map((tag) => (
+                        <span key={tag} className="bg-forest-obsidian px-2 py-1 rounded">#{tag}</span>
+                      ))}
+                    </div>
+                    {/* Activity Metrics */}
+                    <div className="flex items-center gap-3 text-xs font-mono text-bone-white/60">
+                      <div className="flex items-center gap-1" title="Upvotes">
+                        <ThumbsUp size={12} className={discussion.upvote_count > 0 ? "text-sme-gold" : ""} />
+                        <span>{discussion.upvote_count}</span>
+                      </div>
+                      <div className="flex items-center gap-1" title="Comments">
+                        <MessageSquare size={12} className={discussion.message_count > 0 ? "text-heart-green" : ""} />
+                        <span>{discussion.message_count}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <h3 className="text-xl font-serif text-bone-white mb-3 group-hover:text-sme-gold transition-colors line-clamp-2">
+                    {discussion.title}
+                  </h3>
+
+                  {/* Top Emojis & Author - Pushed to bottom */}
+                  <div className="mt-auto pt-4 border-t border-translucent-emerald/20 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-forest-obsidian border border-translucent-emerald overflow-hidden">
+                        {discussion.author_avatar ? (
+                          <img src={discussion.author_avatar} alt={discussion.author_name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-[10px] text-bone-white">
+                            {discussion.author_name.charAt(0)}
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-xs font-mono text-bone-white/70 truncate max-w-[100px]">
+                        {discussion.author_name}
+                      </span>
+                    </div>
+
+                    {/* Emojis Display */}
+                    {discussion.top_emojis && discussion.top_emojis.length > 0 && (
+                      <div className="flex -space-x-1">
+                        {discussion.top_emojis.slice(0, 3).map((emoji, i) => (
+                          <span key={i} className="text-sm bg-forest-obsidian rounded-full px-1 border border-translucent-emerald/30 relative z-0 hover:z-10 transition-transform hover:scale-125 cursor-default">
+                            {emoji}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {trendingDiscussions.length === 0 && (
+            <div className="text-center py-12 border border-dashed border-translucent-emerald rounded-lg">
+              <p className="text-bone-white/50 font-mono">No discussions yet. Start one!</p>
+              <div className="mt-4">
+                <Link href="/discussions/new">
+                  <Button variant="outline">Start Discussion</Button>
+                </Link>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* Third Section: Activity Feed & Intelligence */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            <div className="mb-6 border-b border-translucent-emerald/30 pb-2">
+              <h3 className="text-lg font-mono uppercase tracking-wider text-bone-white/80">Latest Intelligence</h3>
+            </div>
+            <LatestIntelligence />
+          </div>
+          <div>
+            <div className="mb-6 border-b border-translucent-emerald/30 pb-2">
+              <h3 className="text-lg font-mono uppercase tracking-wider text-bone-white/80">Live Ledger</h3>
+            </div>
+            <LiveLedger />
+          </div>
+        </div>
+
       </div>
     </main>
   );

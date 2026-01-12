@@ -1,0 +1,86 @@
+  ▲ Next.js 14.2.35
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+
+./app/api/og/compare/route.tsx
+111:17  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+269:17  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./app/api/og/trending/route.tsx
+226:23  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./app/page.tsx
+371:25  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./app/products/page.tsx
+249:29  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+301:29  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/admin/ProductEditModal.tsx
+273:49  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/admin/VerificationModal.tsx
+104:21  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/brand/ProductEditModal.tsx
+251:37  Warning: Image elements must have an alt prop, either with meaningful text, or an empty string for decorative images.  jsx-a11y/alt-text
+258:49  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/comments/CitationSearch.tsx
+93:6  Warning: React Hook useEffect has a missing dependency: 'handleKeyDown'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+114:6  Warning: React Hook useCallback has a missing dependency: 'handleSelectResult'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/comments/SourcePreviewCard.tsx
+113:25  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/discussions/DiscussionComments.tsx
+159:6  Warning: React Hook useEffect has a missing dependency: 'fetchComments'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/layout/NotificationCenter.tsx
+57:6  Warning: React Hook useEffect has a missing dependency: 'fetchNotifications'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+341:35  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/notifications/NotificationCenter.tsx
+57:6  Warning: React Hook useEffect has a missing dependency: 'fetchNotifications'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+352:35  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/products/CompareButton.tsx
+45:6  Warning: React Hook useEffect has a missing dependency: 'updateComparisonState'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+53:6  Warning: React Hook useEffect has a missing dependency: 'updateComparisonState'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/products/SwapSpecimenModal.tsx
+43:6  Warning: React Hook useEffect has a missing dependency: 'fetchProducts'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+59:6  Warning: React Hook useEffect has missing dependencies: 'debounceTimer' and 'fetchProducts'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/sme/SMEAuditsList.tsx
+88:37  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/wizard/steps/Step1Foundation.tsx
+28:8  Warning: React Hook useEffect has a missing dependency: 'formValues'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+28:9  Warning: React Hook useEffect has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked.  react-hooks/exhaustive-deps
+
+./components/wizard/steps/Step3Integration.tsx
+31:8  Warning: React Hook useEffect has a missing dependency: 'formValues'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+31:9  Warning: React Hook useEffect has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked.  react-hooks/exhaustive-deps
+
+./components/wizard/steps/Step4TruthSignals.tsx
+34:8  Warning: React Hook useEffect has a missing dependency: 'smeSignals'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+34:9  Warning: React Hook useEffect has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked.  react-hooks/exhaustive-deps
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/basic-features/eslint#disabling-rules
+Failed to compile.
+
+./app/admin/review/page.tsx:33:9
+Type error: Type 'Row' is missing the following properties from type '{ pending_count: number; verified_count: number; rejected_count: number; pending_brand_claims: number; pending_product_edits: number; }': pending_count, verified_count, rejected_count, pending_brand_claims, pending_product_edits
+
+[0m [90m 31 |[39m[0m
+[0m [90m 32 |[39m     [36mtry[39m {[0m
+[0m[31m[1m>[22m[39m[90m 33 |[39m         stats [33m=[39m [36mawait[39m getReviewStats()[33m;[39m[0m
+[0m [90m    |[39m         [31m[1m^[22m[39m[0m
+[0m [90m 34 |[39m     } [36mcatch[39m (error) {[0m
+[0m [90m 35 |[39m         console[33m.[39merror([32m"Error fetching review stats:"[39m[33m,[39m error)[33m;[39m[0m
+[0m [90m 36 |[39m     }[0m
+Next.js build worker exited with code: 1 and signal: null

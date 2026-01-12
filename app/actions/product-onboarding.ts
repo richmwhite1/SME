@@ -24,6 +24,23 @@ export type ProductSubmission = {
     citation_url?: string;
     coa_url?: string;
     lab_report_url?: string;
+    // Phase 2 fields
+    serving_size?: string;
+    servings_per_container?: string;
+    form?: string;
+    recommended_dosage?: string;
+    best_time_take?: string;
+    storage_instructions?: string;
+    // Phase 3 fields
+    price?: string;
+    manufacturer?: string;
+    target_audience?: string;
+    allergens?: string[];
+    dietary_tags?: string[];
+    excipients?: string[];
+    warnings?: string;
+    technical_docs_url?: string;
+    certifications?: string[];
     signals: ProductSignal[];
 };
 
@@ -37,6 +54,23 @@ const ProductSchema = z.object({
     citation_url: z.string().url("Invalid URL").optional().or(z.literal("")),
     coa_url: z.string().url("Invalid URL").optional().or(z.literal("")),
     lab_report_url: z.string().url("Invalid URL").optional().or(z.literal("")),
+    // Phase 2 fields
+    serving_size: z.string().optional(),
+    servings_per_container: z.string().optional(),
+    form: z.string().optional(),
+    recommended_dosage: z.string().optional(),
+    best_time_take: z.string().optional(),
+    storage_instructions: z.string().optional(),
+    // Phase 3 fields
+    price: z.string().optional(),
+    manufacturer: z.string().optional(),
+    target_audience: z.string().optional(),
+    allergens: z.array(z.string()).optional(),
+    dietary_tags: z.array(z.string()).optional(),
+    excipients: z.array(z.string()).optional(),
+    warnings: z.string().optional(),
+    technical_docs_url: z.string().url("Invalid URL").optional().or(z.literal("")),
+    certifications: z.array(z.string()).optional(),
     signals: z.array(z.object({
         signal: z.string(),
         lens_type: z.enum(["scientific", "alternative", "esoteric"]),
@@ -83,6 +117,23 @@ export async function onboardProduct(
         citation_url: formData.get("citation_url"),
         coa_url: formData.get("coa_url"),
         lab_report_url: formData.get("lab_report_url"),
+        // Phase 2 fields
+        serving_size: formData.get("serving_size"),
+        servings_per_container: formData.get("servings_per_container"),
+        form: formData.get("form"),
+        recommended_dosage: formData.get("recommended_dosage"),
+        best_time_take: formData.get("best_time_take"),
+        storage_instructions: formData.get("storage_instructions"),
+        // Phase 3 fields (Parse comma-separated strings to arrays)
+        price: formData.get("price"),
+        manufacturer: formData.get("manufacturer"),
+        target_audience: formData.get("target_audience"),
+        allergens: (formData.get("allergens") as string)?.split(",").map(s => s.trim()).filter(Boolean) || [],
+        dietary_tags: (formData.get("dietary_tags") as string)?.split(",").map(s => s.trim()).filter(Boolean) || [],
+        excipients: (formData.get("excipients") as string)?.split(",").map(s => s.trim()).filter(Boolean) || [],
+        warnings: formData.get("warnings"),
+        technical_docs_url: formData.get("technical_docs_url"),
+        certifications: (formData.get("certifications") as string)?.split(",").map(s => s.trim()).filter(Boolean) || [],
         signals: parsedSignals
     };
 
@@ -116,8 +167,23 @@ export async function onboardProduct(
                     category, 
                     founder_video_url, 
                     ingredients, 
-                    citation_url, 
-                    coa_url, 
+                    coa_url,
+                    lab_report_url,
+                    serving_size,
+                    servings_per_container,
+                    form,
+                    recommended_dosage,
+                    best_time_take,
+                    storage_instructions,
+                    price,
+                    manufacturer,
+                    target_audience,
+                    allergens,
+                    dietary_tags,
+                    excipients,
+                    warnings,
+                    technical_docs_url,
+                    certifications,
                     admin_status,
                     slug,
                     created_by,
@@ -128,8 +194,23 @@ export async function onboardProduct(
                     ${data.job_function}, 
                     ${data.founder_video_url || null}, 
                     ${data.ingredients || null}, 
-                    ${data.lab_report_url || data.citation_url || null},
                     ${data.coa_url || null},
+                    ${data.lab_report_url || null},
+                    ${data.serving_size || null},
+                    ${data.servings_per_container || null},
+                    ${data.form || null},
+                    ${data.recommended_dosage || null},
+                    ${data.best_time_take || null},
+                    ${data.storage_instructions || null},
+                    ${data.price || null},
+                    ${data.manufacturer || null},
+                    ${data.target_audience || null},
+                    ${data.allergens || []},
+                    ${data.dietary_tags || []},
+                    ${data.excipients || []},
+                    ${data.warnings || null},
+                    ${data.technical_docs_url || null},
+                    ${data.certifications || []},
                     'pending_review',
                     ${slug},
                     ${user.id},
@@ -138,13 +219,14 @@ export async function onboardProduct(
                 RETURNING id
             `;
 
-            // 2. Insert Signals if any
+            // 2. Insert Signals with separate reason field
             if (data.signals.length > 0) {
-                // Prepare rows for insertion
+                // Prepare rows for insertion with reason in separate column
                 const signalRows = data.signals.map(s => ({
                     product_id: product.id,
-                    signal: `${s.signal}: ${s.reason}`,
-                    lens_type: s.lens_type
+                    signal: s.signal,
+                    lens_type: s.lens_type,
+                    reason: s.reason
                 }));
 
                 await sql`

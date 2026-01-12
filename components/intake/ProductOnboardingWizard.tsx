@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { useFormState, useFormStatus } from "react-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { AlertCircle, Check, ChevronRight, Upload, Beaker, Gem, Sprout, Shield, Lock, FileText, AlertTriangle } from "lucide-react";
+import { AlertCircle, Check, ChevronRight, Upload, Beaker, Gem, Sprout, Shield, Lock, FileText, AlertTriangle, Info, List, Tag } from "lucide-react";
 import { onboardProduct } from "@/app/actions/product-onboarding";
 import { useRouter } from "next/navigation";
 
@@ -121,7 +121,7 @@ export default function ProductOnboardingWizard() {
                             <p className="text-sm text-gray-500 mt-1">Initiating New Product Sequence</p>
                         </div>
                         <div className="text-xs text-gray-600">
-                            STEP {step} OF 4
+                            STEP {step} OF 6
                         </div>
                     </header>
 
@@ -161,6 +161,24 @@ export default function ProductOnboardingWizard() {
                                     {state.errors?.brand && <p className="text-red-500 text-xs">{state.errors.brand[0]}</p>}
                                 </div>
                             </div>
+                            <div className="grid md:grid-cols-2 gap-6 mt-6">
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-wider text-gray-500">Price (MSRP)</label>
+                                    <input
+                                        name="price"
+                                        className="w-full bg-[#0a0a0a] border border-[#333] p-3 text-sm focus:border-emerald-500 focus:outline-none transition-colors placeholder:text-gray-700"
+                                        placeholder="e.g. $49.99"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-wider text-gray-500">Manufacturer (Optional)</label>
+                                    <input
+                                        name="manufacturer"
+                                        className="w-full bg-[#0a0a0a] border border-[#333] p-3 text-sm focus:border-emerald-500 focus:outline-none transition-colors placeholder:text-gray-700"
+                                        placeholder="If different from brand..."
+                                    />
+                                </div>
+                            </div>
                             <div className="space-y-2 mt-6">
                                 <label className="text-xs uppercase tracking-wider text-gray-500">Founder Intent Video URL (Optional)</label>
                                 <input
@@ -190,6 +208,14 @@ export default function ProductOnboardingWizard() {
                                 {state.errors?.job_function && <p className="text-red-500 text-xs">{state.errors.job_function[0]}</p>}
                             </div>
                             <div className="space-y-2 mt-6">
+                                <label className="text-xs uppercase tracking-wider text-gray-500">Target Audience</label>
+                                <input
+                                    name="target_audience"
+                                    className="w-full bg-[#0a0a0a] border border-[#333] p-3 text-sm focus:border-emerald-500 focus:outline-none transition-colors placeholder:text-gray-700"
+                                    placeholder="e.g. Biohackers, Parents, Shifts Workers..."
+                                />
+                            </div>
+                            <div className="space-y-2 mt-6">
                                 <label className="text-xs uppercase tracking-wider text-gray-500">Primary Active Ingredients (Optional)</label>
                                 <textarea
                                     name="ingredients"
@@ -199,10 +225,133 @@ export default function ProductOnboardingWizard() {
                             </div>
                         </div>
 
-                        {/* STEP 3: THE EVIDENCE */}
+                        {/* STEP 3: PRODUCT DETAILS (NEW) */}
                         <div className={step === 3 ? "block animate-in fade-in slide-in-from-right-4 duration-300" : "hidden"}>
-                            <h2 className="text-xl font-semibold text-white uppercase tracking-wider mb-4 border-l-2 border-emerald-500 pl-4">III. The Evidence</h2>
-                            <div className="space-y-4">
+                            <h2 className="text-xl font-semibold text-white uppercase tracking-wider mb-4 border-l-2 border-emerald-500 pl-4">III. Product Details</h2>
+                            <div className="grid md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-wider text-gray-500">Serving Size</label>
+                                    <input
+                                        name="serving_size"
+                                        className="w-full bg-[#0a0a0a] border border-[#333] p-3 text-sm focus:border-emerald-500 focus:outline-none transition-colors placeholder:text-gray-700"
+                                        placeholder="e.g. 2 capsules, 1 scoop (12g)"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-wider text-gray-500">Servings Per Container</label>
+                                    <input
+                                        name="servings_per_container"
+                                        type="number"
+                                        className="w-full bg-[#0a0a0a] border border-[#333] p-3 text-sm focus:border-emerald-500 focus:outline-none transition-colors placeholder:text-gray-700"
+                                        placeholder="e.g. 30, 60"
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid md:grid-cols-2 gap-6 mt-6">
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-wider text-gray-500">Form</label>
+                                    <select
+                                        name="form"
+                                        className="w-full bg-[#0a0a0a] border border-[#333] p-3 text-sm focus:border-emerald-500 focus:outline-none transition-colors text-gray-300"
+                                    >
+                                        <option value="">Select form...</option>
+                                        <option value="Capsules">Capsules</option>
+                                        <option value="Tablets">Tablets</option>
+                                        <option value="Powder">Powder</option>
+                                        <option value="Liquid">Liquid</option>
+                                        <option value="Gummies">Gummies</option>
+                                        <option value="Softgels">Softgels</option>
+                                        <option value="Chewables">Chewables</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-wider text-gray-500">Best Time to Take</label>
+                                    <select
+                                        name="best_time_take"
+                                        className="w-full bg-[#0a0a0a] border border-[#333] p-3 text-sm focus:border-emerald-500 focus:outline-none transition-colors text-gray-300"
+                                    >
+                                        <option value="">Select timing...</option>
+                                        <option value="Morning">Morning</option>
+                                        <option value="Afternoon">Afternoon</option>
+                                        <option value="Evening">Evening</option>
+                                        <option value="Before bed">Before bed</option>
+                                        <option value="With meals">With meals</option>
+                                        <option value="Between meals">Between meals</option>
+                                        <option value="As needed">As needed</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="space-y-2 mt-6">
+                                <label className="text-xs uppercase tracking-wider text-gray-500">Recommended Dosage</label>
+                                <input
+                                    name="recommended_dosage"
+                                    className="w-full bg-[#0a0a0a] border border-[#333] p-3 text-sm focus:border-emerald-500 focus:outline-none transition-colors placeholder:text-gray-700"
+                                    placeholder="e.g. Take 2 capsules daily with food"
+                                />
+                            </div>
+                            <div className="space-y-2 mt-6">
+                                <label className="text-xs uppercase tracking-wider text-gray-500">Storage Instructions</label>
+                                <input
+                                    name="storage_instructions"
+                                    className="w-full bg-[#0a0a0a] border border-[#333] p-3 text-sm focus:border-emerald-500 focus:outline-none transition-colors placeholder:text-gray-700"
+                                    placeholder="e.g. Store in a cool, dry place away from direct sunlight"
+                                />
+                            </div>
+                        </div>
+
+                        {/* STEP 4: COMPOSITION & SAFETY (NEW) */}
+                        <div className={step === 4 ? "block animate-in fade-in slide-in-from-right-4 duration-300" : "hidden"}>
+                            <h2 className="text-xl font-semibold text-white uppercase tracking-wider mb-4 border-l-2 border-emerald-500 pl-4">IV. Composition & Safety</h2>
+
+                            <div className="space-y-6">
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-wider text-gray-500">Allergens (Comma Separated)</label>
+                                    <input
+                                        name="allergens"
+                                        className="w-full bg-[#0a0a0a] border border-[#333] p-3 text-sm focus:border-emerald-500 focus:outline-none transition-colors placeholder:text-gray-700"
+                                        placeholder="e.g. Dairy, Soy, Gluten (leave blank if none)"
+                                    />
+                                    <p className="text-[10px] text-gray-600">Common allergens present in the facility or product.</p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-wider text-gray-500">Dietary Tags (Comma Separated)</label>
+                                    <input
+                                        name="dietary_tags"
+                                        className="w-full bg-[#0a0a0a] border border-[#333] p-3 text-sm focus:border-emerald-500 focus:outline-none transition-colors placeholder:text-gray-700"
+                                        placeholder="e.g. Vegan, Keto, Paleo, Halal"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-wider text-gray-500">Excipients / Other Ingredients</label>
+                                    <textarea
+                                        name="excipients"
+                                        className="w-full bg-[#0a0a0a] border border-[#333] p-3 text-sm focus:border-emerald-500 focus:outline-none transition-colors placeholder:text-gray-700 min-h-[80px]"
+                                        placeholder="List inactive ingredients (e.g. Magnesium Stearate, Rice Flour)..."
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-wider text-red-400">Warnings / Contraindications</label>
+                                    <div className="flex gap-2">
+                                        <div className="bg-red-900/10 border border-red-900/30 p-3 text-red-500 flex items-start">
+                                            <AlertTriangle className="w-4 h-4 mt-1" />
+                                        </div>
+                                        <textarea
+                                            name="warnings"
+                                            className="flex-1 bg-[#0a0a0a] border border-[#333] p-3 text-sm focus:border-red-900/50 focus:outline-none transition-colors placeholder:text-gray-700 min-h-[80px]"
+                                            placeholder="e.g. Consult physician if pregnant. Not for children under 18."
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* STEP 5: THE EVIDENCE */}
+                        <div className={step === 5 ? "block animate-in fade-in slide-in-from-right-4 duration-300" : "hidden"}>
+                            <h2 className="text-xl font-semibold text-white uppercase tracking-wider mb-4 border-l-2 border-emerald-500 pl-4">V. The Evidence</h2>
+                            <div className="space-y-6">
                                 <div className="space-y-2">
                                     <label className="text-xs uppercase tracking-wider text-gray-500">Certificate of Analysis (COA)</label>
                                     <div className="flex gap-2">
@@ -231,12 +380,38 @@ export default function ProductOnboardingWizard() {
                                     </div>
                                     {state.errors?.lab_report_url && <p className="text-red-500 text-xs">{state.errors.lab_report_url[0]}</p>}
                                 </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-wider text-gray-500">Technical Documentation URL</label>
+                                    <div className="flex gap-2">
+                                        <input
+                                            name="technical_docs_url"
+                                            className="flex-1 bg-[#0a0a0a] border border-[#333] p-3 text-sm focus:border-emerald-500 focus:outline-none transition-colors placeholder:text-gray-700"
+                                            placeholder="URL to Whitepaper, Spec Sheet, etc..."
+                                        />
+                                        <div className="bg-[#1a1a1a] border border-[#333] p-3 text-gray-500 flex items-center justify-center">
+                                            <List className="w-4 h-4" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-wider text-gray-500">Certifications (Comma Separated)</label>
+                                    <div className="flex gap-2">
+                                        <input
+                                            name="certifications"
+                                            className="flex-1 bg-[#0a0a0a] border border-[#333] p-3 text-sm focus:border-emerald-500 focus:outline-none transition-colors placeholder:text-gray-700"
+                                            placeholder="e.g. GMP, NSF Sport, USDA Organic, Non-GMO Project"
+                                        />
+                                        <div className="bg-[#1a1a1a] border border-[#333] p-3 text-gray-500 flex items-center justify-center">
+                                            <Shield className="w-4 h-4" />
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        {/* STEP 4: SME SIGNALS */}
-                        <div className={step === 4 ? "block animate-in fade-in slide-in-from-right-4 duration-300" : "hidden"}>
-                            <h2 className="text-xl font-semibold text-white uppercase tracking-wider mb-4 border-l-2 border-emerald-500 pl-4">IV. Truth Signals <span className="text-red-500">*</span></h2>
+                        {/* STEP 6: TRUTH SIGNALS */}
+                        <div className={step === 6 ? "block animate-in fade-in slide-in-from-right-4 duration-300" : "hidden"}>
+                            <h2 className="text-xl font-semibold text-white uppercase tracking-wider mb-4 border-l-2 border-emerald-500 pl-4">VI. Truth Signals <span className="text-red-500">*</span></h2>
                             <div className="mb-4">
                                 <p className="text-xs text-gray-600 mb-4">Select at least one truth signal. Tag the product&apos;s strengths and weaknesses objectively.</p>
                             </div>
@@ -297,7 +472,7 @@ export default function ProductOnboardingWizard() {
                                 </button>
                             ) : <div />}
 
-                            {step < 4 ? (
+                            {step < 6 ? (
                                 <button
                                     onClick={handleNext}
                                     className="flex items-center gap-2 bg-[#1a1a1a] border border-[#333] px-6 py-2 text-xs uppercase tracking-wider text-white hover:bg-emerald-900/20 hover:border-emerald-500/50 transition-all"

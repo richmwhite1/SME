@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { BookOpen, MessageCircle, FileText, Beaker } from "lucide-react";
+import { BookOpen, MessageCircle, FileText, Beaker, ShieldCheck } from "lucide-react";
 import SMEAuditsList from "@/components/sme/SMEAuditsList";
 import ProductComments from "@/components/products/ProductComments";
 import SubmitExpertAudit from "@/components/sme/SubmitExpertAudit";
 import BenefitsEditor from "@/components/products/BenefitsEditor";
 import CommunityBenefits from "@/components/products/CommunityBenefits";
+import DosageUsageSection from "@/components/products/dossier/DosageUsageSection";
+import VerificationDocuments from "@/components/products/dossier/VerificationDocuments";
 import { type SMEReview } from "@/app/actions/product-sme-review-actions";
 import { Comment } from "@/types/comment";
 
@@ -24,6 +26,29 @@ interface TabbedDossierProps {
     isVerified?: boolean;
     officialBenefits?: any[];
     communityBenefits?: any[];
+    // New fields for enhanced specs display
+    manufacturer?: string | null;
+    price?: string | null;
+    servingInfo?: string | null;
+    targetAudience?: string | null;
+    coreValueProposition?: string | null;
+    technicalSpecs?: Record<string, string> | null;
+    excipients?: string[] | null;
+    certifications?: string[] | null;
+    technicalDocsUrl?: string | null;
+    allergens?: string[] | null;
+    dietaryTags?: string[] | null;
+    // Phase 2: Dosage & Usage fields
+    servingSize?: string | null;
+    servingsPerContainer?: string | null;
+    form?: string | null;
+    recommendedDosage?: string | null;
+    bestTimeTake?: string | null;
+    storageInstructions?: string | null;
+    // Phase 2: Verification documents
+    coaUrl?: string | null;
+    labReportUrl?: string | null;
+    certificationVaultUrls?: string[] | null;
 }
 
 type TabType = "expert_audits" | "evidence_insights" | "community_experience" | "specs";
@@ -39,6 +64,27 @@ export default function TabbedDossier({
     isVerified = false,
     officialBenefits = [],
     communityBenefits = [],
+    manufacturer,
+    price,
+    servingInfo,
+    targetAudience,
+    coreValueProposition,
+    technicalSpecs,
+    excipients,
+    certifications,
+    technicalDocsUrl,
+    allergens,
+    dietaryTags,
+    // Phase 2 props
+    servingSize,
+    servingsPerContainer,
+    form,
+    recommendedDosage,
+    bestTimeTake,
+    storageInstructions,
+    coaUrl,
+    labReportUrl,
+    certificationVaultUrls,
 }: TabbedDossierProps) {
     const [activeTab, setActiveTab] = useState<TabType>("expert_audits");
 
@@ -175,21 +221,211 @@ export default function TabbedDossier({
                 {/* Tab 4: Specs */}
                 {activeTab === "specs" && (
                     <div className="space-y-8">
-                        {/* Ingredients */}
+                        {/* Dosage & Usage Section (NEW - Phase 2) */}
+                        <div className="border border-translucent-emerald bg-muted-moss p-6 md:p-8 rounded-lg">
+                            <DosageUsageSection
+                                servingSize={servingSize}
+                                servingsPerContainer={servingsPerContainer}
+                                form={form}
+                                recommendedDosage={recommendedDosage}
+                                bestTimeTake={bestTimeTake}
+                                storageInstructions={storageInstructions}
+                            />
+                        </div>
+
+                        {/* Verification Documents (NEW - Phase 2) */}
+                        <VerificationDocuments
+                            coaUrl={coaUrl}
+                            labReportUrl={labReportUrl}
+                            technicalDocsUrl={technicalDocsUrl}
+                            certificationVaultUrls={certificationVaultUrls}
+                        />
+
+                        {/* Product Overview */}
+                        {(manufacturer || price || servingInfo || targetAudience || coreValueProposition) && (
+                            <div className="border border-translucent-emerald bg-muted-moss p-6 md:p-8 rounded-lg">
+                                <h3 className="mb-6 font-serif text-xl md:text-2xl font-bold text-bone-white border-b border-white/10 pb-4">
+                                    Product Overview
+                                </h3>
+                                <div className="grid gap-4 md:gap-6">
+                                    {manufacturer && (
+                                        <div>
+                                            <span className="text-xs font-mono uppercase tracking-wider text-emerald-400 block mb-2">Manufacturer</span>
+                                            <p className="text-bone-white/90 text-sm md:text-base">{manufacturer}</p>
+                                        </div>
+                                    )}
+                                    {targetAudience && (
+                                        <div>
+                                            <span className="text-xs font-mono uppercase tracking-wider text-emerald-400 block mb-2">Target Audience</span>
+                                            <p className="text-bone-white/90 text-sm md:text-base">{targetAudience}</p>
+                                        </div>
+                                    )}
+                                    {coreValueProposition && (
+                                        <div>
+                                            <span className="text-xs font-mono uppercase tracking-wider text-emerald-400 block mb-2">Core Value Proposition</span>
+                                            <p className="text-bone-white/90 text-sm md:text-base leading-relaxed">{coreValueProposition}</p>
+                                        </div>
+                                    )}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                                        {price && (
+                                            <div>
+                                                <span className="text-xs font-mono uppercase tracking-wider text-emerald-400 block mb-2">Price</span>
+                                                <p className="text-bone-white/90 font-semibold text-sm md:text-base">{price}</p>
+                                            </div>
+                                        )}
+                                        {servingInfo && (
+                                            <div>
+                                                <span className="text-xs font-mono uppercase tracking-wider text-emerald-400 block mb-2">Serving Information</span>
+                                                <p className="text-bone-white/90 text-sm md:text-base">{servingInfo}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Active Ingredients */}
                         {ingredients && (
-                            <div className="border border-translucent-emerald bg-muted-moss p-8 rounded-lg">
-                                <h3 className="mb-4 font-serif text-2xl font-bold text-bone-white border-b border-white/10 pb-4">
+                            <div className="border border-translucent-emerald bg-muted-moss p-6 md:p-8 rounded-lg">
+                                <h3 className="mb-4 font-serif text-xl md:text-2xl font-bold text-bone-white border-b border-white/10 pb-4">
                                     Active Ingredients
                                 </h3>
-                                <p className="text-bone-white/80 leading-relaxed whitespace-pre-wrap">
+                                <p className="text-bone-white/80 leading-relaxed whitespace-pre-wrap text-sm md:text-base">
                                     {ingredients}
                                 </p>
                             </div>
                         )}
 
+                        {/* Excipients & Inactive Ingredients */}
+                        {excipients && Array.isArray(excipients) && excipients.length > 0 && (
+                            <div className="border border-translucent-emerald bg-muted-moss p-6 md:p-8 rounded-lg">
+                                <h3 className="mb-4 font-serif text-xl md:text-2xl font-bold text-bone-white border-b border-white/10 pb-4">
+                                    Excipients & Inactive Ingredients
+                                </h3>
+                                <p className="text-xs md:text-sm text-bone-white/60 mb-4 font-mono">
+                                    Inactive ingredients that may be important for sensitive users
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                    {excipients.map((excipient, index) => (
+                                        <span
+                                            key={index}
+                                            className="px-3 py-1.5 bg-white/5 border border-white/20 text-bone-white/80 text-xs md:text-sm rounded-full"
+                                        >
+                                            {excipient}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Technical Specifications */}
+                        {technicalSpecs && Object.keys(technicalSpecs).length > 0 && (
+                            <div className="border border-translucent-emerald bg-muted-moss p-6 md:p-8 rounded-lg">
+                                <h3 className="mb-4 font-serif text-xl md:text-2xl font-bold text-bone-white border-b border-white/10 pb-4">
+                                    Technical Specifications
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {Object.entries(technicalSpecs).map(([key, value]) => (
+                                        <div key={key} className="bg-white/5 border border-white/10 p-4 rounded">
+                                            <span className="text-xs font-mono uppercase tracking-wider text-emerald-400 block mb-1">
+                                                {key}
+                                            </span>
+                                            <p className="text-bone-white/90 text-sm md:text-base">{value}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Allergens & Dietary Compliance */}
+                        {((allergens && Array.isArray(allergens) && allergens.filter(a => a !== "none").length > 0) || (dietaryTags && Array.isArray(dietaryTags) && dietaryTags.length > 0)) && (
+                            <div className="border border-translucent-emerald bg-muted-moss p-6 md:p-8 rounded-lg">
+                                <h3 className="mb-6 font-serif text-xl md:text-2xl font-bold text-bone-white border-b border-white/10 pb-4">
+                                    Allergens & Dietary Compliance
+                                </h3>
+
+                                {allergens && Array.isArray(allergens) && allergens.filter(a => a !== "none").length > 0 && (
+                                    <div className="mb-6">
+                                        <span className="text-xs font-mono uppercase tracking-wider text-orange-400 block mb-3">
+                                            ⚠️ Contains Allergens
+                                        </span>
+                                        <div className="flex flex-wrap gap-2">
+                                            {allergens.filter(a => a !== "none").map((allergen) => (
+                                                <span
+                                                    key={allergen}
+                                                    className="px-3 py-1.5 bg-orange-500/20 border border-orange-500/40 text-orange-200 text-xs md:text-sm font-semibold rounded-full capitalize"
+                                                >
+                                                    {allergen.replace(/_/g, " ")}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {dietaryTags && Array.isArray(dietaryTags) && dietaryTags.length > 0 && (
+                                    <div>
+                                        <span className="text-xs font-mono uppercase tracking-wider text-emerald-400 block mb-3">
+                                            ✓ Dietary Compliance
+                                        </span>
+                                        <div className="flex flex-wrap gap-2">
+                                            {dietaryTags.map((tag) => (
+                                                <span
+                                                    key={tag}
+                                                    className="px-3 py-1.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-xs md:text-sm font-semibold rounded-full capitalize"
+                                                >
+                                                    {tag.replace(/_/g, " ")}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Certifications */}
+                        {certifications && Array.isArray(certifications) && certifications.length > 0 && (
+                            <div className="border border-translucent-emerald bg-muted-moss p-6 md:p-8 rounded-lg">
+                                <h3 className="mb-4 font-serif text-xl md:text-2xl font-bold text-bone-white border-b border-white/10 pb-4">
+                                    Certifications
+                                </h3>
+                                <div className="flex flex-wrap gap-3">
+                                    {certifications.map((cert, index) => (
+                                        <div
+                                            key={index}
+                                            className="flex items-center gap-2 px-4 py-2 bg-sme-gold/10 border border-sme-gold/30 rounded-lg"
+                                        >
+                                            <ShieldCheck className="w-4 h-4 text-sme-gold" />
+                                            <span className="text-bone-white/90 text-sm md:text-base font-semibold">{cert}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Technical Documentation */}
+                        {technicalDocsUrl && (
+                            <div className="border border-blue-500/30 bg-blue-900/10 p-6 md:p-8 rounded-lg">
+                                <h3 className="mb-4 font-serif text-xl md:text-2xl font-bold text-bone-white border-b border-white/10 pb-4">
+                                    📄 Technical Documentation
+                                </h3>
+                                <p className="text-bone-white/70 text-sm md:text-base mb-4">
+                                    View detailed white papers, studies, and technical specifications
+                                </p>
+                                <a
+                                    href={technicalDocsUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg transition-colors"
+                                >
+                                    <FileText className="w-4 h-4" />
+                                    Download Technical Docs
+                                </a>
+                            </div>
+                        )}
+
                         {/* Benefits Section */}
                         <div className="space-y-6">
-                            <h3 className="font-serif text-2xl font-bold text-bone-white border-b border-white/10 pb-4">
+                            <h3 className="font-serif text-xl md:text-2xl font-bold text-bone-white border-b border-white/10 pb-4">
                                 Benefits & Evidence
                             </h3>
 
@@ -209,8 +445,8 @@ export default function TabbedDossier({
 
                         {/* AI Summary / Expert Notebook */}
                         {aiSummary && (
-                            <div className="border border-translucent-emerald bg-muted-moss p-8 rounded-lg">
-                                <h3 className="mb-4 font-serif text-2xl font-bold text-bone-white border-b border-white/10 pb-4">
+                            <div className="border border-translucent-emerald bg-muted-moss p-6 md:p-8 rounded-lg">
+                                <h3 className="mb-4 font-serif text-xl md:text-2xl font-bold text-bone-white border-b border-white/10 pb-4">
                                     Expert Notebook
                                 </h3>
                                 <div className="prose prose-slate max-w-none 
@@ -228,14 +464,15 @@ export default function TabbedDossier({
                         )}
 
                         {/* Empty State */}
-                        {!ingredients && !aiSummary && officialBenefits.length === 0 && communityBenefits.length === 0 && (
-                            <div className="text-center py-16 bg-white/5 border border-white/10 rounded-lg">
-                                <FileText className="w-12 h-12 text-bone-white/20 mx-auto mb-4" />
-                                <p className="text-bone-white/60 font-mono text-sm">
-                                    No specifications available yet.
-                                </p>
-                            </div>
-                        )}
+                        {!ingredients && !aiSummary && officialBenefits.length === 0 && communityBenefits.length === 0 &&
+                            !manufacturer && !technicalSpecs && !excipients && !certifications && (
+                                <div className="text-center py-16 bg-white/5 border border-white/10 rounded-lg">
+                                    <FileText className="w-12 h-12 text-bone-white/20 mx-auto mb-4" />
+                                    <p className="text-bone-white/60 font-mono text-sm">
+                                        No specifications available yet.
+                                    </p>
+                                </div>
+                            )}
                     </div>
                 )}
             </div>

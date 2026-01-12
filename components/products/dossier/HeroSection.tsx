@@ -7,6 +7,8 @@ import VoteControl from "@/components/ui/VoteControl";
 import StarRatingDisplay from "@/components/products/StarRatingDisplay";
 import BuyNowButton from "@/components/products/BuyNowButton";
 import Tooltip from "@/components/ui/Tooltip";
+import DietaryBadges from "@/components/products/dossier/DietaryBadges";
+import QuickFactsGrid from "@/components/products/dossier/QuickFactsGrid";
 
 interface HeroSectionProps {
     title: string;
@@ -23,6 +25,11 @@ interface HeroSectionProps {
     // Dual scores
     smeTrustScore?: number | null; // Average SME score
     communitySentiment?: number | null; // Community consensus
+    // New fields
+    dietaryTags?: string[] | null;
+    price?: string | null;
+    servingInfo?: string | null;
+    targetAudience?: string | null;
 }
 
 export default function HeroSection({
@@ -39,6 +46,10 @@ export default function HeroSection({
     discountCode,
     smeTrustScore,
     communitySentiment,
+    dietaryTags,
+    price,
+    servingInfo,
+    targetAudience,
 }: HeroSectionProps) {
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
@@ -218,6 +229,16 @@ export default function HeroSection({
                                 />
                             </div>
                         )}
+
+                        {/* Dietary Badges */}
+                        <DietaryBadges dietaryTags={dietaryTags} />
+
+                        {/* Quick Facts Grid */}
+                        <QuickFactsGrid
+                            price={price}
+                            servingInfo={servingInfo}
+                            targetAudience={targetAudience}
+                        />
 
                         {/* Dual Score Summary */}
                         <div className="grid grid-cols-2 gap-3 md:gap-4 mb-4 md:mb-6">

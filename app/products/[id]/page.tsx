@@ -10,6 +10,13 @@ import TheVault from "@/components/products/dossier/TheVault";
 import SearchBar from "@/components/search/SearchBar";
 import ProductViewTracker from "@/components/products/ProductViewTracker";
 import StickyCTABar from "@/components/products/StickyCTABar";
+import SafetyInfoCard from "@/components/products/dossier/SafetyInfoCard";
+import DietaryBadges from "@/components/products/dossier/DietaryBadges";
+import QuickFactsGrid from "@/components/products/dossier/QuickFactsGrid";
+import ProductVideo from "@/components/products/dossier/ProductVideo";
+import IngredientsBreakdown from "@/components/products/dossier/IngredientsBreakdown";
+import ProductCategoryCard from "@/components/products/dossier/ProductCategoryCard";
+import TruthSignalsExpanded from "@/components/products/dossier/TruthSignalsExpanded";
 import { getDb } from "@/lib/db";
 import { getSMEReviews, getAverageSMEScores, checkIsSME } from "@/app/actions/product-sme-review-actions";
 import DualTrackRadar from "@/components/sme/DualTrackRadar";
@@ -142,11 +149,35 @@ interface Product {
   brand_owner_id?: string | null;
   aggregate_star_rating?: number | null;
   total_star_reviews?: number | null;
+  // New fields for enhanced display
+  allergens?: string[] | null;
+  dietary_tags?: string[] | null;
+  price?: string | null;
+  serving_info?: string | null;
+  target_audience?: string | null;
+  warnings?: string | null;
+  manufacturer?: string | null;
+  youtube_link?: string | null;
+  core_value_proposition?: string | null;
+  technical_specs?: Record<string, string> | null;
+  excipients?: string[] | null;
+  certifications?: string[] | null;
+  technical_docs_url?: string | null;
+  // Phase 1 enhancement fields
+  category?: string | null;
+  lab_report_url?: string | null;
+  serving_size?: string | null;
+  servings_per_container?: string | null;
+  form?: string | null;
+  recommended_dosage?: string | null;
+  best_time_take?: string | null;
+  storage_instructions?: string | null;
 }
 
 interface Signal {
   signal: string;
   lens_type: 'scientific' | 'alternative' | 'esoteric';
+  reason?: string;
 }
 
 export default async function ProductDetailPage({
@@ -174,7 +205,28 @@ export default async function ProductDetailPage({
       ingredients,
       upvote_count,
       aggregate_star_rating,
-      total_star_reviews
+      total_star_reviews,
+      allergens,
+      dietary_tags,
+      price,
+      serving_info,
+      target_audience,
+      warnings,
+      manufacturer,
+      youtube_link,
+      core_value_proposition,
+      technical_specs,
+      excipients,
+      certifications,
+      technical_docs_url,
+      category,
+      lab_report_url,
+      serving_size,
+      servings_per_container,
+      form,
+      recommended_dosage,
+      best_time_take,
+      storage_instructions
       FROM products
     WHERE(id:: text = ${id} OR slug = ${id})
         AND admin_status = 'approved'
@@ -192,13 +244,14 @@ export default async function ProductDetailPage({
     let signals: Signal[] = [];
     try {
       const signalsResult = await sql`
-        SELECT signal, lens_type
+        SELECT signal, lens_type, reason
         FROM product_truth_signals
         WHERE product_id:: text = ${product.id}
     `;
       signals = signalsResult.map((s: any) => ({
         signal: s.signal,
-        lens_type: s.lens_type
+        lens_type: s.lens_type,
+        reason: s.reason
       }));
     } catch (e) {
       // Table might not exist yet or empty
@@ -464,28 +517,46 @@ export default async function ProductDetailPage({
               discountCode={typedProduct.discount_code}
               smeTrustScore={avgSMEScore}
               communitySentiment={typedProduct.community_consensus_score}
+              dietaryTags={typedProduct.dietary_tags}
+              price={typedProduct.price}
+              servingInfo={typedProduct.serving_info}
+              targetAudience={typedProduct.target_audience}
             />
 
-            {/* FOUNDER VIDEO (Optional) */}
-            {typedProduct.founder_video_url && (
-              <div className="mb-12 border border-translucent-emerald bg-muted-moss p-8 rounded-lg">
-                <h2 className="mb-4 font-serif text-2xl font-bold text-bone-white border-b border-white/10 pb-4">
-                  Founder Intent
-                </h2>
-                <div className="aspect-video w-full">
-                  <iframe
-                    className="w-full h-full rounded"
-                    src={typedProduct.founder_video_url.replace('watch?v=', 'embed/')}
-                    title="Founder Video"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                </div>
-              </div>
-            )}
+            {/* SAFETY INFORMATION CARD */}
+            <SafetyInfoCard
+              allergens={typedProduct.allergens}
+              warnings={typedProduct.warnings}
+            />
 
-            {/* SIGNAL GRID */}
-            <SignalGrid signals={signals} />
+            {/* PRODUCT VIDEO (YouTube or Rumble) */}
+            <ProductVideo
+              videoUrl={typedProduct.youtube_link || typedProduct.founder_video_url}
+              productTitle={typedProduct.title}
+            />
+
+            {/* PRODUCT CATEGORY - What It's For */}
+            <ProductCategoryCard
+              category={typedProduct.category}
+              problemSolved={typedProduct.problem_solved}
+              aiSummary={typedProduct.ai_summary}
+              targetAudience={typedProduct.target_audience}
+            />
+
+            {/* INGREDIENTS BREAKDOWN */}
+            <IngredientsBreakdown
+              ingredients={typedProduct.ingredients}
+              servingSize={typedProduct.serving_size}
+              form={typedProduct.form}
+              coaUrl={typedProduct.coa_url}
+            />
+
+            {/* TRUTH SIGNALS (Enhanced with Justifications) */}
+            <TruthSignalsExpanded
+              signals={signals}
+              labReportUrl={typedProduct.lab_report_url}
+              coaUrl={typedProduct.coa_url}
+            />
 
             {/* 9-PILLAR RADAR CHART (Positioned prominently) */}
             <DualTrackRadar
@@ -505,6 +576,26 @@ export default async function ProductDetailPage({
               isVerified={typedProduct.is_verified || false}
               officialBenefits={benefits.filter(b => b.source_type === 'official')}
               communityBenefits={communityBenefits}
+              manufacturer={typedProduct.manufacturer}
+              price={typedProduct.price}
+              servingInfo={typedProduct.serving_info}
+              targetAudience={typedProduct.target_audience}
+              coreValueProposition={typedProduct.core_value_proposition}
+              technicalSpecs={typedProduct.technical_specs}
+              excipients={typedProduct.excipients}
+              certifications={typedProduct.certifications}
+              technicalDocsUrl={typedProduct.technical_docs_url}
+              allergens={typedProduct.allergens}
+              dietaryTags={typedProduct.dietary_tags}
+              servingSize={typedProduct.serving_size}
+              servingsPerContainer={typedProduct.servings_per_container}
+              form={typedProduct.form}
+              recommendedDosage={typedProduct.recommended_dosage}
+              bestTimeTake={typedProduct.best_time_take}
+              storageInstructions={typedProduct.storage_instructions}
+              coaUrl={typedProduct.coa_url}
+              labReportUrl={typedProduct.lab_report_url}
+              certificationVaultUrls={typedProduct.certification_vault_urls}
             />
 
             {/* THE VAULT */}

@@ -11,6 +11,17 @@ const ProductWizardSchema = z.object({
     name: z.string().min(1, "Product name is required"),
     category: z.string().min(1, "Category is required"),
     company_blurb: z.string().min(10, "Company blurb must be at least 10 characters"),
+    manufacturer: z.string().optional().or(z.literal("")),
+    price: z.string().optional().or(z.literal("")),
+    // serving_info: z.string().optional().or(z.literal("")), // Deprecated
+    serving_size: z.string().optional().or(z.literal("")),
+    servings_per_container: z.string().optional().or(z.literal("")),
+    form: z.string().optional().or(z.literal("")),
+    recommended_dosage: z.string().optional().or(z.literal("")),
+    best_time_take: z.string().optional().or(z.literal("")),
+    storage_instructions: z.string().optional().or(z.literal("")),
+    warnings: z.string().optional().or(z.literal("")),
+    certifications: z.array(z.string()).optional().default([]),
     product_photos: z.array(z.string().url()).max(10, "Maximum 10 photos allowed"),
     youtube_link: z
         .string()
@@ -30,7 +41,7 @@ const ProductWizardSchema = z.object({
     // NEW: Active Ingredients & Technical Specs
     active_ingredients: z.array(z.object({
         name: z.string(),
-        dosage: z.string()
+        dosage: z.string().optional()
     })),
     third_party_lab_link: z.string().url().nullable().optional().or(z.literal("")),
     excipients: z.array(z.string()),
@@ -40,6 +51,9 @@ const ProductWizardSchema = z.object({
         type: z.enum(["anecdotal", "evidence_based"]),
         citation: z.string().url().nullable().optional().or(z.literal(""))
     })),
+    // NEW: Allergens and Dietary Tags
+    allergens: z.array(z.string()).optional().default([]),
+    dietary_tags: z.array(z.string()).optional().default([]),
     sme_access_notes: z.string().nullable().optional(),
     sme_signals: z.record(z.string(), z.any()).optional(),
     // Brand verification fields
@@ -72,6 +86,14 @@ export async function submitProductWizard(data: ProductWizardInput) {
         // Calculate pillar scores from active ingredients
         const pillarScores = calculatePillarScores((validated.active_ingredients as any) || []);
 
+        // Construct legacy ingredients text string
+        const ingredientsText = (validated.active_ingredients || [])
+            .map((ing) => ing.dosage ? `${ing.name} - ${ing.dosage}` : ing.name)
+            .join("\n");
+
+        // Construct serving info string if needed (for backwards compatibility)
+        const servingInfoCombined = `${validated.serving_size || ''} ${validated.servings_per_container ? `(${validated.servings_per_container} servings)` : ''}`.trim();
+
         // Insert product into database
         const result = await db`
       INSERT INTO products (
@@ -80,6 +102,8 @@ export async function submitProductWizard(data: ProductWizardInput) {
         slug,
         category,
         brand,
+        manufacturer,
+        price,
         company_blurb,
         product_photos,
         youtube_link,
@@ -88,11 +112,23 @@ export async function submitProductWizard(data: ProductWizardInput) {
         core_value_proposition,
         technical_specs,
         active_ingredients,
+        ingredients,
         third_party_lab_link,
         excipients,
+        warnings,
+        certifications,
+        allergens,
+        dietary_tags,
         pillar_scores,
         sme_access_note,
         sme_signals,
+        serving_size,
+        servings_per_container,
+        form,
+        recommended_dosage,
+        best_time_take,
+        storage_instructions,
+        serving_info,
         created_at,
         updated_at
       ) VALUES (
@@ -100,7 +136,9 @@ export async function submitProductWizard(data: ProductWizardInput) {
         ${validated.name},
         ${slug},
         ${validated.category},
-        ${validated.name.split(" ")[0]}, -- Use first word as brand placeholder
+        ${validated.name.split(" ")[0]}, -- Use first word as brand placeholder, unless brand owner?
+        ${validated.manufacturer || null},
+        ${validated.price || null},
         ${validated.company_blurb},
         ${validated.product_photos},
         ${validated.youtube_link || null},
@@ -109,11 +147,23 @@ export async function submitProductWizard(data: ProductWizardInput) {
         ${validated.core_value_proposition},
         ${JSON.stringify(validated.technical_specs)},
         ${JSON.stringify(validated.active_ingredients || [])},
+        ${ingredientsText},
         ${validated.third_party_lab_link || null},
         ${JSON.stringify(validated.excipients || [])},
+        ${validated.warnings || null},
+        ${JSON.stringify(validated.certifications || [])},
+        ${JSON.stringify(validated.allergens || [])},
+        ${JSON.stringify(validated.dietary_tags || [])},
         ${JSON.stringify(pillarScores)},
         ${validated.sme_access_notes || null},
         ${JSON.stringify(validated.sme_signals || {})},
+        ${validated.serving_size || null},
+        ${validated.servings_per_container || null},
+        ${validated.form || null},
+        ${validated.recommended_dosage || null},
+        ${validated.best_time_take || null},
+        ${validated.storage_instructions || null},
+        ${servingInfoCombined || null},
         NOW(),
         NOW()
       )
@@ -154,17 +204,10 @@ export async function submitProductWizard(data: ProductWizardInput) {
                 workEmail: validated.work_email,
                 linkedinProfile: validated.linkedin_profile,
                 companyWebsite: validated.company_website,
+                intentionStatement: validated.company_blurb,
             });
 
-            if (verificationResult.success && verificationResult.checkoutUrl) {
-                // Return checkout URL to redirect user to Stripe
-                return {
-                    success: true,
-                    productId,
-                    requiresPayment: true,
-                    checkoutUrl: verificationResult.checkoutUrl,
-                };
-            } else if (!verificationResult.success) {
+            if (!verificationResult.success) {
                 // Brand verification failed, but product was created
                 return {
                     success: true,

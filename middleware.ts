@@ -13,6 +13,9 @@ const isPublicRoute = createRouteMatcher([
   "/topic(.*)",
   "/u(.*)",
   "/api(.*)",
+  "/community(.*)",
+  "/leaderboard(.*)",
+  "/how-it-works(.*)",
 ]);
 
 // Clerk internal routes that should always be allowed (handled by Clerk automatically)
