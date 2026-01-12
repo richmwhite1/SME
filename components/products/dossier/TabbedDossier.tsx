@@ -188,7 +188,7 @@ export default function TabbedDossier(props: TabbedDossierProps) {
                                 <div className="grid grid-cols-3 gap-4">
                                     <dt className="text-bone-white/50">Ingredients</dt>
                                     <dd className="col-span-2 text-bone-white break-words">
-                                        {props.ingredients || (props.activeIngredients ? JSON.stringify(props.activeIngredients) : "See label")}
+                                        {props.ingredients || "See label"}
                                     </dd>
                                 </div>
                                 <div className="grid grid-cols-3 gap-4">
