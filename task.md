@@ -1,63 +1,50 @@
-# Brand Management Infrastructure - Task Breakdown
+# SME Standards & Community Features Implementation
 
-## Phase 1: Database Schema & Infrastructure ✅
-- [x] Create brand verification tables
-  - [x] Add `brand_verifications` table
-  - [x] Add `sme_certifications` table  
-  - [x] Add `product_view_metrics` table
-  - [x] Update `profiles` table with `role` field (BRAND_REP, SME, USER)
-  - [x] Update `products` table with brand fields
+## Phase 1: Database Schema & Backend
+- [x] Create badges table for gamification system
+- [x] Create user_achievements table to track earned badges
+- [x] Create levels/tiers table for reputation-based progression
+- [x] Add moderation_policy and community_guidelines tables
+- [x] Create database functions for badge awarding logic
+- [x] Create database triggers for automatic badge grants
 
-## Phase 2: Product Wizard Enhancement ✅
-- [x] Add Step 5: "Is this your brand?"
-  - [x] Create brand verification form fields
-  - [x] Add work email validation
-  - [x] Add LinkedIn profile field
-  - [x] Add company website field
-- [x] Integrate Stripe checkout for $100 base subscription
-  - [x] Create Stripe checkout session
-  - [x] Handle payment success/failure
-  - [x] Store subscription data
+## Phase 2: SME Standards Page
+- [x] Create `/sme-criteria` route and page component
+- [x] Build SME criteria section (scientific vs experiential)
+- [x] Build review process explanation section
+- [x] Build reputation system explanation section
+- [x] Build visual diagrams for SME progression
+- [x] Add interactive examples and FAQs
 
-## Phase 3: Admin Portal - Brand Intake Tab ✅
-- [x] Create Brand Intake tab in Unified Admin Portal
-  - [x] Display pending brand verifications
-  - [x] Show submitted email and LinkedIn
-  - [x] Add "Approve Brand Account" button
-- [x] Implement brand approval workflow
-  - [x] Update user role to BRAND_REP
-  - [x] Set product `is_verified = true`
+## Phase 3: Gamification System
+- [x] Define badge types and criteria
+- [/] Create badge components (visual design)
+- [/] Implement badge awarding server actions
+- [x] Create levels/tiers system (Bronze, Silver, Gold, etc.)
+- [ ] Build user achievements dashboard
+- [ ] Add badge notifications
+- [ ] Display badges on user profiles and comments
 
-## Phase 4: SME Certification Workflow ✅
-- [x] Add SME Certification button to Brand Dashboard
-  - [x] Create brand dashboard page
-  - [x] Add "Apply for SME Certification ($3,000)" button
-- [x] Implement Stripe one-time payment
-  - [x] Create $3,000 checkout session
-  - [x] Handle payment success
-- [x] Create secure document uploader
-  - [x] Lab reports upload
-  - [x] Purity data upload
-  - [x] Store documents securely
-- [x] Create SME Audit Queue
-  - [x] Display submissions in admin portal
-  - [x] Add verification controls for SME experts
-  - [x] Update `is_sme_certified` flag on approval
+## Phase 4: Moderation Policy Page
+- [x] Create `/moderation-policy` route and page
+- [x] Document flagging system and thresholds
+- [x] Explain AI-assisted moderation
+- [x] Detail community self-regulation features
+- [x] Outline appeal process
+- [x] Add transparency metrics
 
-## Phase 5: Product UI Updates ✅
-- [x] Dynamic "Buy It Now" button
-  - [x] Show only if `is_verified = true`
-  - [x] Add discount code field
-- [x] SME Certification badge
-  - [x] Display if `is_sme_certified = true`
-  - [x] Create badge component
-  - [x] Position prominently on product page
+## Phase 5: Community Guidelines Page
+- [x] Create `/community-guidelines` route and page
+- [x] Define expected behavior standards
+- [x] Outline contribution quality standards
+- [x] Explain consequences for violations
+- [x] Add examples of good vs bad contributions
+- [x] Include scientific citation requirements
 
-## Phase 6: Metered Billing (Remaining)
-- [ ] Create view tracking function
-  - [ ] Increment `visit_count` on product view
-  - [ ] Store in database
-- [ ] Implement Stripe metered billing sync
-  - [ ] Create daily sync job
-  - [ ] Report usage to Stripe API
-  - [ ] Handle errors and retries
+## Phase 6: Integration & Polish
+- [ ] Add links to new pages in footer and navigation
+- [ ] Update onboarding flow to highlight standards
+- [ ] Create admin dashboard for badge management
+- [ ] Add analytics for badge distribution
+- [ ] Test all gamification triggers
+- [ ] Verify moderation workflows

@@ -23,9 +23,10 @@ interface SearchResult {
 interface SearchBarProps {
   onExpand?: () => void;
   onCollapse?: () => void;
+  autoFocus?: boolean;
 }
 
-export default function SearchBar({ onExpand, onCollapse }: SearchBarProps) {
+export default function SearchBar({ onExpand, onCollapse, autoFocus = false }: SearchBarProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -252,6 +253,7 @@ export default function SearchBar({ onExpand, onCollapse }: SearchBarProps) {
             ref={inputRef}
             type="text"
             value={query}
+            autoFocus={autoFocus}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => {
               if (query.trim().length >= 2) setIsOpen(true);

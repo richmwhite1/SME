@@ -1,21 +1,25 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { ChevronRight, Check, Upload, Link as LinkIcon, Camera, Sparkles, FileText, FlaskConical, ShieldCheck, AlertCircle, ScanBarcode } from "lucide-react";
+import { ChevronRight, Check, Upload, Link as LinkIcon, Camera, Sparkles, FileText, FlaskConical, ShieldCheck, AlertCircle, ScanBarcode, X } from "lucide-react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import CloudinaryUploadWidget from "./CloudinaryUploadWidget";
 import PhotoGrid from "./PhotoGrid";
 import { submitProductWizard } from "@/app/actions/submit-product-wizard";
-import { analyzeProductLabel, analyzeProductUrl, lookupProductByBarcode } from "@/app/actions/analyze-product"; // NEW
+import { analyzeProductLabel, analyzeProductUrl, lookupProductByBarcode } from "@/app/actions/analyze-product";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/ToastContainer";
-
-const CATEGORIES = [
-    "Survivalist", "Detox", "Brain Fog", "Vitality", "Sleep", "Gut Health",
-    "Hormones", "Performance", "Weight Loss", "Recovery"
-];
+import {
+    PRIMARY_CATEGORIES,
+    PRIMARY_CATEGORY_DESCRIPTIONS,
+    SECONDARY_CATEGORY_OPTIONS,
+    SECONDARY_CATEGORY_TYPE_LABELS,
+    type PrimaryCategory,
+    type SecondaryCategories,
+    EMPTY_SECONDARY_CATEGORIES
+} from "@/lib/constants/product-categories";
 
 const MAX_PHOTOS = 10;
 
@@ -23,7 +27,14 @@ const MAX_PHOTOS = 10;
 const communitySchema = z.object({
     product_url: z.string().url("Valid product URL is required"),
     name: z.string().min(1, "Product name is required"),
-    category: z.string().min(1, "Category is required"),
+    category: z.string().min(1, "Category is required"), // Keep for backward compatibility
+    primary_category: z.string().min(1, "Primary category is required"),
+    secondary_categories: z.object({
+        conditions: z.array(z.string()).default([]),
+        goals: z.array(z.string()).default([]),
+        ingredients: z.array(z.string()).default([]),
+        forms: z.array(z.string()).default([])
+    }).default(EMPTY_SECONDARY_CATEGORIES),
     company_blurb: z.string().min(10, "Company blurb must be at least 10 characters"),
     manufacturer: z.string().optional().or(z.literal("")),
     price: z.string().optional().or(z.literal("")),
@@ -80,7 +91,14 @@ const communitySchema = z.object({
 const brandSchema = z.object({
     product_url: z.string().url("Valid product URL is required"),
     name: z.string().min(1, "Product name is required"),
-    category: z.string().min(1, "Category is required"),
+    category: z.string().min(1, "Category is required"), // Keep for backward compatibility
+    primary_category: z.string().min(1, "Primary category is required"),
+    secondary_categories: z.object({
+        conditions: z.array(z.string()).default([]),
+        goals: z.array(z.string()).default([]),
+        ingredients: z.array(z.string()).default([]),
+        forms: z.array(z.string()).default([])
+    }).default(EMPTY_SECONDARY_CATEGORIES),
     company_blurb: z.string().min(10, "Company blurb must be at least 10 characters"),
     manufacturer: z.string().optional().or(z.literal("")),
     price: z.string().optional().or(z.literal("")),
@@ -163,9 +181,11 @@ export default function ProductWizardV2() {
     const form = useForm<WizardFormValues>({
         resolver: zodResolver(currentSchema),
         defaultValues: {
-            product_url: "", // NEW
+            product_url: "",
             name: "",
             category: "",
+            primary_category: "",
+            secondary_categories: EMPTY_SECONDARY_CATEGORIES,
             company_blurb: "",
             manufacturer: "",
             price: "",
@@ -639,19 +659,32 @@ export default function ProductWizardV2() {
                             {errors.name && <p className="text-red-500 text-xs">{errors.name.message}</p>}
                         </div>
 
-                        <div className="grid md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <label className="text-xs uppercase tracking-wider text-gray-500">Category</label>
-                                <select {...register("category")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded appearance-none">
-                                    <option value="">Select Category</option>
-                                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
-                                {errors.category && <p className="text-red-500 text-xs">{errors.category.message}</p>}
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-xs uppercase tracking-wider text-gray-500">Target Audience</label>
-                                <input {...register("target_audience")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded" placeholder="e.g. High-performance athletes" />
-                            </div>
+                        {/* Primary Category */}
+                        <div className="space-y-2">
+                            <label className="text-xs uppercase tracking-wider text-gray-500">Primary Category *</label>
+                            <select {...register("primary_category")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded appearance-none">
+                                <option value="">Select Primary Category</option>
+                                {PRIMARY_CATEGORIES.map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                ))}
+                            </select>
+                            {watch("primary_category") && (
+                                <p className="text-xs text-gray-400 mt-1">
+                                    {PRIMARY_CATEGORY_DESCRIPTIONS[watch("primary_category") as PrimaryCategory]}
+                                </p>
+                            )}
+                            {errors.primary_category && <p className="text-red-500 text-xs">{errors.primary_category.message}</p>}
+                        </div>
+
+                        {/* Secondary Categories */}
+                        <SecondaryCategoriesSelector
+                            value={watch("secondary_categories") || EMPTY_SECONDARY_CATEGORIES}
+                            onChange={(value) => setValue("secondary_categories", value, { shouldValidate: true })}
+                        />
+
+                        <div className="space-y-2">
+                            <label className="text-xs uppercase tracking-wider text-gray-500">Target Audience</label>
+                            <input {...register("target_audience")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded" placeholder="e.g. High-performance athletes" />
                         </div>
 
                         <div className="space-y-2">
@@ -1041,4 +1074,148 @@ export default function ProductWizardV2() {
             </div>
         </div>
     </div>
+}
+
+// Secondary Categories Selector Component
+interface SecondaryCategoriesSelectorProps {
+    value: SecondaryCategories;
+    onChange: (value: SecondaryCategories) => void;
+}
+
+function SecondaryCategoriesSelector({ value, onChange }: SecondaryCategoriesSelectorProps) {
+    const [activeTab, setActiveTab] = useState<keyof SecondaryCategories>('goals');
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const toggleItem = (type: keyof SecondaryCategories, item: string) => {
+        const currentItems = value[type] || [];
+        const newItems = currentItems.includes(item)
+            ? currentItems.filter(i => i !== item)
+            : [...currentItems, item];
+
+        onChange({
+            ...value,
+            [type]: newItems
+        });
+    };
+
+    const removeItem = (type: keyof SecondaryCategories, item: string) => {
+        onChange({
+            ...value,
+            [type]: (value[type] || []).filter(i => i !== item)
+        });
+    };
+
+    const getFilteredOptions = (type: keyof SecondaryCategories) => {
+        const options = SECONDARY_CATEGORY_OPTIONS[type];
+        if (!searchTerm) return options;
+        return options.filter(opt =>
+            opt.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    };
+
+    const totalSelected = Object.values(value).reduce((sum, arr) => sum + arr.length, 0);
+
+    return (
+        <div className="space-y-4 border border-[#333] rounded-lg p-6 bg-[#0a0a0a]">
+            <div className="flex items-center justify-between">
+                <label className="text-xs uppercase tracking-wider text-gray-500">
+                    Secondary Categories (Optional)
+                </label>
+                {totalSelected > 0 && (
+                    <span className="text-xs text-emerald-400 font-semibold">
+                        {totalSelected} selected
+                    </span>
+                )}
+            </div>
+
+            {/* Selected Tags Display */}
+            {totalSelected > 0 && (
+                <div className="flex flex-wrap gap-2 p-3 bg-[#111] rounded border border-[#222]">
+                    {Object.entries(value).map(([type, items]) =>
+                        items.map(item => (
+                            <span
+                                key={`${type}-${item}`}
+                                className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-900/30 text-emerald-400 text-xs rounded border border-emerald-800"
+                            >
+                                {item}
+                                <button
+                                    type="button"
+                                    onClick={() => removeItem(type as keyof SecondaryCategories, item)}
+                                    className="hover:text-emerald-300"
+                                >
+                                    <X className="w-3 h-3" />
+                                </button>
+                            </span>
+                        ))
+                    )}
+                </div>
+            )}
+
+            {/* Tab Navigation */}
+            <div className="flex gap-2 border-b border-[#333]">
+                {(Object.keys(SECONDARY_CATEGORY_TYPE_LABELS) as Array<keyof SecondaryCategories>).map(type => {
+                    const count = value[type]?.length || 0;
+                    return (
+                        <button
+                            key={type}
+                            type="button"
+                            onClick={() => setActiveTab(type)}
+                            className={`px-4 py-2 text-sm font-medium transition-colors relative ${activeTab === type
+                                    ? 'text-emerald-400 border-b-2 border-emerald-500'
+                                    : 'text-gray-500 hover:text-gray-300'
+                                }`}
+                        >
+                            {SECONDARY_CATEGORY_TYPE_LABELS[type]}
+                            {count > 0 && (
+                                <span className="ml-1 px-1.5 py-0.5 bg-emerald-900/40 text-emerald-400 text-xs rounded">
+                                    {count}
+                                </span>
+                            )}
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* Search */}
+            <input
+                type="text"
+                placeholder={`Search ${SECONDARY_CATEGORY_TYPE_LABELS[activeTab].toLowerCase()}...`}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-[#111] border border-[#333] p-3 text-white text-sm focus:border-emerald-500 outline-none rounded"
+            />
+
+            {/* Options Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-64 overflow-y-auto p-2">
+                {getFilteredOptions(activeTab).map(option => {
+                    const isSelected = value[activeTab]?.includes(option) || false;
+                    return (
+                        <button
+                            key={option}
+                            type="button"
+                            onClick={() => toggleItem(activeTab, option)}
+                            className={`p-3 text-left text-sm rounded border-2 transition-all ${isSelected
+                                    ? 'border-emerald-500 bg-emerald-900/20 text-emerald-400'
+                                    : 'border-[#333] bg-[#111] text-gray-300 hover:border-[#444]'
+                                }`}
+                        >
+                            <div className="flex items-center gap-2">
+                                <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${isSelected ? 'border-emerald-500 bg-emerald-500' : 'border-gray-600'
+                                    }`}>
+                                    {isSelected && <Check className="w-3 h-3 text-black" />}
+                                </div>
+                                <span className="flex-1">{option}</span>
+                            </div>
+                        </button>
+                    );
+                })}
+            </div>
+
+            {getFilteredOptions(activeTab).length === 0 && (
+                <div className="text-center py-8 text-gray-500 text-sm">
+                    No results found for &ldquo;{searchTerm}&rdquo;
+                </div>
+            )}
+        </div>
+    );
 }

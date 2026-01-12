@@ -30,6 +30,19 @@ const config: Config = {
         serif: ["var(--font-playfair)", "Playfair Display", "Georgia", "serif"],
         mono: ["var(--font-geist-mono)", "Geist Mono", "JetBrains Mono", "monospace"],
       },
+      // Enhanced line heights for readability
+      lineHeight: {
+        'relaxed-reading': '1.75',
+        'comfortable': '1.65',
+        'discussion': '1.7',
+      },
+      // Enhanced font sizes with better hierarchy
+      fontSize: {
+        'xs-readable': ['0.8125rem', { lineHeight: '1.5' }],
+        'sm-readable': ['0.9375rem', { lineHeight: '1.6' }],
+        'base-readable': ['1rem', { lineHeight: '1.7' }],
+        'lg-readable': ['1.125rem', { lineHeight: '1.75' }],
+      },
     },
   },
   plugins: [],

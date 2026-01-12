@@ -4,7 +4,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
 import Link from "next/link";
-import { Library, Menu, X, Plus, ChevronDown, Info } from "lucide-react";
+import { Library, Menu, X, Plus, ChevronDown, Search } from "lucide-react";
 import AdminNavLink from "./AdminNavLink";
 import SearchBar from "@/components/search/SearchBar";
 import NotificationCenter from "@/components/notifications/NotificationCenter";
@@ -28,7 +28,8 @@ export default function Navbar() {
       : "text-bone-white/70 hover:text-bone-white";
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-translucent-emerald bg-muted-moss/80 backdrop-blur-md overflow-x-hidden">
+    <nav className="sticky top-0 z-50 w-full border-b border-translucent-emerald">
+      <div className="absolute inset-0 bg-muted-moss/80 backdrop-blur-md -z-10" />
       <div className="container mx-auto flex h-14 items-center justify-between gap-4 px-4 sm:px-6">
         <Link
           href="/"
@@ -42,24 +43,35 @@ export default function Navbar() {
           </span>
         </Link>
 
-        {/* Search Bar - Centered, Command-Line Style - Hidden on mobile */}
-        <div className="hidden md:flex flex-1 max-w-2xl mx-4 lg:mx-8 relative">
-          <div
-            className={`w-full transition-all duration-300 ease-out ${isSearchExpanded
-              ? "fixed left-1/2 top-3 -translate-x-1/2 w-[90vw] max-w-4xl z-[100]"
-              : "relative"
-              }`}
-          >
-            <SearchBar
-              onExpand={() => setIsSearchExpanded(true)}
-              onCollapse={() => setIsSearchExpanded(false)}
-            />
-          </div>
+        {/* Search Bar - Collapsible Trigger - Hidden on mobile */}
+        <div className="hidden md:flex items-center justify-end mx-4 relative">
+          {!isSearchExpanded ? (
+            <button
+              onClick={() => setIsSearchExpanded(true)}
+              className="flex items-center gap-2 px-3 py-2 text-sm text-bone-white/50 bg-muted-moss/50 border border-translucent-emerald rounded-md hover:border-sme-gold/50 hover:text-bone-white transition-all group w-[200px]"
+            >
+              <div className="flex-shrink-0">
+                <Search size={14} className="group-hover:text-sme-gold transition-colors" />
+              </div>
+              <span className="font-mono text-xs tracking-wider truncate">Search...</span>
+              <span className="ml-auto text-[10px] text-bone-white/30 border border-bone-white/10 px-1.5 py-0.5 rounded font-mono">⌘K</span>
+            </button>
+          ) : (
+            <div className="fixed left-1/2 top-4 -translate-x-1/2 w-[90vw] max-w-4xl z-[100] animate-in fade-in zoom-in-95 duration-200">
+              <SearchBar
+                autoFocus
+                onExpand={() => setIsSearchExpanded(true)}
+                onCollapse={() => setIsSearchExpanded(false)}
+              />
+            </div>
+          )}
+
           {/* Fixed Backdrop */}
           <div
             className={`fixed inset-0 bg-forest-obsidian/80 backdrop-blur-sm z-[90] transition-opacity duration-300 ${isSearchExpanded ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
               }`}
             aria-hidden="true"
+            onClick={() => setIsSearchExpanded(false)}
           />
         </div>
 

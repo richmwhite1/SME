@@ -9,7 +9,14 @@ import { calculatePillarScores } from "@/lib/pillar-score-calculator";
 
 const ProductWizardSchema = z.object({
     name: z.string().min(1, "Product name is required"),
-    category: z.string().min(1, "Category is required"),
+    category: z.string().min(1, "Category is required"), // Keep for backward compatibility
+    primary_category: z.string().min(1, "Primary category is required"),
+    secondary_categories: z.object({
+        conditions: z.array(z.string()).default([]),
+        goals: z.array(z.string()).default([]),
+        ingredients: z.array(z.string()).default([]),
+        forms: z.array(z.string()).default([])
+    }).optional(),
     company_blurb: z.string().min(10, "Company blurb must be at least 10 characters"),
     manufacturer: z.string().optional().or(z.literal("")),
     price: z.string().optional().or(z.literal("")),
@@ -101,6 +108,8 @@ export async function submitProductWizard(data: ProductWizardInput) {
         title,
         slug,
         category,
+        primary_category,
+        secondary_categories,
         brand,
         manufacturer,
         price,
@@ -136,7 +145,9 @@ export async function submitProductWizard(data: ProductWizardInput) {
         ${validated.name},
         ${slug},
         ${validated.category},
-        ${validated.name.split(" ")[0]}, -- Use first word as brand placeholder, unless brand owner?
+        ${validated.primary_category},
+        ${JSON.stringify(validated.secondary_categories || { conditions: [], goals: [], ingredients: [], forms: [] })},
+        ${validated.name.split(" ")[0]},
         ${validated.manufacturer || null},
         ${validated.price || null},
         ${validated.company_blurb},

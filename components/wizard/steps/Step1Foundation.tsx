@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { AlertCircle } from "lucide-react";
+import { PRIMARY_CATEGORIES, PRIMARY_CATEGORY_DESCRIPTIONS, type PrimaryCategory } from "@/lib/constants/product-categories";
 
 export default function Step1Foundation() {
     const { data, updateData } = useProductWizardStore();
@@ -62,18 +63,16 @@ export default function Step1Foundation() {
                     {...register("category")}
                     className="w-full bg-[#0a0a0a] border border-[#333] p-3 text-base focus:border-emerald-500 focus:outline-none transition-colors text-white"
                 >
-                    <option value="">Select Primary Function...</option>
-                    <option value="Survivalist">Survivalist</option>
-                    <option value="Detox">Detox</option>
-                    <option value="Brain Fog">Brain Fog</option>
-                    <option value="Vitality">Vitality</option>
-                    <option value="Sleep">Sleep</option>
-                    <option value="Gut Health">Gut Health</option>
-                    <option value="Performance">Performance</option>
-                    <option value="Hormones">Hormones</option>
-                    <option value="Weight Loss">Weight Loss</option>
-                    <option value="Recovery">Recovery</option>
+                    <option value="">Select Primary Category...</option>
+                    {PRIMARY_CATEGORIES.map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                    ))}
                 </select>
+                {watch("category") && (
+                    <p className="text-xs text-gray-400 mt-1">
+                        {PRIMARY_CATEGORY_DESCRIPTIONS[watch("category") as PrimaryCategory]}
+                    </p>
+                )}
                 {errors.category && <p className="text-red-500 text-xs flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errors.category.message as string}</p>}
             </div>
 
