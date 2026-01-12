@@ -39,6 +39,7 @@ interface TabbedDossierProps {
     labReportUrl?: string | null;
     certificationVaultUrls?: string[] | null;
     brandOwnerId?: string | null;
+    warnings?: string | null;
 }
 
 export default function TabbedDossier(props: TabbedDossierProps) {
