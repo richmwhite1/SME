@@ -216,7 +216,7 @@ export async function createDiscussionComment(
         VALUES (
           ${discussionId}, ${user.id}, ${trimmedContent}, ${parentId || null},
           ${shouldAutoFlag ? 1 : 0}, ${shouldAutoFlag}, ${isOfficialResponse && canMarkOfficial ? true : false},
-          ${finalPostType}, ${finalPillar}, ${xPostUrl ? { x_post_url: xPostUrl } : null}
+          ${finalPostType}, ${finalPillar}, ${xPostUrl ? sql.json({ x_post_url: xPostUrl }) : null}
         )
         RETURNING id
       `;
@@ -421,7 +421,7 @@ export async function createGuestComment(
       )
       VALUES (
         ${discussionId}, NULL, ${trimmedGuestName}, ${trimmedContent}, ${parentId || null}, 0, false, ${commentStatus},
-        ${xPostUrl ? { x_post_url: xPostUrl } : null}
+        ${xPostUrl ? sql.json({ x_post_url: xPostUrl }) : null}
       )
       RETURNING id
     `;
