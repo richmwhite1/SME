@@ -11,6 +11,7 @@ export const TERMINOLOGY = {
     COMMUNITY_SIGNALS: "Total verified contributions (reviews + comments) from the wider community, representing general consensus and real-world usage.",
     SME_REVIEWS: "Authoritative, deep-dive audits conducted by verified Subject Matter Experts. These provide the technical backbone for our quality assessments.",
     NOISE: "Misinformation, marketing fluff, and unverified claims that we filter out.",
+    NINE_PILLAR_ANALYSIS: "Our rigorous 9-point evaluation framework assessing Purity, Bioavailability, Potency, Evidence, Sustainability, Experience, Safety, Transparency, and Synergy.",
 } as const;
 
 export type TerminologyKey = keyof typeof TERMINOLOGY;

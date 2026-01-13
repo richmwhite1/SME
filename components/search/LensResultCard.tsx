@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import SearchRadarChart from './SearchRadarChart';
 import { LensSearchResult } from '@/app/actions/search-actions';
+import { getPlaceholderImage } from '@/lib/image-utils';
 
 interface LensResultCardProps {
     product: LensSearchResult;
