@@ -6,6 +6,7 @@ import TopicBadge from "@/components/topics/TopicBadge";
 import { MessageSquare, Clock, ArrowUp } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import VoteControl from "@/components/ui/VoteControl";
+import SMEBadge from "@/components/layout/SMEBadge";
 
 interface DiscussionCardProps {
   discussion: {
@@ -91,9 +92,12 @@ export default function DiscussionCard({ discussion }: DiscussionCardProps) {
                     : `/profile/${discussion.profiles.id}`;
                   router.push(profileUrl);
                 }}
-                className="hover:text-bone-white transition-colors cursor-pointer"
+                className="hover:text-bone-white transition-colors cursor-pointer flex items-center gap-2"
               >
-                by {discussion.profiles.username ? `@${discussion.profiles.username}` : (discussion.profiles.full_name || "Anonymous")}
+                <span>by {discussion.profiles.username ? `@${discussion.profiles.username}` : (discussion.profiles.full_name || "Anonymous")}</span>
+                {discussion.profiles.badge_type && (
+                  <SMEBadge type={discussion.profiles.badge_type as any} showLabel={false} className="h-4 w-4" />
+                )}
               </span>
             ) : (
               <span className="text-bone-white/40 italic">by Anonymous</span>

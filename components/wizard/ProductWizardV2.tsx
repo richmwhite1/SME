@@ -436,9 +436,9 @@ export default function ProductWizardV2() {
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-900/40 text-emerald-400 text-xs font-semibold mb-4 border border-emerald-800">
                         <Sparkles className="w-3 h-3" /> AI-POWERED INTAKE
                     </div>
-                    <h1 className="text-3xl font-bold text-white tracking-tight mb-2">Product Onboarding</h1>
+                    <h1 className="text-3xl font-bold text-white tracking-tight mb-2">Share Knowledge</h1>
                     <p className="text-gray-400 max-w-xl mb-8">
-                        Start by pasting the product URL. Our AI will instantly extract ingredients, specs, and benefits.
+                        Start by pasting the product URL. Our AI will extract existing data, then you add the wisdom.
                     </p>
 
                     {/* STEP 1: URL INPUT */}
@@ -925,12 +925,12 @@ export default function ProductWizardV2() {
                                     <label className="flex items-center gap-2 text-sm text-gray-400">
                                         <input type="radio" checked={benefit.type === 'anecdotal'} onChange={() => {
                                             const b = [...benefits]; b[i].type = 'anecdotal'; setValue("benefits", b);
-                                        }} /> Anecdotal
+                                        }} /> Personal Experience
                                     </label>
                                     <label className="flex items-center gap-2 text-sm text-gray-400">
                                         <input type="radio" checked={benefit.type === 'evidence_based'} onChange={() => {
                                             const b = [...benefits]; b[i].type = 'evidence_based'; setValue("benefits", b);
-                                        }} /> Evidence-Based
+                                        }} /> Scientific Evidence
                                     </label>
                                 </div>
                                 {benefit.type === 'evidence_based' && (
@@ -1161,8 +1161,8 @@ function SecondaryCategoriesSelector({ value, onChange }: SecondaryCategoriesSel
                             type="button"
                             onClick={() => setActiveTab(type)}
                             className={`px-4 py-2 text-sm font-medium transition-colors relative ${activeTab === type
-                                    ? 'text-emerald-400 border-b-2 border-emerald-500'
-                                    : 'text-gray-500 hover:text-gray-300'
+                                ? 'text-emerald-400 border-b-2 border-emerald-500'
+                                : 'text-gray-500 hover:text-gray-300'
                                 }`}
                         >
                             {SECONDARY_CATEGORY_TYPE_LABELS[type]}
@@ -1195,8 +1195,8 @@ function SecondaryCategoriesSelector({ value, onChange }: SecondaryCategoriesSel
                             type="button"
                             onClick={() => toggleItem(activeTab, option)}
                             className={`p-3 text-left text-sm rounded border-2 transition-all ${isSelected
-                                    ? 'border-emerald-500 bg-emerald-900/20 text-emerald-400'
-                                    : 'border-[#333] bg-[#111] text-gray-300 hover:border-[#444]'
+                                ? 'border-emerald-500 bg-emerald-900/20 text-emerald-400'
+                                : 'border-[#333] bg-[#111] text-gray-300 hover:border-[#444]'
                                 }`}
                         >
                             <div className="flex items-center gap-2">

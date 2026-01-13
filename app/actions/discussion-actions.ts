@@ -727,3 +727,94 @@ export async function getDiscussionComments(discussionId: string) {
     return [];
   }
 }
+
+/**
+ * Fetch discussions with pagination and filtering
+ */
+/**
+ * Fetch discussions with pagination and filtering
+ */
+export async function fetchDiscussions(
+  offset: number = 0,
+  limit: number = 20,
+  filters: {
+    trusted?: boolean;
+    topic?: string;
+    search?: string;
+    sort?: string;
+  } = {}
+) {
+  const sql = getDb();
+  const { trusted = false, topic, search, sort = "newest" } = filters;
+  const searchQuery = search?.toLowerCase() || "";
+
+  try {
+    // Dynamic ORDER BY
+    let orderByFragment = sql`ORDER BY d.created_at DESC`;
+    if (sort === "active") {
+      orderByFragment = sql`ORDER BY message_count DESC NULLS LAST, d.created_at DESC`;
+    } else if (sort === "upvotes") {
+      orderByFragment = sql`ORDER BY d.upvote_count DESC NULLS LAST, d.created_at DESC`;
+    } else if (sort === "popularity") {
+      orderByFragment = sql`ORDER BY (d.upvote_count + message_count) DESC NULLS LAST, d.created_at DESC`;
+    }
+
+    const rawResults = await sql`
+      SELECT 
+        d.id, d.title, d.content, d.tags, d.slug, d.created_at, d.upvote_count, d.author_id,
+        (SELECT COUNT(*) FROM discussion_comments WHERE discussion_id = d.id)::int as message_count,
+        (SELECT MAX(created_at) FROM discussion_comments WHERE discussion_id = d.id) as last_activity_at,
+        (
+          SELECT json_agg(json_build_object('emoji', r.emoji, 'count', r.count))
+          FROM (
+            SELECT emoji, COUNT(*) as count
+            FROM comment_reactions cr 
+            JOIN discussion_comments dc ON cr.comment_id = dc.id 
+            WHERE dc.discussion_id = d.id 
+            GROUP BY emoji 
+            ORDER BY COUNT(*) DESC 
+            LIMIT 3
+          ) r
+        ) as top_emojis,
+        p.id as profile_id,
+        p.full_name,
+        p.username,
+        p.avatar_url,
+        p.badge_type
+      FROM discussions d
+      LEFT JOIN profiles p ON d.author_id = p.id
+      WHERE d.is_flagged = false
+      ${trusted ? sql`AND p.badge_type = 'Trusted Voice'` : sql``}
+      ${topic ? sql`AND ${topic} = ANY(d.tags)` : sql``}
+      ${searchQuery ? sql`AND (LOWER(d.title) LIKE ${"%" + searchQuery + "%"} OR LOWER(d.content) LIKE ${"%" + searchQuery + "%"})` : sql``}
+      ${orderByFragment}
+      LIMIT ${limit} OFFSET ${offset}
+    `;
+
+    // Transform results to nest profile data
+    return rawResults.map((row: any) => ({
+      id: row.id,
+      title: row.title,
+      content: row.content,
+      tags: row.tags,
+      slug: row.slug,
+      created_at: row.created_at,
+      upvote_count: row.upvote_count,
+      author_id: row.author_id,
+      message_count: Number(row.message_count || 0),
+      last_activity_at: row.last_activity_at,
+      top_emojis: row.top_emojis,
+      profiles: row.profile_id ? {
+        id: row.profile_id,
+        full_name: row.full_name,
+        username: row.username,
+        avatar_url: row.avatar_url,
+        badge_type: row.badge_type
+      } : null
+    }));
+
+  } catch (error) {
+    console.error("Error fetching discussions:", error);
+    return [];
+  }
+}

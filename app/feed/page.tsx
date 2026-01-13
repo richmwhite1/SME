@@ -322,7 +322,7 @@ export default async function FeedPage() {
       FROM evidence_submissions es
       LEFT JOIN profiles p ON es.submitted_by = p.id
       WHERE es.submitted_by IN ${sql(trackedSMEIds)}
-        AND es.status = 'verified'
+          AND es.status = 'verified'
       ORDER BY es.created_at DESC
       LIMIT 20
     `;
@@ -348,10 +348,11 @@ export default async function FeedPage() {
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
 
-  // 3. Trust Trends: One 'High Signal' post from unfollowed topic
-  let trustTrendItem: TrustTrendItem | null = null;
+  // 3. Suggested for You: High Signal content (Products/Discussions) from unfollowed topics
+  const suggestedItems: TrustTrendItem[] = [];
+
   if (followedTopics.length > 0) {
-    // Get all discussions (limit 100)
+    // A. Suggested Discussions (from Trusted Voices in unfollowed topics)
     const allDiscussionsResult = await sql`
       SELECT 
         d.id, d.title, d.content, d.slug, d.tags, d.created_at,
@@ -360,41 +361,68 @@ export default async function FeedPage() {
       LEFT JOIN profiles p ON d.author_id = p.id
       WHERE d.is_flagged = false
       ORDER BY d.created_at DESC
-      LIMIT 100
+      LIMIT 50
     `;
 
-    if (allDiscussionsResult.length > 0) {
-      // Find discussions from Trusted Voices in unfollowed topics
-      const unfollowedDiscussions = allDiscussionsResult.filter((d: any) => {
-        if (!d.tags || d.tags.length === 0) return false;
-        if (d.badge_type !== "Trusted Voice") return false;
+    const unfollowedDiscussions = allDiscussionsResult.filter((d: any) => {
+      if (!d.tags || d.tags.length === 0) return false;
+      if (d.badge_type !== "Trusted Voice") return false;
+      return d.tags.every((tag: string) => !followedTopics.includes(tag));
+    });
 
-        // Check if all tags are unfollowed
-        return d.tags.every((tag: string) => !followedTopics.includes(tag));
+    if (unfollowedDiscussions.length > 0) {
+      const selected = unfollowedDiscussions[0];
+      suggestedItems.push({
+        id: selected.id,
+        type: "discussion",
+        title: selected.title,
+        content: selected.content,
+        created_at: selected.created_at.toISOString(),
+        author_id: selected.author_id || null,
+        author_name: selected.full_name || null,
+        author_username: selected.username || null,
+        slug: selected.slug,
+        tags: selected.tags,
+        topic: selected.tags[0] || "Community",
+        signal_score: 5,
+      });
+    }
+
+    // B. Suggested Products (High Score/Certified in unfollowed topics)
+    try {
+      const highSignalProducts = await sql`
+        SELECT 
+          id, title, problem_solved as content, slug, tags, created_at, is_sme_certified
+        FROM products
+        WHERE is_sme_certified = true
+        ORDER BY created_at DESC
+        LIMIT 50
+      `;
+
+      const unfollowedProducts = highSignalProducts.filter((p: any) => {
+        if (!p.tags || p.tags.length === 0) return false;
+        return p.tags.every((tag: string) => !followedTopics.includes(tag));
       });
 
-      if (unfollowedDiscussions.length > 0) {
-        // Pick the most recent one
-        const selected = unfollowedDiscussions[0];
-        const firstUnfollowedTopic = selected.tags.find(
-          (tag: string) => !followedTopics.includes(tag)
-        );
-
-        trustTrendItem = {
+      if (unfollowedProducts.length > 0) {
+        const selected = unfollowedProducts[0];
+        suggestedItems.push({
           id: selected.id,
-          type: "discussion",
+          type: "product",
           title: selected.title,
           content: selected.content,
           created_at: selected.created_at.toISOString(),
-          author_id: selected.author_id || null,
-          author_name: selected.full_name || null,
-          author_username: selected.username || null,
+          author_id: null,
+          author_name: "SME Certified",
+          author_username: null,
           slug: selected.slug,
           tags: selected.tags,
-          topic: firstUnfollowedTopic || "",
-          signal_score: 5, // High signal from Trusted Voice
-        };
+          topic: selected.tags[0] || "Discovery",
+          signal_score: 10,
+        });
       }
+    } catch (err) {
+      console.warn("Error fetching suggested products:", err);
     }
   }
 
@@ -411,15 +439,13 @@ export default async function FeedPage() {
               </p>
             </div>
 
-            {/* Feed Client handles Calibration/Feed transition */}
             <FeedClient initialFollowedTopics={followedTopics}>
-              {/* Feed Refresher - Shows when new signals are detected */}
               <FeedRefresher
                 initialItemCount={
                   activeThreads.length +
                   trackedSMEItems.length +
                   followedSignalItems.length +
-                  (trustTrendItem ? 1 : 0)
+                  suggestedItems.length
                 }
                 initialTimestamp={new Date().toISOString()}
                 followedTopics={followedTopics}
@@ -511,58 +537,66 @@ export default async function FeedPage() {
                 </section>
               )}
 
-              {/* Trust Trends */}
-              {trustTrendItem && (
+              {/* Suggested for You */}
+              {suggestedItems.length > 0 && (
                 <section className="mb-8 border border-sme-gold/30 bg-muted-moss p-6">
                   <div className="mb-4 flex items-center gap-2">
                     <TrendingUp className="h-5 w-5 text-sme-gold" />
-                    <h2 className="font-serif text-xl font-semibold text-bone-white">Trust Trends</h2>
+                    <h2 className="font-serif text-xl font-semibold text-bone-white">Suggested for You</h2>
                     <span className="border border-sme-gold/30 bg-sme-gold/10 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-sme-gold">
-                      High Signal
+                      Discovery
                     </span>
                   </div>
                   <p className="mb-4 text-xs text-bone-white/70 font-mono">
-                    Discovery from an unfollowed topic
+                    High signal discoveries from outside your followed topics
                   </p>
-                  <div className="border border-translucent-emerald bg-forest-obsidian p-4">
-                    <div className="mb-2 flex items-center gap-2">
-                      <TopicBadge topic={trustTrendItem.topic} clickable={true} />
-                      <span className="text-[10px] text-bone-white/50 font-mono">
-                        {formatDistanceToNow(new Date(trustTrendItem.created_at), { addSuffix: true })}
-                      </span>
-                    </div>
-                    <div className="block">
-                      <Link href={`/discussions/${trustTrendItem.id}`} className="block transition-colors hover:text-heart-green">
-                        <h3 className="mb-2 font-serif text-lg font-semibold text-bone-white">
-                          {trustTrendItem.title}
-                        </h3>
-                      </Link>
-                      <p className="mb-3 text-sm text-bone-white/80 font-mono leading-relaxed line-clamp-2">
-                        {trustTrendItem.content}
-                      </p>
-                      {trustTrendItem.author_name && (
-                        <div className="flex items-center gap-2 text-xs text-bone-white/70 font-mono">
-                          <Award size={12} className="text-sme-gold" />
-                          <span>Trusted Voice: </span>
-                          {trustTrendItem.author_username ? (
-                            <Link
-                              href={`/u/${trustTrendItem.author_username}`}
-                              className="hover:text-bone-white transition-colors"
-                            >
-                              {trustTrendItem.author_name}
-                            </Link>
-                          ) : (
-                            <span>{trustTrendItem.author_name}</span>
+                  <div className="space-y-4">
+                    {suggestedItems.map((item) => (
+                      <div key={item.id} className="border border-translucent-emerald bg-forest-obsidian p-4">
+                        <div className="mb-2 flex items-center gap-2">
+                          <TopicBadge topic={item.topic} clickable={true} />
+                          <span className="text-[10px] text-bone-white/50 font-mono">
+                            {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
+                          </span>
+                        </div>
+                        <div className="block">
+                          <Link
+                            href={item.type === 'product' ? `/products/${item.id}` : `/discussions/${item.id}`}
+                            className="block transition-colors hover:text-heart-green"
+                          >
+                            <h3 className="mb-2 font-serif text-lg font-semibold text-bone-white flex items-center gap-2">
+                              {item.title}
+                              {item.type === 'product' && <Award size={16} className="text-sme-gold" />}
+                            </h3>
+                          </Link>
+                          <p className="mb-3 text-sm text-bone-white/80 font-mono leading-relaxed line-clamp-2">
+                            {item.content}
+                          </p>
+                          {item.author_name && (
+                            <div className="flex items-center gap-2 text-xs text-bone-white/70 font-mono">
+                              {item.type === 'discussion' ? <Award size={12} className="text-sme-gold" /> : <TrendingUp size={12} className="text-heart-green" />}
+                              <span>{item.type === 'discussion' ? "Trusted Voice: " : "Source: "}</span>
+                              {item.author_username ? (
+                                <Link
+                                  href={`/u/${item.author_username}`}
+                                  className="hover:text-bone-white transition-colors"
+                                >
+                                  {item.author_name}
+                                </Link>
+                              ) : (
+                                <span>{item.author_name}</span>
+                              )}
+                            </div>
                           )}
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    ))}
                   </div>
                 </section>
               )}
 
               {/* Empty States */}
-              {activeThreads.length === 0 && trackedSMEItems.length === 0 && followedSignalItems.length === 0 && !trustTrendItem && (
+              {activeThreads.length === 0 && trackedSMEItems.length === 0 && followedSignalItems.length === 0 && suggestedItems.length === 0 && (
                 <div className="border border-translucent-emerald bg-muted-moss p-12 text-center">
                   <p className="mb-4 text-sm text-bone-white/70 font-mono">
                     Your feed is empty. Start following topics to see personalized content!
@@ -576,7 +610,7 @@ export default async function FeedPage() {
                 </div>
               )}
 
-              {/* Tagline - Anchored below feed content */}
+              {/* Tagline */}
               <div className="mt-12 mb-8 text-center border-t border-translucent-emerald pt-8">
                 <p className="text-lg text-bone-white/80 font-mono">
                   Community-driven products for the gut, heart, and mind.

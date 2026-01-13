@@ -6,6 +6,7 @@ import { MessageSquare, Star } from "lucide-react";
 import CompareButton from "@/components/products/CompareButton";
 import Tooltip from "@/components/ui/Tooltip";
 import { TERMINOLOGY } from "@/lib/terminology";
+import { getPlaceholderImage } from "@/lib/image-utils";
 
 interface ProductListCardProps {
     title: string;
@@ -102,18 +103,12 @@ export default function ProductListCard({
                         unoptimized={fullImageUrl.includes('supabase.co') || fullImageUrl.includes('unsplash.com')}
                     />
                 ) : (
-                    <div className="h-full w-full bg-forest-obsidian flex items-center justify-center border border-translucent-emerald">
-                        <div className="text-center p-2 sm:p-4">
-                            <div className="bg-bone-white/10 border border-bone-white/20 p-2 sm:p-3 mb-2">
-                                <div className="flex items-center justify-center gap-1">
-                                    <p className="text-[10px] font-mono uppercase tracking-wider text-bone-white/70">
-                                        Specimen Under Audit
-                                    </p>
-                                    <Tooltip content={TERMINOLOGY.SPECIMEN_UNDER_AUDIT} />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <Image
+                        src={getPlaceholderImage(productId)}
+                        alt={title}
+                        fill
+                        className="object-cover transition-opacity duration-200 group-hover:opacity-90"
+                    />
                 )}
                 {/* SME Certified Badge Overlay */}
                 {isSMECertified && (

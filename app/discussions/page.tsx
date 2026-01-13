@@ -12,6 +12,7 @@ import TagFilterBar from "@/components/search/TagFilterBar";
 import TagSidebar from "@/components/discussions/TagSidebar";
 import DiscussionsClient from "@/components/discussions/DiscussionsClient";
 import DiscussionCard from "@/components/discussions/DiscussionCard";
+import DiscussionList from "@/components/discussions/DiscussionList";
 import { Suspense } from "react";
 import { getFollowedTopics } from "@/app/actions/topic-actions";
 import { getDb } from "@/lib/db";
@@ -245,11 +246,15 @@ export default async function DiscussionsPage({
                 )}
               </div>
             ) : (
-              <div className="space-y-4">
-                {discussions.map((discussion: any) => (
-                  <DiscussionCard key={discussion.id} discussion={discussion} />
-                ))}
-              </div>
+              <DiscussionList
+                initialDiscussions={discussions}
+                filters={{
+                  trusted: isTrustedOnly,
+                  topic: topicFilter,
+                  search: searchQuery,
+                  sort: sort
+                }}
+              />
             )}
           </div>
           <aside className="lg:col-span-1 space-y-6">

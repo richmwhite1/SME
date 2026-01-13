@@ -1,6 +1,6 @@
 "use client";
 
-import { Award, Microscope, Heart, Sparkles } from "lucide-react";
+import { Award, Microscope, Heart, Sparkles, Leaf } from "lucide-react";
 import { useState } from "react";
 
 interface SMEBadgeProps {
@@ -29,13 +29,13 @@ export default function SMEBadge({
             tooltip: "Evidence-based research expertise",
         },
         experiential: {
-            icon: Heart,
-            label: "Experiential SME",
-            color: "from-amber-500 to-orange-500",
-            borderColor: "border-amber-500/30",
-            bgColor: "bg-amber-500/10",
-            textColor: "text-amber-400",
-            tooltip: "Real-world experience and insights",
+            icon: Leaf,
+            label: "Holistic SME",
+            color: "from-emerald-500 to-green-500",
+            borderColor: "border-emerald-500/30",
+            bgColor: "bg-emerald-500/10",
+            textColor: "text-emerald-400",
+            tooltip: "Holistic & experiential wisdom",
         },
         both: {
             icon: Sparkles,
@@ -44,9 +44,15 @@ export default function SMEBadge({
             borderColor: "border-purple-500/30",
             bgColor: "bg-gradient-to-r from-purple-500/10 to-amber-500/10",
             textColor: "text-purple-400",
-            tooltip: "Scientific & Experiential expertise",
+            tooltip: "Scientific & Holistic expertise",
         },
     };
+
+    // Override icon for experiential to be a leaf if possible, but lucide-react might not be imported with it. 
+    // Let's stick to the current imports or add Leaf. 
+    // I will use Heart for now as "Holistic" usually maps to Heart in this design system, 
+    // BUT the prompt asked for "Green/Leaf". I should check if Leaf is available in Lucide or add it.
+    // I'll stick to the existing imports first to avoid breaking changes, but I should probably add Leaf.
 
     const config = typeConfig[type];
     const Icon = config.icon;
@@ -61,7 +67,7 @@ export default function SMEBadge({
                 <Icon size={12} className={config.textColor} strokeWidth={2.5} />
                 {showLabel && (
                     <span className={`text-[10px] font-mono uppercase tracking-wider ${config.textColor} font-bold`}>
-                        {type === "both" ? "SME+" : "SME"}
+                        {type === "both" ? "SME+" : (type === "experiential" ? "Holistic" : "SME")}
                     </span>
                 )}
             </div>

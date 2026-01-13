@@ -224,7 +224,7 @@ export default async function Home() {
               <span className="text-sme-gold italic">Experience</span>
             </h1>
             <p className="text-lg md:text-2xl text-bone-white/80 font-mono max-w-3xl mx-auto leading-relaxed">
-              A community-driven protocol for vetting health products, sharing biological data, and discovering what actually works.
+              A community-driven space where both scientific rigor and experiential wisdom are valued and verified. Your insights shape the truth.
             </p>
           </div>
 
@@ -237,7 +237,7 @@ export default async function Home() {
               </div>
             </div>
             <div className="mt-3 flex flex-wrap justify-center gap-2 text-xs font-mono text-bone-white/50">
-              <span>Popular:</span>
+              <span>Trending Evidence:</span>
               <Link href="/search?q=magnesium" className="hover:text-sme-gold transition-colors">Magnesium</Link>
               <span className="opacity-30">•</span>
               <Link href="/search?q=sleep" className="hover:text-sme-gold transition-colors">Sleep</Link>
@@ -422,7 +422,7 @@ export default async function Home() {
 
           {trendingDiscussions.length === 0 && (
             <div className="text-center py-12 border border-dashed border-translucent-emerald rounded-lg">
-              <p className="text-bone-white/50 font-mono">No discussions yet. Start one!</p>
+              <p className="text-bone-white/50 font-mono">No discussions yet. Contribute your wisdom!</p>
               <div className="mt-4">
                 <Link href="/discussions/new">
                   <Button variant="outline">Start Discussion</Button>

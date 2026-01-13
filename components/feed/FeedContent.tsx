@@ -6,6 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 import TopicBadge from "@/components/topics/TopicBadge";
 import FeedItemCard from "@/components/feed/FeedItemCard";
 import FeedRefresher from "@/components/feed/FeedRefresher";
+import Tooltip from "@/components/ui/Tooltip";
 
 interface FeedContentProps {
     activeThreads: any[];
@@ -88,7 +89,9 @@ export default function FeedContent({
                 <section className="mb-8 border border-sme-gold/30 bg-muted-moss p-6">
                     <div className="mb-4 flex items-center gap-2">
                         <Award className="h-5 w-5 text-sme-gold" />
-                        <h2 className="font-serif text-xl font-semibold text-bone-white">Tracked Signal</h2>
+                        <Tooltip content="Updates from Subject Matter Experts you track">
+                            <h2 className="font-serif text-xl font-semibold text-bone-white border-b border-dashed border-bone-white/30 cursor-help">Tracked Signal</h2>
+                        </Tooltip>
                     </div>
                     <p className="mb-4 text-xs text-bone-white/70 font-mono">
                         New discussions and SME Citations contributions from tracked SMEs
@@ -106,7 +109,9 @@ export default function FeedContent({
                 <section className="mb-8 border border-translucent-emerald bg-muted-moss p-6">
                     <div className="mb-4 flex items-center gap-2">
                         <BookOpen className="h-5 w-5 text-heart-green" />
-                        <h2 className="font-serif text-xl font-semibold text-bone-white">Followed Signal</h2>
+                        <Tooltip content="New research and products in topics you follow">
+                            <h2 className="font-serif text-xl font-semibold text-bone-white border-b border-dashed border-bone-white/30 cursor-help">Followed Signal</h2>
+                        </Tooltip>
                     </div>
                     <p className="mb-4 text-xs text-bone-white/70 font-mono">
                         New products and research in your followed Master Topics
@@ -125,9 +130,11 @@ export default function FeedContent({
                     <div className="mb-4 flex items-center gap-2">
                         <TrendingUp className="h-5 w-5 text-sme-gold" />
                         <h2 className="font-serif text-xl font-semibold text-bone-white">Trust Trends</h2>
-                        <span className="border border-sme-gold/30 bg-sme-gold/10 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-sme-gold">
-                            High Signal
-                        </span>
+                        <Tooltip content="Verified by high community consensus">
+                            <span className="border border-sme-gold/30 bg-sme-gold/10 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-sme-gold cursor-help">
+                                High Signal
+                            </span>
+                        </Tooltip>
                     </div>
                     <p className="mb-4 text-xs text-bone-white/70 font-mono">
                         Discovery from an unfollowed topic

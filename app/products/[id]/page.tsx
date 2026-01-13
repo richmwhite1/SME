@@ -4,7 +4,8 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import ProductImageGallery from "@/components/products/ProductImageGallery";
 import HeroSection from "@/components/products/dossier/HeroSection";
-import TabbedDossier from "@/components/products/dossier/TabbedDossier";
+import NinePillarSummary from "@/components/products/NinePillarSummary";
+import ProductDossier from "@/components/products/dossier/ProductDossier";
 import TheVault from "@/components/products/dossier/TheVault";
 import SearchBar from "@/components/search/SearchBar";
 import ProductViewTracker from "@/components/products/ProductViewTracker";
@@ -538,8 +539,17 @@ export default async function ProductDetailPage({
               targetAudience={typedProduct.target_audience}
             />
 
-            {/* TABBED DOSSIER */}
-            <TabbedDossier
+            {/* 9-Pillar Summary - Compact View - Moved BELOW Hero */}
+            <div className="mb-12 max-w-4xl mx-auto">
+              <NinePillarSummary
+                avgScores={avgSMEScores}
+                reviewCount={avgSMEScores.reviewCount}
+                scrollToId="sme-deep-dive"
+              />
+            </div>
+
+            {/* PRODUCT DOSSIER (Continuous Scroll) */}
+            <ProductDossier
               productId={typedProduct.id}
               productSlug={typedProduct.slug}
               isSME={isSME}
@@ -552,7 +562,7 @@ export default async function ProductDetailPage({
               isVerified={typedProduct.is_verified || false}
               officialBenefits={benefits.filter(b => b.source_type === 'official')}
               communityBenefits={communityBenefits}
-              // New Props for Tabbed View
+              // Conserved Props
               manufacturer={typedProduct.manufacturer}
               price={typedProduct.price}
               servingInfo={typedProduct.serving_info}
@@ -574,9 +584,13 @@ export default async function ProductDetailPage({
               labReportUrl={typedProduct.lab_report_url}
               certificationVaultUrls={typedProduct.certification_vault_urls}
               brandOwnerId={typedProduct.brand_owner_id}
+              warnings={typedProduct.warnings}
             />
 
-            {/* Founder Video (Video is now lower down) */}
+            {/* Founder Video (Video is now lower down) - Keep here or move? 
+                User requested "Evidence & Insights" section. Video fits there or here. 
+                Let's keep it here for now as supplemental media. 
+            */}
             {(typedProduct.youtube_link || typedProduct.founder_video_url) && (
               <div className="mt-8 mb-8">
                 <ProductVideo

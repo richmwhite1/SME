@@ -8,6 +8,7 @@ import StarRatingDisplay from "@/components/products/StarRatingDisplay";
 import BuyNowButton from "@/components/products/BuyNowButton";
 import Tooltip from "@/components/ui/Tooltip";
 import ProductQuadrantGrid from "@/components/products/dossier/ProductQuadrantGrid";
+import { getPlaceholderImage } from "@/lib/image-utils";
 
 interface HeroSectionProps {
     title: string;
@@ -87,10 +88,13 @@ export default function HeroSection({
                             priority
                         />
                     ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center text-bone-white/30 bg-white/5">
-                            <Info size={48} className="mb-2" />
-                            <p className="font-mono text-sm">No image available</p>
-                        </div>
+                        <Image
+                            src={getPlaceholderImage(productId)}
+                            alt={title}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-500"
+                            priority
+                        />
                     )}
 
                     {/* Floating Badges */}

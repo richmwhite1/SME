@@ -12,6 +12,7 @@ import FeedNotificationDot from "./FeedNotificationDot";
 import SMEUserButton from "./SMEUserButton";
 import PrefetchLink from "./PrefetchLink";
 import SMEDashboardLink from "./SMEDashboardLink";
+import ContributeButton from "./ContributeButton";
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -116,30 +117,8 @@ export default function Navbar() {
             How it Works
           </PrefetchLink>
 
-          {/* Submit Dropdown */}
-          <div className="relative group">
-            <button className="min-h-[44px] px-4 flex items-center gap-1.5 text-bone-white/70 hover:text-bone-white transition-colors font-mono text-xs uppercase tracking-wider active:scale-95 border border-translucent-emerald hover:border-sme-gold">
-              <Plus size={14} />
-              <span>Submit</span>
-              <ChevronDown size={12} className="group-hover:rotate-180 transition-transform" />
-            </button>
-            <div className="absolute right-0 mt-1 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-              <div className="bg-muted-moss border border-translucent-emerald shadow-lg">
-                <Link
-                  href="/products/submit"
-                  className="block px-4 py-3 text-sm font-mono text-bone-white/70 hover:text-bone-white hover:bg-forest-obsidian transition-colors border-b border-translucent-emerald/30"
-                >
-                  + Add Product
-                </Link>
-                <Link
-                  href="/discussions/new"
-                  className="block px-4 py-3 text-sm font-mono text-bone-white/70 hover:text-bone-white hover:bg-forest-obsidian transition-colors"
-                >
-                  + Start Discussion
-                </Link>
-              </div>
-            </div>
-          </div>
+          {/* Contribute Button */}
+          <ContributeButton />
 
           <SMEDashboardLink />
           <AdminNavLink />

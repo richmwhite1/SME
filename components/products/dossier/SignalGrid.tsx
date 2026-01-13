@@ -1,4 +1,5 @@
 import React from 'react';
+import Tooltip from '@/components/ui/Tooltip';
 
 interface Signal {
     signal: string;
@@ -42,7 +43,9 @@ export default function SignalGrid({ signals }: SignalGridProps) {
     return (
         <div className="mb-8">
             <h3 className="font-serif text-lg text-white mb-4 flex items-center gap-2">
-                <span>Signal Grid</span>
+                <Tooltip content="Key themes extracted from scientific literature and community verification">
+                    <span className="border-b border-dashed border-white/30 cursor-help">Signal Grid</span>
+                </Tooltip>
                 <span className="text-xs font-sans font-normal text-white/40 bg-white/5 px-2 py-0.5 rounded-full">
                     {signals.length} signals detected
                 </span>
