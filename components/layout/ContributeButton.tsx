@@ -80,7 +80,7 @@ export default function ContributeButton() {
 
                 <div className="mt-6 pt-4 border-t border-translucent-emerald/30 text-center">
                     <p className="text-xs text-bone-white/40 font-mono italic">
-                        "The truth is not found, it is built."
+                        &quot;The truth is not found, it is built.&quot;
                     </p>
                 </div>
             </Modal>

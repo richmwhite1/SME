@@ -1,0 +1,87 @@
+
+> holistic-community-protocol@0.1.0 build
+> next build
+
+  ▲ Next.js 14.2.35
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+
+Failed to compile.
+
+./app/api/og/compare/route.tsx
+111:17  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+269:17  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./app/api/og/trending/route.tsx
+226:23  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./app/how-it-works/page.tsx
+119:163  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+119:178  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+
+./app/page.tsx
+395:27  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./app/products/page.tsx
+284:29  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+335:29  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/admin/ProductEditModal.tsx
+273:49  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/admin/VerificationModal.tsx
+104:21  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/brand/ProductEditModal.tsx
+251:37  Warning: Image elements must have an alt prop, either with meaningful text, or an empty string for decorative images.  jsx-a11y/alt-text
+258:49  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/comments/CitationSearch.tsx
+93:6  Warning: React Hook useEffect has a missing dependency: 'handleKeyDown'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+114:6  Warning: React Hook useCallback has a missing dependency: 'handleSelectResult'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/comments/SourcePreviewCard.tsx
+113:25  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/discussions/DiscussionComments.tsx
+159:6  Warning: React Hook useEffect has a missing dependency: 'fetchComments'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/layout/ContributeButton.tsx
+83:25  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+83:62  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+
+./components/layout/NotificationCenter.tsx
+57:6  Warning: React Hook useEffect has a missing dependency: 'fetchNotifications'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+341:35  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/notifications/NotificationCenter.tsx
+57:6  Warning: React Hook useEffect has a missing dependency: 'fetchNotifications'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+352:35  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/products/CompareButton.tsx
+45:6  Warning: React Hook useEffect has a missing dependency: 'updateComparisonState'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+53:6  Warning: React Hook useEffect has a missing dependency: 'updateComparisonState'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/products/SwapSpecimenModal.tsx
+43:6  Warning: React Hook useEffect has a missing dependency: 'fetchProducts'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+59:6  Warning: React Hook useEffect has missing dependencies: 'debounceTimer' and 'fetchProducts'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/sme/SMEAuditsList.tsx
+88:37  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+./components/wizard/steps/Step1Foundation.tsx
+29:8  Warning: React Hook useEffect has a missing dependency: 'formValues'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+29:9  Warning: React Hook useEffect has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked.  react-hooks/exhaustive-deps
+
+./components/wizard/steps/Step3Integration.tsx
+31:8  Warning: React Hook useEffect has a missing dependency: 'formValues'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+31:9  Warning: React Hook useEffect has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked.  react-hooks/exhaustive-deps
+
+./components/wizard/steps/Step4TruthSignals.tsx
+34:8  Warning: React Hook useEffect has a missing dependency: 'smeSignals'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+34:9  Warning: React Hook useEffect has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked.  react-hooks/exhaustive-deps
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/basic-features/eslint#disabling-rules

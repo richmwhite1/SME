@@ -116,7 +116,7 @@ export default function HowItWorksPage() {
                                             <h3 className="font-serif text-lg font-medium text-bone-white">Signal</h3>
                                         </div>
                                         <p className="pl-4 border-l border-heart-green/30 text-sm text-bone-white/60 font-mono">
-                                            Credible, high-value information. Validated by scientific evidence and community consensus. When we say a product has "Strong Signal," it means the community and data agree on its efficacy.
+                                            Credible, high-value information. Validated by scientific evidence and community consensus. When we say a product has &quot;Strong Signal,&quot; it means the community and data agree on its efficacy.
                                         </p>
                                     </div>
 

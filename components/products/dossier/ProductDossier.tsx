@@ -256,9 +256,7 @@ export default function ProductDossier(props: ProductDossierProps) {
                         </dl>
 
                         <div className="pt-4 space-y-3">
-                            {props.maxDocsUrl && ( // Corrected prop name in next step if needed, but usage below checks technicalDocsUrl
-                                <></>
-                            )}
+
                             {props.technicalDocsUrl && (
                                 <a href={props.technicalDocsUrl} target="_blank" className="flex items-center gap-2 text-sme-gold hover:text-white transition-colors text-sm border border-sme-gold/30 p-2 rounded hover:bg-sme-gold/10">
                                     <FileText size={16} /> Technical Documentation
