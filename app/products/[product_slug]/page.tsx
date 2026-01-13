@@ -218,9 +218,9 @@ export default async function ProductDetailPage({
       lab_report_url,
       serving_size,
       servings_per_container,
-      form,
+      formulation_type as form,
       recommended_dosage,
-      best_time_take,
+      best_time_to_take as best_time_take,
       storage_instructions
       FROM products
     WHERE(id:: text = ${id} OR slug = ${id})
