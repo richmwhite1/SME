@@ -7,6 +7,7 @@ import TopicBadge from '@/components/topics/TopicBadge';
 import { formatDistanceToNow } from 'date-fns';
 import { getDb } from '@/lib/db';
 import { getDiscussionComments } from '@/app/actions/discussion-actions';
+import CompactTweetPreview from '@/components/discussions/CompactTweetPreview';
 
 interface Discussion {
   id: string;
@@ -146,6 +147,11 @@ export default async function DiscussionPage({ params }: { params: Promise<{ id:
           <div className="prose prose-invert max-w-none text-bone-white/90 leading-relaxed font-mono text-sm">
             {discussion.content}
           </div>
+
+          {/* X Post Preview - Discreet */}
+          {discussionData.metadata?.x_post_url && (
+            <CompactTweetPreview xPostUrl={discussionData.metadata.x_post_url} />
+          )}
         </div>
         {/* Interaction Terminal - Community Audit Section */}
         <div className="border-t-2 border-sme-gold bg-muted-moss">

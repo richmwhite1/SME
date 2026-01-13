@@ -94,20 +94,50 @@ export default function NinePillarDetail({ avgScores, reviewCount, initiallyExpa
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="w-full p-6 flex items-center justify-between hover:bg-white/5 transition-all group"
             >
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8 flex-1">
                     <div className="flex flex-col items-start">
-                        <h3 className="font-mono text-sm uppercase tracking-wider text-sme-gold mb-1">
+                        <h3 className="font-mono text-xs uppercase tracking-wider text-sme-gold mb-1">
                             SME Product Deep Dive
                         </h3>
-                        <p className="text-bone-white/60 text-sm md:text-base">
-                            In-depth analysis of 9 critical quality markers.
+                        <p className="text-bone-white/60 text-sm">
+                            In-depth analysis of 9 quality markers.
                         </p>
                     </div>
+
+                    {/* Collapsed Summary */}
+                    {!isExpanded && reviewedPillars > 0 && (
+                        <div className="flex items-center gap-4 animate-in fade-in duration-500">
+                            <div className="flex items-center gap-2 px-3 py-1 bg-black/40 border border-white/10 rounded-full">
+                                <span className="text-xs font-mono text-sme-gold font-bold">{overallScore}</span>
+                                <span className="text-[10px] font-mono text-bone-white/30">SCORE</span>
+                            </div>
+
+                            <div className="hidden md:flex items-center gap-1">
+                                {PILLAR_CONFIG.map((pillar) => {
+                                    const score = avgScores[pillar.key as keyof typeof avgScores];
+                                    const hasScore = score !== null && score !== undefined;
+                                    return (
+                                        <div
+                                            key={pillar.key}
+                                            className={`w-6 h-6 flex items-center justify-center rounded bg-white/5 border ${hasScore ? 'border-sme-gold/30 opacity-100' : 'border-white/5 opacity-20'}`}
+                                            title={`${pillar.name}: ${hasScore ? score : 'N/A'}`}
+                                        >
+                                            <span className="text-[10px]">{pillar.emoji}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            <span className="text-[10px] font-mono text-bone-white/40 uppercase tracking-tighter">
+                                {reviewedPillars}/9 Pillars
+                            </span>
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-3">
                     <span className="text-xs font-mono text-bone-white/50 group-hover:text-bone-white/70 transition-colors hidden sm:block">
-                        {isExpanded ? 'Collapse Analysis' : 'Expand Analysis'}
+                        {isExpanded ? 'Collapse Analysis' : 'Expand Details'}
                     </span>
                     {isExpanded ? (
                         <ChevronUp className="w-5 h-5 text-sme-gold" />

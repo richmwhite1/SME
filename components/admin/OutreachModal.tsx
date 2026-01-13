@@ -47,12 +47,16 @@ We've identified ${productName} as a product that aligns with our community's va
 
 About Our Certification Program:
 
-Our 5-Pillar Verification Framework ensures complete transparency and scientific rigor:
-1. Source Transparency - Verified raw material sources and supply chain documentation
-2. Purity Screening - Rigorous testing for contaminants and adulterants
-3. Potency Audit - Verified active ingredient concentrations match label claims
-4. Excipient Cleanliness - Assessment of non-active ingredients for safety
-5. Operational Legitimacy - Verification of business practices and regulatory compliance
+Our 9-Pillar Analysis ensures complete transparency and scientific rigor:
+1. Purity
+2. Bioavailability
+3. Potency
+4. Evidence
+5. Sustainability
+6. Experience
+7. Safety
+8. Transparency
+9. Synergy
 
 What Sets Us Apart:
 
@@ -76,7 +80,7 @@ Next Steps:
 
 If you're interested in pursuing certification, we'd be happy to guide you through the process. This includes:
 • Reviewing your existing COA documents
-• Verifying compliance with our 5-Pillar Framework
+• Verifying compliance with our 9-Pillar Analysis
 • Completing the certification checklist
 
 To learn more about our standards and requirements, please visit:

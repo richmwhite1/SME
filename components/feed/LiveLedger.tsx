@@ -1,6 +1,8 @@
 import { getDb } from "@/lib/db";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
+import Tooltip from "@/components/ui/Tooltip";
+import { TERMINOLOGY } from "@/lib/terminology";
 
 // Revalidate every 60 seconds
 export const revalidate = 60;
@@ -180,6 +182,7 @@ export default async function LiveLedger() {
                 <h3 className="text-sm font-semibold uppercase tracking-wider text-bone-white font-mono flex items-center gap-2">
                     <span className="text-heart-green">●</span>
                     Live Activity Feed
+                    <Tooltip content={TERMINOLOGY.SIGNAL} />
                 </h3>
             </div>
 

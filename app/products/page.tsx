@@ -12,8 +12,10 @@ import {
   ArrowRight,
   TrendingUp,
   Activity,
-  Users
+  Users,
+  Star
 } from 'lucide-react';
+import { getPlaceholderImage } from '@/lib/image-utils';
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +35,7 @@ interface Product {
 interface ProductWithMetrics extends Product {
   reviewCount: number;
   activityScore: number;
+  communityAvgRating: number | null;
   avgSMEScores: {
     purity: number | null;
     bioavailability: number | null;
@@ -111,42 +114,50 @@ async function getProducts(searchParams: { search?: string; category?: string; c
       ORDER BY created_at DESC
     `;
 
-    // Fetch metrics
+    // Fetch metrics (review count and average rating)
     const metricsResult = await sql`
       SELECT 
         product_id,
-        COUNT(*) as count
+        COUNT(*) as count,
+        AVG(rating) as avg_rating
       FROM reviews
       GROUP BY product_id
     `;
 
-    const metricsMap = new Map(metricsResult.map((m: any) => [m.product_id, parseInt(m.count)]));
+    const metricsMap = new Map(metricsResult.map((m: any) => [
+      m.product_id,
+      { count: parseInt(m.count), avgRating: m.avg_rating ? Number(m.avg_rating) : null }
+    ]));
 
-    const products: ProductWithMetrics[] = productsResult.map((p: any) => ({
-      id: p.id,
-      title: p.title,
-      slug: p.slug,
-      problem_solved: p.problem_solved,
-      images: p.images,
-      product_photos: p.product_photos,
-      tags: p.tags,
-      is_sme_certified: p.is_sme_certified,
-      created_at: p.created_at,
-      reviewCount: metricsMap.get(p.id) || 0,
-      activityScore: (metricsMap.get(p.id) || 0) * 10,
-      avgSMEScores: {
-        purity: p.avg_sme_purity ? Number(p.avg_sme_purity) : null,
-        bioavailability: p.avg_sme_bioavailability ? Number(p.avg_sme_bioavailability) : null,
-        potency: p.avg_sme_potency ? Number(p.avg_sme_potency) : null,
-        evidence: p.avg_sme_evidence ? Number(p.avg_sme_evidence) : null,
-        sustainability: p.avg_sme_sustainability ? Number(p.avg_sme_sustainability) : null,
-        experience: p.avg_sme_experience ? Number(p.avg_sme_experience) : null,
-        safety: p.avg_sme_safety ? Number(p.avg_sme_safety) : null,
-        transparency: p.avg_sme_transparency ? Number(p.avg_sme_transparency) : null,
-        synergy: p.avg_sme_synergy ? Number(p.avg_sme_synergy) : null,
-      },
-      smeReviewCount: p.sme_review_count || 0
-    }));
+    const products: ProductWithMetrics[] = productsResult.map((p: any) => {
+      const metric = metricsMap.get(p.id) || { count: 0, avgRating: null };
+      return {
+        id: p.id,
+        title: p.title,
+        slug: p.slug,
+        problem_solved: p.problem_solved,
+        images: p.images,
+        product_photos: p.product_photos,
+        tags: p.tags,
+        is_sme_certified: p.is_sme_certified,
+        created_at: p.created_at,
+        reviewCount: metric.count,
+        activityScore: metric.count * 10,
+        communityAvgRating: metric.avgRating,
+        avgSMEScores: {
+          purity: p.avg_sme_purity ? Number(p.avg_sme_purity) : null,
+          bioavailability: p.avg_sme_bioavailability ? Number(p.avg_sme_bioavailability) : null,
+          potency: p.avg_sme_potency ? Number(p.avg_sme_potency) : null,
+          evidence: p.avg_sme_evidence ? Number(p.avg_sme_evidence) : null,
+          sustainability: p.avg_sme_sustainability ? Number(p.avg_sme_sustainability) : null,
+          experience: p.avg_sme_experience ? Number(p.avg_sme_experience) : null,
+          safety: p.avg_sme_safety ? Number(p.avg_sme_safety) : null,
+          transparency: p.avg_sme_transparency ? Number(p.avg_sme_transparency) : null,
+          synergy: p.avg_sme_synergy ? Number(p.avg_sme_synergy) : null,
+        },
+        smeReviewCount: p.sme_review_count || 0
+      };
+    });
 
     return products;
   } catch (error) {
@@ -287,9 +298,11 @@ export default async function ProductsPage({
                               className="object-contain w-full h-full transform group-hover:scale-105 transition-transform duration-500"
                             />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-bone-white/20 font-serif italic">
-                              No Image
-                            </div>
+                            <img
+                              src={getPlaceholderImage(product.id)}
+                              alt={product.title}
+                              className="object-cover w-full h-full opacity-40 mix-blend-luminosity group-hover:opacity-60 transition-opacity"
+                            />
                           )}
                           {product.is_sme_certified && (
                             <div className="absolute top-2 right-2 bg-sme-gold text-forest-black text-[10px] font-bold px-2 py-1 rounded shadow-lg flex items-center gap-1">
@@ -300,12 +313,16 @@ export default async function ProductsPage({
                         <h3 className="font-serif text-lg text-bone-white group-hover:text-sme-gold transition-colors mb-2 line-clamp-2">
                           {product.title}
                         </h3>
-                        <div className="mt-2">
+                        <div className="mt-2 flex items-center justify-between">
                           <PillarProgressBar
                             avgScores={product.avgSMEScores}
                             reviewCount={product.smeReviewCount}
                             compact={true}
                           />
+                          <div className="flex items-center gap-1 text-[10px] font-mono text-bone-white/40">
+                            <Star size={10} className={product.communityAvgRating ? 'text-sme-gold fill-sme-gold' : ''} />
+                            {product.communityAvgRating ? product.communityAvgRating.toFixed(1) : '—'}
+                          </div>
                         </div>
                       </div>
                     </Link>
@@ -330,7 +347,7 @@ export default async function ProductsPage({
                   <Link key={product.id} href={`/products/${product.slug}`} className="group">
                     <div className="h-full flex flex-col p-6 rounded-xl bg-white/5 border border-translucent-emerald hover:border-sme-gold/30 hover:bg-white/10 transition-all duration-300">
                       <div className="flex items-start justify-between gap-4 mb-4">
-                        <div className="w-16 h-16 rounded-lg bg-black/20 overflow-hidden flex-shrink-0">
+                        <div className="w-16 h-16 rounded-lg bg-black/20 overflow-hidden flex-shrink-0 relative">
                           {getPrimaryImage(product) ? (
                             <img
                               src={getPrimaryImage(product)!}
@@ -338,9 +355,11 @@ export default async function ProductsPage({
                               className="object-contain w-full h-full"
                             />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-bone-white/20 text-xs">
-                              N/A
-                            </div>
+                            <img
+                              src={getPlaceholderImage(product.id)}
+                              alt={product.title}
+                              className="object-cover w-full h-full opacity-30"
+                            />
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -359,22 +378,33 @@ export default async function ProductsPage({
                         {product.problem_solved}
                       </p>
 
-                      <div className="pt-4 border-t border-white/5 space-y-3">
+                      <div className="pt-4 border-t border-white/5 space-y-4">
                         <PillarProgressBar
                           avgScores={product.avgSMEScores}
                           reviewCount={product.smeReviewCount}
                           compact={false}
                         />
 
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between border-t border-white/5 pt-3">
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2 text-xs font-mono">
+                              <Star className={`w-3.5 h-3.5 ${product.communityAvgRating ? 'text-sme-gold fill-sme-gold' : 'text-bone-white/20'}`} />
+                              <span className="text-bone-white/60 uppercase tracking-tighter">Community:</span>
+                              <span className={product.communityAvgRating ? 'text-bone-white font-bold' : 'text-bone-white/30'}>
+                                {product.communityAvgRating ? `${product.communityAvgRating.toFixed(1)}/5` : 'Pending'}
+                              </span>
+                            </div>
+                            <div className="text-[9px] font-mono text-bone-white/30 uppercase tracking-widest pl-5">
+                              {product.activityScore} Signals Recorded
+                            </div>
+                          </div>
+
                           <div className="flex items-center gap-3">
                             {product.is_sme_certified && (
                               <ShieldCheck className="w-4 h-4 text-sme-gold" />
                             )}
+                            <ArrowRight className="w-4 h-4 text-sme-gold opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                           </div>
-                          <span className="text-sm font-mono text-sme-gold group-hover:translate-x-1 transition-transform flex items-center gap-1">
-                            View <ArrowRight className="w-3 h-3" />
-                          </span>
                         </div>
                       </div>
                     </div>
@@ -400,7 +430,7 @@ export default async function ProductsPage({
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 }

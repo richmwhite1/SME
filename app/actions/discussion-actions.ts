@@ -16,7 +16,8 @@ export async function createDiscussion(
   title: string,
   content: string,
   tags: string[] = [],
-  referenceUrl?: string
+  referenceUrl?: string,
+  xPostUrl?: string
 ) {
   const user = await currentUser();
 
@@ -88,12 +89,12 @@ export async function createDiscussion(
     const result = await sql`
       INSERT INTO discussions (
         title, content, author_id, slug, tags, reference_url,
-        flag_count, is_flagged, upvote_count
+        flag_count, is_flagged, upvote_count, metadata
       )
       VALUES (
         ${trimmedTitle}, ${trimmedContent}, ${user.id}, ${uniqueSlug},
         ${sql.array(validTags)}, ${validReferenceUrl},
-        0, false, 0
+        0, false, 0, ${xPostUrl ? JSON.stringify({ x_post_url: xPostUrl }) : null}
       )
       RETURNING id
     `;

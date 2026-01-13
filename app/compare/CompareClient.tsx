@@ -142,7 +142,7 @@ export default function CompareClient({
       } else {
         newParams.set("b", newProductId);
       }
-      
+
       router.push(`/compare?${newParams.toString()}`);
       router.refresh();
     } catch (err) {
@@ -170,7 +170,7 @@ export default function CompareClient({
 
     const baseUrl = window.location.origin;
     const permalink = `${baseUrl}/compare?p1=${productAId}&p2=${productBId}`;
-    
+
     try {
       await navigator.clipboard.writeText(permalink);
       showToast("Signal Copied", "success");
@@ -346,7 +346,7 @@ export default function CompareClient({
               {/* Row 2: 5-Pillar Checklist */}
               <div className="border-b border-r border-translucent-emerald bg-forest-obsidian p-4">
                 <div className="text-xs font-mono uppercase tracking-wider text-bone-white">
-                  5-Pillar Checklist
+                  9-Pillar Highlight
                 </div>
               </div>
               <div className="border-b border-r border-translucent-emerald bg-muted-moss p-4">

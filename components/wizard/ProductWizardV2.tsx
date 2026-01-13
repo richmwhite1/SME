@@ -404,15 +404,25 @@ export default function ProductWizardV2() {
             });
 
             if (result.success) {
-                router.push("/products");
-                router.refresh();
+                if (result.checkoutUrl) {
+                    // Redirect to Stripe Checkout
+                    window.location.href = result.checkoutUrl;
+                } else if (result.slug) {
+                    // Redirect to product page
+                    router.push(`/products/${result.slug}`);
+                    router.refresh();
+                } else {
+                    // Fallback
+                    router.push("/products");
+                    router.refresh();
+                }
             } else {
                 setSubmitError(result.error || "Failed to submit product");
+                setIsSubmitting(false); // Only stop submitting on error, otherwise keep loading while redirecting
             }
         } catch (err) {
             console.error(err);
             setSubmitError("An unexpected error occurred");
-        } finally {
             setIsSubmitting(false);
         }
     };

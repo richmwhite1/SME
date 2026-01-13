@@ -47,8 +47,13 @@ export default function LensResultCard({ product }: LensResultCardProps) {
                                 className="object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
                             />
                         ) : (
-                            <div className="w-full h-full bg-white/5 flex items-center justify-center p-4">
-                                <span className="text-white/20 text-xs text-center font-mono">{product.title.substring(0, 20)}...</span>
+                            <div className="relative w-full h-full bg-forest-obsidian">
+                                <Image
+                                    src={getPlaceholderImage(product.id)}
+                                    alt={product.title}
+                                    fill
+                                    className="object-cover opacity-30 group-hover:opacity-40 transition-opacity"
+                                />
                             </div>
                         )}
                         {product.is_sme_certified && (

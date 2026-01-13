@@ -96,7 +96,7 @@ export default function DossierHeader({
                         </div>
                         <div className="text-xs text-white/40 flex items-center gap-1">
                             Trust Score
-                            <Tooltip content="Community-driven score based on verified reviews and expert audits" />
+                            <Tooltip content={TERMINOLOGY.PILLAR_SCORE} />
                         </div>
                     </div>
                     <div className={`flex items-center justify-center w-16 h-16 rounded-full border-2 ${consensusScore === 0 ? 'border-white/20 text-white/40' : scoreColorClass} bg-black/20 backdrop-blur-sm`}>

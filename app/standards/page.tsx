@@ -15,20 +15,9 @@ interface Pillar {
 
 const pillars: Pillar[] = [
   {
-    name: "Source Transparency",
-    icon: <Building2 size={32} />,
-    description: "Complete visibility into product origins and supply chain",
-    details: [
-      "Verified raw material sources",
-      "Supply chain documentation",
-      "Manufacturing location verification",
-      "Full ingredient traceability"
-    ],
-  },
-  {
-    name: "Purity Screening",
-    icon: <Microscope size={32} />,
-    description: "Rigorous testing for contaminants and adulterants",
+    name: "Purity",
+    icon: <FlaskConical size={32} />,
+    description: "Verified absence of heavy metals, mold, and contaminants via third-party lab testing.",
     details: [
       "Heavy metals screening",
       "Pesticide residue analysis",
@@ -37,36 +26,91 @@ const pillars: Pillar[] = [
     ],
   },
   {
-    name: "Potency Audit",
-    icon: <FlaskConical size={32} />,
-    description: "Verified active ingredient concentrations match label claims",
+    name: "Bioavailability",
+    icon: <Microscope size={32} />,
+    description: "Assessment of absorption efficiency and delivery method for maximum uptake.",
+    details: [
+      "Absorption rate analysis",
+      "Delivery system validation",
+      "Metabolic pathway review",
+      "Cofactor synergy check"
+    ],
+  },
+  {
+    name: "Potency",
+    icon: <Star size={32} />,
+    description: "Confirmation that active ingredients match label claims in actual dosage.",
     details: [
       "Active compound quantification",
       "Label claim verification",
       "Batch-to-batch consistency",
-      "Third-party lab validation"
+      "Stability testing review"
     ],
   },
   {
-    name: "Excipient Cleanliness",
-    icon: <Shield size={32} />,
-    description: "Assessment of non-active ingredients for safety and quality",
-    details: [
-      "Filler and binder analysis",
-      "Preservative screening",
-      "Allergen identification",
-      "Clean formulation verification"
-    ],
-  },
-  {
-    name: "Operational Legitimacy",
+    name: "Evidence",
     icon: <FileText size={32} />,
-    description: "Verification of business practices and regulatory compliance",
+    description: "Strength of clinical research backing the claimed benefits and ingredients.",
     details: [
-      "cGMP facility certification",
-      "Regulatory compliance checks",
-      "Business license verification",
-      "Ethical sourcing practices"
+      "Clinical study review",
+      "Dosage-matching research",
+      "Mechanism of action validation",
+      "Scientific consensus audit"
+    ],
+  },
+  {
+    name: "Sustainability",
+    icon: <Check size={32} />,
+    description: "Environmental impact of sourcing, packaging, and manufacturing processes.",
+    details: [
+      "Ethical sourcing audit",
+      "Eco-friendly packaging",
+      "Carbon footprint assessment",
+      "Waste management review"
+    ],
+  },
+  {
+    name: "Experience",
+    icon: <Star size={32} />,
+    description: "Qualitative assessment of user experience, taste, and subjective effects.",
+    details: [
+      "Subjective effect tracking",
+      "Palatability assessment",
+      "User side-effect reporting",
+      "Experiential wisdom aggregation"
+    ],
+  },
+  {
+    name: "Safety",
+    icon: <Shield size={32} />,
+    description: "Evaluation of side effect profile, contraindications, and long-term safety data.",
+    details: [
+      "Contraindication audit",
+      "Side effect screening",
+      "Ingredient safety thresholds",
+      "Long-term use assessment"
+    ],
+  },
+  {
+    name: "Transparency",
+    icon: <Building2 size={32} />,
+    description: "Disclosure of sourcing, testing results (COAs), and corporate practices.",
+    details: [
+      "Verified raw material sources",
+      "Supply chain documentation",
+      "COA accessibility",
+      "Business practice verification"
+    ],
+  },
+  {
+    name: "Synergy",
+    icon: <ArrowRight size={32} />,
+    description: "How well ingredients work together to enhance efficacy (the 'entourage effect').",
+    details: [
+      "Ingredient interaction audit",
+      "Formulation balance check",
+      "Bio-stacking potential",
+      "Complementary effect review"
     ],
   },
 ];
@@ -81,7 +125,7 @@ export default function StandardsPage() {
             Certified SME Standards
           </h1>
           <p className="mx-auto max-w-3xl text-xl text-bone-white/70 md:text-2xl font-mono">
-            Our rigorous 5-Pillar Framework ensures every certified product meets the highest
+            Our rigorous 9-Pillar Analysis framework ensures every certified product meets the highest
             standards of quality, transparency, and scientific validation.
           </p>
         </div>
@@ -107,7 +151,7 @@ export default function StandardsPage() {
         {/* 5-Pillar Framework Grid */}
         <div className="mb-16">
           <h2 className="mb-8 font-serif text-center text-3xl font-bold text-bone-white md:text-4xl">
-            The 5-Pillar Framework
+            The 9-Pillar Analysis
           </h2>
           <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {pillars.map((pillar, index) => (
@@ -180,7 +224,7 @@ export default function StandardsPage() {
             <p className="leading-relaxed text-bone-white/80 font-mono">
               When your product earns the &quot;SME Certified&quot; badge, it signals to health-conscious
               consumers, researchers, and practitioners that your product has undergone our rigorous
-              5-Pillar verification process and meets our highest standards for quality, purity, and
+              9-Pillar Analysis and meets our highest standards for quality, purity, and
               transparency.
             </p>
           </div>
@@ -248,7 +292,7 @@ export default function StandardsPage() {
                 </div>
                 <p className="text-bone-white/80 font-mono">
                   <strong className="text-bone-white">Initial Review:</strong> We review your existing COA documents and
-                  product information to assess alignment with our 5-Pillar Framework.
+                  product information to assess alignment with our 9-Pillar Analysis.
                 </p>
               </div>
               <div className="flex items-start gap-3">
@@ -266,7 +310,7 @@ export default function StandardsPage() {
                   3
                 </div>
                 <p className="text-bone-white/80 font-mono">
-                  <strong className="text-bone-white">Certification:</strong> Upon successful verification of all five pillars,
+                  <strong className="text-bone-white">Certification:</strong> Upon successful verification of the core pillars,
                   your product receives the &quot;SME Certified&quot; badge and is featured prominently on
                   our platform.
                 </p>
@@ -314,7 +358,7 @@ export default function StandardsPage() {
             </p>
             <p>
               Each product undergoes a comprehensive review process where our team of experts
-              verifies that all five pillars are met. This includes cross-referencing COA documents,
+              verifies that all critical pillars are met. This includes cross-referencing COA documents,
               verifying lab credentials, and ensuring that test results align with product claims.
             </p>
             <p>

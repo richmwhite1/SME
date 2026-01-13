@@ -7,6 +7,9 @@ import { getDb } from "@/lib/db";
 import LiveLedger from "@/components/feed/LiveLedger";
 import { MessageSquare, ArrowRight, ThumbsUp, Activity } from "lucide-react";
 import SearchBar from "@/components/search/SearchBar";
+import HomeExplanations from "@/components/home/HomeExplanations";
+import Tooltip from "@/components/ui/Tooltip";
+import { TERMINOLOGY } from "@/lib/terminology";
 
 export const dynamic = "force-dynamic";
 
@@ -270,15 +273,19 @@ export default async function Home() {
           </div>
         </div>
 
+        {/* Interactive Explanations */}
+        <HomeExplanations />
+
         {/* Content Section: Community Pulse (Products) */}
         <section className="mb-24">
           <div className="flex items-end justify-between mb-8 border-b border-translucent-emerald/30 pb-4">
             <div>
               <h2 className="text-2xl md:text-3xl font-serif font-semibold text-bone-white flex items-center gap-3">
                 <span className="text-heart-green">●</span> Top Verified Products
+                <Tooltip content={TERMINOLOGY.COMMUNITY_SIGNALS} />
               </h2>
               <p className="mt-2 text-sm text-bone-white/60 font-mono">
-                Highest rated by community consensus and lab verification.
+                Highest rated by community consensus and Community Signals.
               </p>
             </div>
             <Link href="/products" className="hidden sm:flex items-center gap-2 text-sm font-mono text-sme-gold hover:text-white transition-colors group">

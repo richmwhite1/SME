@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
 import { MessageSquare, Star } from "lucide-react";
 import CompareButton from "@/components/products/CompareButton";
@@ -17,7 +18,7 @@ interface ProductListCardProps {
     hasLabTested?: boolean;
     hasSourceVerified?: boolean;
     hasAISummary?: boolean;
-    // 5-Pillar transparency data
+    // 9-Pillar transparency data (Subset)
     sourceTransparency?: boolean;
     purityTested?: boolean;
     potencyVerified?: boolean;
@@ -131,8 +132,9 @@ export default function ProductListCard({
                 </h3>
                 {/* Activity Score - Technical Metadata */}
                 {activityScore > 0 && (
-                    <p className="mb-2 text-[10px] font-mono text-bone-white" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
-                        [{activityScore}] Community Signals
+                    <p className="mb-2 text-[10px] font-mono text-bone-white flex items-center gap-1" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+                        [{activityScore}] Community Signals Recorded
+                        <Tooltip content={TERMINOLOGY.COMMUNITY_SIGNALS} />
                     </p>
                 )}
                 <p className="text-sm text-bone-white/80 line-clamp-2 leading-relaxed mb-3">{problemSolved}</p>
@@ -144,7 +146,7 @@ export default function ProductListCard({
                         <div className="flex items-center gap-1.5">
                             <div className="flex items-center gap-0.5">
                                 <span className="text-[10px] sm:text-[9px] font-mono uppercase tracking-wider text-bone-white" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
-                                    Pillar:
+                                    9-Pillar Audit:
                                 </span>
                                 <Tooltip content={TERMINOLOGY.PILLAR_SCORE} />
                             </div>
@@ -152,14 +154,20 @@ export default function ProductListCard({
                                 {[sourceTransparency, purityTested, potencyVerified, excipientAudit, operationalLegitimacy].map((verified, index) => (
                                     <div
                                         key={index}
-                                        className={`h-1.5 w-1.5 ${verified ? "bg-heart-green" : "bg-bone-white/20"}`}
-                                        style={{ clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%)" }}
+                                        className={`h-2 w-2 rounded-sm ${verified ? "bg-heart-green" : "bg-bone-white/20"}`}
                                     />
                                 ))}
                             </div>
                             <span className="text-[10px] sm:text-[9px] font-mono text-bone-white" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
                                 {verifiedPillars}/5
                             </span>
+                            <Link
+                                href="/how-it-works#nine-pillars"
+                                onClick={(e) => e.stopPropagation()}
+                                className="ml-1 text-[8px] text-sme-gold hover:text-white transition-colors border-b border-sme-gold/30 uppercase tracking-tighter"
+                            >
+                                Standards
+                            </Link>
                         </div>
 
                         {/* Community Heat - Message Icon + Count */}

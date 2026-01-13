@@ -191,7 +191,7 @@ export async function GET(request: NextRequest) {
                   marginBottom: '8px',
                 }}
               >
-                5-Pillar: {pillarCountA}/5
+                SME Standards: {pillarCountA}/5
               </div>
               {[
                 { name: 'Source Transparency', value: productA.source_transparency },
@@ -349,7 +349,7 @@ export async function GET(request: NextRequest) {
                   marginBottom: '8px',
                 }}
               >
-                5-Pillar: {pillarCountB}/5
+                SME Standards: {pillarCountB}/5
               </div>
               {[
                 { name: 'Source Transparency', value: productB.source_transparency },

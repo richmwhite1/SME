@@ -19,6 +19,7 @@ export default function NewDiscussionPage() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [referenceUrl, setReferenceUrl] = useState("");
+  const [xPostUrl, setXPostUrl] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
@@ -70,7 +71,13 @@ export default function NewDiscussionPage() {
     setError(null);
 
     try {
-      const result = await createDiscussion(title, content, tags, referenceUrl.trim() || undefined);
+      const result = await createDiscussion(
+        title,
+        content,
+        tags,
+        referenceUrl.trim() || undefined,
+        xPostUrl.trim() || undefined
+      );
       if (result.success && result.id) {
         // Show success toast
         showToast("Discussion created successfully", "success");
@@ -191,6 +198,32 @@ export default function NewDiscussionPage() {
               </p>
             </div>
 
+            {/* X Post URL */}
+            <div>
+              <label
+                htmlFor="xPostUrl"
+                className="mb-2 block text-sm font-medium text-bone-white font-mono"
+              >
+                Embed X Post (Optional)
+              </label>
+              <input
+                type="url"
+                id="xPostUrl"
+                value={xPostUrl}
+                onChange={(e) => setXPostUrl(e.target.value)}
+                placeholder="https://x.com/username/status/..."
+                className="w-full border border-translucent-emerald bg-forest-obsidian px-4 py-2 text-bone-white placeholder-bone-white/50 focus:border-heart-green focus:outline-none font-mono"
+              />
+              {xPostUrl && !isValidXUrl(xPostUrl) && (
+                <p className="mt-1 text-xs text-red-400 font-mono">
+                  Invalid X URL. Must be like x.com/user/status/123...
+                </p>
+              )}
+              <p className="mt-1 text-xs text-bone-white/50 font-mono">
+                Add context with a relevant X post. Briefly explain why you are sharing this in the content above.
+              </p>
+            </div>
+
             {/* Topic Tags */}
             <div>
               <label className="mb-2 block text-sm font-medium text-bone-white font-mono">
@@ -230,4 +263,16 @@ export default function NewDiscussionPage() {
       </div>
     </main>
   );
+}
+
+// Helper function to validate X/Twitter URLs
+function isValidXUrl(url: string) {
+  try {
+    const u = new URL(url);
+    return (u.hostname === 'x.com' || u.hostname === 'twitter.com' ||
+      u.hostname === 'www.x.com' || u.hostname === 'www.twitter.com') &&
+      u.pathname.includes('/status/');
+  } catch {
+    return false;
+  }
 }

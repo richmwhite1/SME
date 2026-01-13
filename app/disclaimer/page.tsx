@@ -29,23 +29,23 @@ export default function DisclaimerPage() {
               Not Medical Advice
             </h2>
           </div>
-          
+
           <div className="space-y-6 text-bone-white/90 leading-relaxed font-mono">
             <p className="text-lg font-medium">
-              The information, content, and materials provided on SME (Subject Matter Experts) 
-              are <strong className="text-bone-white">for informational and educational purposes only</strong> 
+              The information, content, and materials provided on SME (Subject Matter Experts)
+              are <strong className="text-bone-white">for informational and educational purposes only</strong>
               and are not intended to be a substitute for professional medical advice, diagnosis, or treatment.
             </p>
-            
+
             <div className="border-l-4 border-heart-green bg-heart-green/10 p-4">
               <p className="font-semibold text-heart-green font-mono">
-                Always seek the advice of your physician or other qualified health provider 
+                Always seek the advice of your physician or other qualified health provider
                 with any questions you may have regarding a medical condition or health objectives.
               </p>
             </div>
-            
+
             <p>
-              Never disregard professional medical advice or delay in seeking it because of 
+              Never disregard professional medical advice or delay in seeking it because of
               something you have read, seen, or heard on this platform.
             </p>
           </div>
@@ -114,7 +114,7 @@ export default function DisclaimerPage() {
             </h2>
             <div className="space-y-4 text-bone-white/80 leading-relaxed font-mono">
               <p>
-                Product reviews, certifications, and discussions on SME reflect community 
+                Product reviews, certifications, and discussions on SME reflect community
                 experiences and verified transparency standards. They do not constitute:
               </p>
               <ul className="ml-6 list-disc space-y-2">
@@ -124,8 +124,8 @@ export default function DisclaimerPage() {
                 <li>Substitutes for professional medical evaluation</li>
               </ul>
               <p className="mt-4">
-                Our <strong>SME Certified</strong> badge indicates that a product has met our 
-                5-Pillar Framework for transparency and quality verification. It does not mean 
+                Our <strong>SME Certified</strong> badge indicates that a product has met our
+                9-Pillar Analysis for transparency and quality verification. It does not mean
                 the product is safe, effective, or appropriate for your specific needs.
               </p>
             </div>
@@ -137,8 +137,8 @@ export default function DisclaimerPage() {
               Medical Emergency
             </h2>
             <p className="text-heart-green leading-relaxed font-mono">
-              If you think you may have a medical emergency, call your doctor or emergency 
-              services (911 in the United States) immediately. Do not rely on this platform 
+              If you think you may have a medical emergency, call your doctor or emergency
+              services (911 in the United States) immediately. Do not rely on this platform
               for emergency medical situations.
             </p>
           </div>

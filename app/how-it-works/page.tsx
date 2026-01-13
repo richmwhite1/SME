@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import Button from "@/components/ui/Button";
 import { ShieldCheck, Star, MessageSquare, Users, ArrowRight } from "lucide-react";
 
@@ -23,7 +24,7 @@ export default function HowItWorksPage() {
 
                 {/* Section 1: The Concept */}
                 <section className="mb-20 grid md:grid-cols-2 gap-12 items-center">
-                    <div>
+                    <div className="order-2 md:order-1">
                         <div className="w-16 h-16 bg-sme-gold/20 rounded-2xl flex items-center justify-center mb-6 text-sme-gold">
                             <ShieldCheck size={32} />
                         </div>
@@ -31,6 +32,18 @@ export default function HowItWorksPage() {
                         <p className="text-bone-white/70 leading-relaxed mb-6 font-mono">
                             SME (Subject Matter Expert) is built on the principle of verifiable truth. Unlike traditional platforms where anyone can claim expertise, our system validates claims through rigorous vetting and community auditing.
                         </p>
+
+                        {/* Visual Diagram - Verification Flow */}
+                        <div className="mb-8 rounded-xl overflow-hidden border border-translucent-emerald/30 shadow-lg">
+                            <Image
+                                src="/brain/52afa08e-2573-45b3-86d9-9dfba300a867/verification_flow_1768278844202.png"
+                                alt="SME Verification Flow: From Evidence to Verified Signal"
+                                width={600}
+                                height={300}
+                                className="w-full h-auto"
+                            />
+                        </div>
+
                         <ul className="space-y-3 font-mono text-sm text-bone-white/80">
                             <li className="flex items-center gap-3">
                                 <span className="w-2 h-2 bg-sme-gold rounded-full" />
@@ -46,51 +59,89 @@ export default function HowItWorksPage() {
                             </li>
                         </ul>
                     </div>
-                    <div className="bg-muted-moss/30 border border-translucent-emerald rounded-2xl p-8">
-                        <h3 className="text-xl font-semibold mb-4 text-heart-green">The Lens of Truth</h3>
-                        <p className="text-sm text-bone-white/60 mb-6">
-                            Every product is analyzed through our 9-pillar framework, ensuring that only the highest quality products rise to the top.
+                    <div className="bg-muted-moss/30 border border-translucent-emerald rounded-2xl p-8 overflow-hidden">
+                        <h3 id="nine-pillars" className="text-2xl font-serif font-semibold mb-4 text-heart-green text-center">The 9-Pillar Framework</h3>
+                        <p className="text-sm text-bone-white/70 mb-8 text-center max-w-2xl mx-auto font-mono">
+                            Every product is analyzed through our comprehensive 9-pillar framework, ensuring that only the highest quality products rise to the top.
                         </p>
-                        {/* Visual representation placeholder */}
-                        <div className="grid gap-4">
-                            <h4 className="font-mono text-sme-gold text-xs uppercase tracking-wider mb-2">The Framework</h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                                <div className="bg-forest-obsidian p-3 rounded border border-white/5">
-                                    <span className="text-lg mr-2">🧪</span> <strong className="text-white">Purity</strong>
-                                    <p className="text-xs text-white/50 mt-1">Absence of heavy metals & contaminants.</p>
+
+                        {/* Visual Diagram */}
+                        <div className="mb-8 flex justify-center">
+                            <div className="relative w-full max-w-md rounded-xl overflow-hidden">
+                                <Image
+                                    src="/brain/52afa08e-2573-45b3-86d9-9dfba300a867/nine_pillar_framework_1768278827493.png"
+                                    alt="The 9-Pillar Framework: A comprehensive health product analysis system"
+                                    width={600}
+                                    height={600}
+                                    className="w-full h-auto"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Pillar Details Grid */}
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+                            <div className="bg-forest-obsidian p-4 rounded-lg border border-white/5 hover:border-sme-gold/30 transition-colors">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-xl">🧪</span>
+                                    <strong className="text-white font-semibold">Purity</strong>
                                 </div>
-                                <div className="bg-forest-obsidian p-3 rounded border border-white/5">
-                                    <span className="text-lg mr-2">💊</span> <strong className="text-white">Bioavailability</strong>
-                                    <p className="text-xs text-white/50 mt-1">Absorption efficiency & uptake.</p>
+                                <p className="text-xs text-white/50 leading-relaxed">Absence of heavy metals, contaminants, and adulterants.</p>
+                            </div>
+                            <div className="bg-forest-obsidian p-4 rounded-lg border border-white/5 hover:border-sme-gold/30 transition-colors">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-xl">💊</span>
+                                    <strong className="text-white font-semibold">Bioavailability</strong>
                                 </div>
-                                <div className="bg-forest-obsidian p-3 rounded border border-white/5">
-                                    <span className="text-lg mr-2">⚡</span> <strong className="text-white">Potency</strong>
-                                    <p className="text-xs text-white/50 mt-1">Active ingredients match label claims.</p>
+                                <p className="text-xs text-white/50 leading-relaxed">Absorption efficiency and cellular uptake mechanisms.</p>
+                            </div>
+                            <div className="bg-forest-obsidian p-4 rounded-lg border border-white/5 hover:border-sme-gold/30 transition-colors">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-xl">⚡</span>
+                                    <strong className="text-white font-semibold">Potency</strong>
                                 </div>
-                                <div className="bg-forest-obsidian p-3 rounded border border-white/5">
-                                    <span className="text-lg mr-2">📊</span> <strong className="text-white">Evidence</strong>
-                                    <p className="text-xs text-white/50 mt-1">Clinical research backing benefits.</p>
+                                <p className="text-xs text-white/50 leading-relaxed">Active ingredients match label claims and therapeutic doses.</p>
+                            </div>
+                            <div className="bg-forest-obsidian p-4 rounded-lg border border-white/5 hover:border-sme-gold/30 transition-colors">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-xl">📊</span>
+                                    <strong className="text-white font-semibold">Evidence</strong>
                                 </div>
-                                <div className="bg-forest-obsidian p-3 rounded border border-white/5">
-                                    <span className="text-lg mr-2">🌱</span> <strong className="text-white">Sustainability</strong>
-                                    <p className="text-xs text-white/50 mt-1"> eco-impact of sourcing & packaging.</p>
+                                <p className="text-xs text-white/50 leading-relaxed">Clinical research and peer-reviewed studies backing benefits.</p>
+                            </div>
+                            <div className="bg-forest-obsidian p-4 rounded-lg border border-white/5 hover:border-sme-gold/30 transition-colors">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-xl">🌱</span>
+                                    <strong className="text-white font-semibold">Sustainability</strong>
                                 </div>
-                                <div className="bg-forest-obsidian p-3 rounded border border-white/5">
-                                    <span className="text-lg mr-2">✨</span> <strong className="text-white">Experience</strong>
-                                    <p className="text-xs text-white/50 mt-1">Taste, texture, and usage feel.</p>
+                                <p className="text-xs text-white/50 leading-relaxed">Environmental impact of sourcing, production, and packaging.</p>
+                            </div>
+                            <div className="bg-forest-obsidian p-4 rounded-lg border border-white/5 hover:border-sme-gold/30 transition-colors">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-xl">✨</span>
+                                    <strong className="text-white font-semibold">Experience</strong>
                                 </div>
-                                <div className="bg-forest-obsidian p-3 rounded border border-white/5">
-                                    <span className="text-lg mr-2">🛡️</span> <strong className="text-white">Safety</strong>
-                                    <p className="text-xs text-white/50 mt-1">Side effects & contraindications.</p>
+                                <p className="text-xs text-white/50 leading-relaxed">Taste, texture, ease of use, and overall user experience.</p>
+                            </div>
+                            <div className="bg-forest-obsidian p-4 rounded-lg border border-white/5 hover:border-sme-gold/30 transition-colors">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-xl">🛡️</span>
+                                    <strong className="text-white font-semibold">Safety</strong>
                                 </div>
-                                <div className="bg-forest-obsidian p-3 rounded border border-white/5">
-                                    <span className="text-lg mr-2">🔍</span> <strong className="text-white">Transparency</strong>
-                                    <p className="text-xs text-white/50 mt-1">Full disclosure of testing & sourcing.</p>
+                                <p className="text-xs text-white/50 leading-relaxed">Side effects, contraindications, and long-term safety data.</p>
+                            </div>
+                            <div className="bg-forest-obsidian p-4 rounded-lg border border-white/5 hover:border-sme-gold/30 transition-colors">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-xl">🔍</span>
+                                    <strong className="text-white font-semibold">Transparency</strong>
                                 </div>
-                                <div className="bg-forest-obsidian p-3 rounded border border-white/5 sm:col-span-2">
-                                    <span className="text-lg mr-2">🔗</span> <strong className="text-white">Synergy</strong>
-                                    <p className="text-xs text-white/50 mt-1">Ingredient interactions & entourage effect.</p>
+                                <p className="text-xs text-white/50 leading-relaxed">Full disclosure of testing, sourcing, and manufacturing.</p>
+                            </div>
+                            <div className="bg-forest-obsidian p-4 rounded-lg border border-white/5 hover:border-sme-gold/30 transition-colors sm:col-span-2 lg:col-span-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-xl">🔗</span>
+                                    <strong className="text-white font-semibold">Synergy</strong>
                                 </div>
+                                <p className="text-xs text-white/50 leading-relaxed">Ingredient interactions and entourage effect optimization.</p>
                             </div>
                         </div>
                     </div>
@@ -102,56 +153,90 @@ export default function HowItWorksPage() {
                         {/* Background decoration */}
                         <div className="absolute top-0 right-0 w-64 h-64 bg-sme-gold/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
 
-                        <div className="relative z-10 grid md:grid-cols-2 gap-12 items-center">
-                            <div>
-                                <h2 className="text-3xl font-serif font-semibold mb-6">Signal vs. Noise</h2>
-                                <p className="text-bone-white/80 leading-relaxed mb-6 font-mono text-sm">
+                        <div className="relative z-10">
+                            <div className="text-center mb-8">
+                                <h2 className="text-3xl font-serif font-semibold mb-4">Signal vs. Noise</h2>
+                                <p className="text-bone-white/80 leading-relaxed font-mono text-sm max-w-3xl mx-auto">
                                     In an era of information overload, SME helps you filter for truth. We use specific terminology to describe the quality of information on our platform.
                                 </p>
+                            </div>
 
-                                <div className="space-y-6">
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <div className="w-2 h-2 rounded-full bg-heart-green shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                                            <h3 className="font-serif text-lg font-medium text-bone-white">Signal</h3>
-                                        </div>
-                                        <p className="pl-4 border-l border-heart-green/30 text-sm text-bone-white/60 font-mono">
-                                            Credible, high-value information. Validated by scientific evidence and community consensus. When we say a product has &quot;Strong Signal,&quot; it means the community and data agree on its efficacy.
-                                        </p>
+                            {/* Visual Diagram */}
+                            <div className="mb-10 flex justify-center">
+                                <div className="relative w-full max-w-2xl rounded-xl overflow-hidden border border-translucent-emerald/50">
+                                    <Image
+                                        src="/brain/52afa08e-2573-45b3-86d9-9dfba300a867/signal_vs_noise_diagram_1768278815749.png"
+                                        alt="Signal vs Noise: How SME filters credible information from misinformation"
+                                        width={800}
+                                        height={800}
+                                        className="w-full h-auto"
+                                        priority
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                                <div className="bg-forest-obsidian/50 border border-heart-green/30 rounded-xl p-6">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="w-3 h-3 rounded-full bg-heart-green shadow-[0_0_12px_rgba(16,185,129,0.6)]" />
+                                        <h3 className="font-serif text-xl font-semibold text-bone-white">Signal</h3>
                                     </div>
-
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <div className="w-2 h-2 rounded-full bg-red-500/50" />
-                                            <h3 className="font-serif text-lg font-medium text-bone-white">Noise</h3>
+                                    <p className="text-sm text-bone-white/70 font-mono leading-relaxed mb-4">
+                                        Credible, high-value information validated by scientific evidence and community consensus.
+                                    </p>
+                                    <div className="space-y-2 text-xs font-mono text-bone-white/60">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-heart-green">✓</span>
+                                            <span>Peer-reviewed research</span>
                                         </div>
-                                        <p className="pl-4 border-l border-red-500/20 text-sm text-bone-white/60 font-mono">
-                                            Misinformation, marketing fluff, and unverified claims. Our goal is to reduce noise so you can focus on what actually works.
-                                        </p>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-heart-green">✓</span>
+                                            <span>Lab-verified claims</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-heart-green">✓</span>
+                                            <span>Community-validated experiences</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-heart-green">✓</span>
+                                            <span>Transparent sourcing</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-forest-obsidian/50 border border-red-500/30 rounded-xl p-6">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="w-3 h-3 rounded-full bg-red-500/50" />
+                                        <h3 className="font-serif text-xl font-semibold text-bone-white">Noise</h3>
+                                    </div>
+                                    <p className="text-sm text-bone-white/70 font-mono leading-relaxed mb-4">
+                                        Misinformation, marketing fluff, and unverified claims that obscure the truth.
+                                    </p>
+                                    <div className="space-y-2 text-xs font-mono text-bone-white/60">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-red-500/70">✗</span>
+                                            <span>Unsubstantiated marketing claims</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-red-500/70">✗</span>
+                                            <span>Anecdotal evidence without context</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-red-500/70">✗</span>
+                                            <span>Biased or paid testimonials</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-red-500/70">✗</span>
+                                            <span>Misleading ingredient lists</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Visual/Infographic Placeholder */}
-                            <div className="bg-forest-obsidian border border-translucent-emerald rounded-xl p-6 flex flex-col items-center justify-center min-h-[240px] relative">
-                                <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-5" />
-
-                                {/* Simple CSS-only visualization */}
-                                <div className="relative w-full max-w-[280px]">
-                                    {/* Waveform graphic representation */}
-                                    <div className="flex items-end justify-between h-24 gap-1 mb-4 opacity-80">
-                                        {[40, 60, 30, 80, 50, 90, 40, 70, 30, 50, 20, 60, 40, 80, 50].map((h, i) => (
-                                            <div
-                                                key={i}
-                                                className={`w-3 rounded-t-sm transition-all duration-500 ${i % 2 === 0 ? 'bg-sme-gold' : 'bg-heart-green'}`}
-                                                style={{ height: `${h}%`, opacity: i > 3 && i < 11 ? 1 : 0.3 }}
-                                            />
-                                        ))}
-                                    </div>
-                                    <div className="text-center">
-                                        <span className="text-xs font-mono uppercase tracking-widest text-bone-white/40">Filtering for Truth</span>
-                                    </div>
-                                </div>
+                            <div className="mt-8 text-center">
+                                <p className="text-sm font-mono text-sme-gold/80 italic">
+                                    When you see &quot;Strong Signal&quot; on a product, it means both the data and the community agree on its efficacy.
+                                </p>
                             </div>
                         </div>
                     </div>

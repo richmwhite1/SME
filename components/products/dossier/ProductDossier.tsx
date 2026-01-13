@@ -143,7 +143,7 @@ export default function ProductDossier(props: ProductDossierProps) {
                         <NinePillarDetail
                             avgScores={props.avgSMEScores}
                             reviewCount={props.smeReviewCount}
-                            initiallyExpanded={true}
+                            initiallyExpanded={false}
                         />
 
                         {/* SME Reviews List Placeholder */}
