@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Search, FlaskConical, MessageSquare, BookOpen, Award, Loader2, Sparkles } from "lucide-react";
+import { Search, FlaskConical, MessageSquare, BookOpen, Award, Loader2, Sparkles, ChevronRight } from "lucide-react";
 import { searchGlobal } from "@/app/actions/search-actions";
 
 interface SearchResult {
@@ -319,22 +319,27 @@ export default function SearchBar({ onExpand, onCollapse, autoFocus = false }: S
                 const { category, color } = getCategoryTag(type);
                 return (
                   <div key={type} className="border-b border-translucent-emerald last:border-b-0">
-                    <div className={`bg-forest-obsidian px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider ${color}`} style={{ fontVariant: 'small-caps' }}>
-                      [{category}] ({typeResults.length})
+                    <div className="bg-forest-obsidian/80 px-3 py-2 border-b border-translucent-emerald/50 flex items-center gap-2">
+                      <span className={`text-[10px] font-mono uppercase tracking-wider font-bold ${color}`}>
+                        {category}
+                      </span>
+                      <span className="text-[10px] text-bone-white/30 font-mono">
+                        ({typeResults.length})
+                      </span>
                     </div>
                     {typeResults.map((result, index) => (
                       <button
                         key={`${result.result_id}-${index}`}
                         onClick={() => handleResultClick(result)}
-                        className="w-full px-3 py-2.5 text-left transition-colors hover:bg-forest-obsidian border-b border-translucent-emerald last:border-b-0"
+                        className="w-full px-3 py-2.5 text-left transition-colors hover:bg-forest-obsidian/50 border-b border-translucent-emerald/30 last:border-b-0 group"
                       >
                         <div className="flex items-start gap-2.5">
-                          <div className="mt-0.5 flex-shrink-0">
+                          <div className="mt-0.5 flex-shrink-0 opacity-70 group-hover:opacity-100 transition-opacity">
                             {getResultIcon(result.result_type)}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-sm font-medium text-bone-white truncate">
+                              <span className="text-sm font-medium text-bone-white truncate group-hover:text-sme-gold transition-colors">
                                 {highlightText(result.title, query)}
                               </span>
                               {result.is_sme_certified && result.result_type === "Product" && (
@@ -345,17 +350,17 @@ export default function SearchBar({ onExpand, onCollapse, autoFocus = false }: S
                             </div>
                             {/* Display content_snippet (or snippet) below title */}
                             {(result.content_snippet || result.snippet) ? (
-                              <p className="text-xs text-bone-white/70 line-clamp-2 font-mono leading-relaxed mb-1">
+                              <p className="text-xs text-bone-white/60 line-clamp-2 font-mono leading-relaxed mb-1 group-hover:text-bone-white/80 transition-colors">
                                 {highlightText(result.content_snippet || result.snippet || "", query)}
                               </p>
                             ) : (
-                              <p className="text-xs text-bone-white/70 line-clamp-1 font-mono mb-1">
+                              <p className="text-xs text-bone-white/60 line-clamp-1 font-mono mb-1 group-hover:text-bone-white/80 transition-colors">
                                 {highlightText(result.content.substring(0, 70), query)}
                                 {result.content.length > 70 ? "..." : ""}
                               </p>
                             )}
                             {result.author_name && (
-                              <p className="mt-0.5 text-[10px] text-bone-white/50 font-mono">
+                              <p className="mt-0.5 text-[10px] text-bone-white/40 font-mono">
                                 by {result.author_name}
                                 {result.author_username && ` @${result.author_username}`}
                               </p>
@@ -371,9 +376,9 @@ export default function SearchBar({ onExpand, onCollapse, autoFocus = false }: S
                 <div className="border-t border-translucent-emerald bg-forest-obsidian px-3 py-2">
                   <button
                     onClick={handleSubmit}
-                    className="w-full text-left text-xs font-medium text-bone-white/80 hover:text-bone-white font-mono"
+                    className="w-full text-left text-xs font-medium text-bone-white/80 hover:text-bone-white font-mono flex items-center gap-1 group"
                   >
-                    View all results for &quot;{query}&quot; →
+                    View all results for &quot;{query}&quot; <ChevronRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
                   </button>
                 </div>
               )}

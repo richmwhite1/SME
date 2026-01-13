@@ -150,7 +150,8 @@ export async function createDiscussionComment(
   references?: ResourceReference[],
   postType?: 'verified_insight' | 'community_experience',
   pillarOfTruth?: string | null,
-  isOfficialResponse?: boolean
+  isOfficialResponse?: boolean,
+  xPostUrl?: string
 ) {
   const user = await currentUser();
   const sql = getDb();
@@ -210,12 +211,12 @@ export async function createDiscussionComment(
       const result = await sql`
         INSERT INTO discussion_comments (
           discussion_id, author_id, content, parent_id, flag_count, is_flagged, is_official_response,
-          post_type, pillar_of_truth
+          post_type, pillar_of_truth, metadata
         )
         VALUES (
           ${discussionId}, ${user.id}, ${trimmedContent}, ${parentId || null},
           ${shouldAutoFlag ? 1 : 0}, ${shouldAutoFlag}, ${isOfficialResponse && canMarkOfficial ? true : false},
-          ${finalPostType}, ${finalPillar}
+          ${finalPostType}, ${finalPillar}, ${xPostUrl ? { x_post_url: xPostUrl } : null}
         )
         RETURNING id
       `;
@@ -373,7 +374,8 @@ export async function createGuestComment(
   content: string,
   guestName: string,
   discussionSlug: string,
-  parentId?: string
+  parentId?: string,
+  xPostUrl?: string
 ) {
   const user = await currentUser();
   const sql = getDb();
@@ -415,10 +417,11 @@ export async function createGuestComment(
     // Insert guest comment using raw SQL
     const result = await sql`
       INSERT INTO discussion_comments (
-        discussion_id, author_id, guest_name, content, parent_id, flag_count, is_flagged, status
+        discussion_id, author_id, guest_name, content, parent_id, flag_count, is_flagged, status, metadata
       )
       VALUES (
-        ${discussionId}, NULL, ${trimmedGuestName}, ${trimmedContent}, ${parentId || null}, 0, false, ${commentStatus}
+        ${discussionId}, NULL, ${trimmedGuestName}, ${trimmedContent}, ${parentId || null}, 0, false, ${commentStatus},
+        ${xPostUrl ? { x_post_url: xPostUrl } : null}
       )
       RETURNING id
     `;
@@ -674,6 +677,7 @@ export async function getDiscussionComments(discussionId: string) {
         dc.is_flagged,
         dc.insight_summary,
         dc.upvote_count,
+        dc.metadata,
         p.id as author_id,
         p.full_name,
         p.username,
@@ -700,8 +704,7 @@ export async function getDiscussionComments(discussionId: string) {
       ORDER BY dc.created_at ASC
     `;
 
-    // Transform flat result to nested structure expected by UI
-    return comments.map(c => ({
+    return comments.map((c: any) => ({
       id: c.id,
       content: c.content,
       created_at: c.created_at,
@@ -710,6 +713,7 @@ export async function getDiscussionComments(discussionId: string) {
       is_flagged: c.is_flagged || false,
       insight_summary: c.insight_summary,
       upvote_count: c.upvote_count || 0,
+      metadata: c.metadata || {},
       profiles: c.author_id ? {
         id: c.author_id,
         full_name: c.full_name,

@@ -1,6 +1,5 @@
-'use client';
-
 import React from 'react';
+import Image from 'next/image';
 import { type SMEReview } from '@/app/actions/product-sme-review-actions';
 import { Award, User } from 'lucide-react';
 
@@ -85,11 +84,14 @@ export default function SMEAuditsList({ reviews }: SMEAuditsListProps) {
                         <div className="flex items-start gap-4 mb-6 pb-4 border-b border-white/10">
                             <div className="flex-shrink-0">
                                 {review.sme_profile?.avatar_url ? (
-                                    <img
-                                        src={review.sme_profile.avatar_url}
-                                        alt={review.sme_profile.full_name || 'SME'}
-                                        className="h-12 w-12 rounded-full border-2 border-sme-gold/50"
-                                    />
+                                    <div className="relative h-12 w-12 rounded-full border-2 border-sme-gold/50 overflow-hidden">
+                                        <Image
+                                            src={review.sme_profile.avatar_url}
+                                            alt={review.sme_profile.full_name || 'SME'}
+                                            fill
+                                            className="object-cover"
+                                        />
+                                    </div>
                                 ) : (
                                     <div className="h-12 w-12 rounded-full bg-sme-gold/20 border-2 border-sme-gold/50 flex items-center justify-center">
                                         <User className="h-6 w-6 text-sme-gold" />

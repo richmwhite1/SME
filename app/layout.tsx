@@ -34,8 +34,18 @@ const geistMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Holistic Community Protocol",
-  description: "Community-driven protocols for the gut, heart, and mind",
+  metadataBase: new URL("https://sme-production.up.railway.app"),
+  title: {
+    template: "%s | The Health SME",
+    default: "The Health SME - Evidence Meets Experience",
+  },
+  description: "Community-driven protocols for the gut, heart, and mind. Verify health products with scientific rigor and community experience.",
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://sme-production.up.railway.app",
+    siteName: "The Health SME",
+  },
 };
 
 export default function RootLayout({

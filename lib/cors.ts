@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
  */
 const allowedOrigins = [
   "http://localhost:3000",
+  "http://localhost:3003",
   "http://127.0.0.1:3000",
   process.env.NEXT_PUBLIC_APP_URL,
 ].filter(Boolean);

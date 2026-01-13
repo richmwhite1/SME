@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
@@ -12,6 +14,7 @@ import {
     ExternalLink,
     CornerDownRight
 } from "lucide-react";
+import { Tweet } from "react-tweet";
 import { Comment } from "@/types/comment";
 import AvatarLink from "@/components/profile/AvatarLink";
 import UserBadge from "@/components/UserBadge";
@@ -217,6 +220,13 @@ export default function WaterfallComment({
                     <CitationText content={comment.content} />
                 </div>
 
+                {/* X/Twitter Embed */}
+                {comment.metadata?.x_post_url && (
+                    <div className="mt-3 max-w-[500px] border border-white/10 rounded-xl overflow-hidden bg-black/40">
+                        <Tweet id={comment.metadata.x_post_url.split('/status/')[1]?.split('?')[0]} />
+                    </div>
+                )}
+
                 {/* Sources/References */}
                 {comment.references && comment.references.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-2">
@@ -288,8 +298,8 @@ export default function WaterfallComment({
                         <div onClick={(e) => e.stopPropagation()}>
                             <ReactionBar
                                 resourceId={comment.id}
-                                resourceType="comment"
-                            // initialUserReactions={comment.user_reactions}
+                                resourceType={type}
+                                initialUserReactions={comment.reactions?.filter((r: any) => r.user_reacted).map((r: any) => r.emoji) || []}
                             />
                         </div>
 

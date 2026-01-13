@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import Button from "@/components/ui/Button";
 import ProductListCard from "@/components/holistic/ProductListCard";
 import LatestIntelligence from "@/components/social/LatestIntelligence";
@@ -392,7 +393,14 @@ export default async function Home() {
                     <div className="flex items-center gap-2">
                       <div className="w-6 h-6 rounded-full bg-forest-obsidian border border-translucent-emerald overflow-hidden">
                         {discussion.author_avatar ? (
-                          <img src={discussion.author_avatar} alt={discussion.author_name} className="w-full h-full object-cover" />
+                          <div className="relative w-full h-full">
+                            <Image
+                              src={discussion.author_avatar}
+                              alt={discussion.author_name}
+                              fill
+                              className="object-cover"
+                            />
+                          </div>
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-[10px] text-bone-white">
                             {discussion.author_name.charAt(0)}

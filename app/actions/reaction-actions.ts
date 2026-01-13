@@ -2,92 +2,93 @@
 
 import { currentUser } from "@clerk/nextjs/server";
 import { getDb } from "@/lib/db";
+import { recalculateUserReputation } from "./reputation-actions";
 import { revalidatePath } from "next/cache";
 
-export type ReactionType = '🧐' | '⚠️' | '🎯' | '✅' | '🧬' | '🔬';
-export type ResourceType = 'product' | 'discussion' | 'comment' | 'review';
+export type ReactionType = 'scientific' | 'experiential' | 'safety' | 'innovation' | 'reliability';
+
+export const REACTION_EMOJIS: Record<ReactionType, string> = {
+    scientific: '🔬',
+    experiential: '💡',
+    safety: '⚠️',
+    innovation: '💎',
+    reliability: '✅'
+};
+
+export const REACTION_LABELS: Record<ReactionType, string> = {
+    scientific: 'Scientific Insight',
+    experiential: 'Experiential Wisdom',
+    safety: 'Potential Concern',
+    innovation: 'Groundbreaking Idea',
+    reliability: 'Tried and True'
+};
 
 /**
- * Toggle a reaction on a resource
+ * Toggle a reaction on a comment (discussion or product)
  */
 export async function toggleReaction(
-    resourceId: string,
-    resourceType: ResourceType,
-    emoji: ReactionType,
-    path_to_revalidate?: string
+    commentId: string,
+    commentType: 'discussion' | 'product',
+    reactionType: ReactionType
 ) {
     const user = await currentUser();
     if (!user) {
-        throw new Error("You must be logged in to react");
+        return { success: false, error: "Authentication required" };
     }
 
     const sql = getDb();
 
     try {
-        // Check existing reaction
-        const existing = await sql`
-      SELECT id FROM reactions 
-      WHERE user_id = ${user.id} 
-        AND resource_id = ${resourceId}
-        AND resource_type = ${resourceType}
-        AND emoji_type = ${emoji}
-    `;
+        const table = commentType === 'discussion'
+            ? 'discussion_comment_reactions'
+            : 'product_comment_reactions';
 
-        let active = false;
+        // Check if reaction exists
+        const existing = await sql.unsafe(`
+            SELECT id FROM ${table}
+            WHERE user_id = $1 AND comment_id = $2 AND reaction_type = $3
+        `, [user.id, commentId, reactionType]);
+
+        let action: 'added' | 'removed';
 
         if (existing.length > 0) {
             // Remove reaction
-            await sql`DELETE FROM reactions WHERE id = ${existing[0].id}`;
-            active = false;
+            await sql.unsafe(`
+                DELETE FROM ${table}
+                WHERE user_id = $1 AND comment_id = $2 AND reaction_type = $3
+            `, [user.id, commentId, reactionType]);
+            action = 'removed';
         } else {
             // Add reaction
-            await sql`
-        INSERT INTO reactions (user_id, resource_id, resource_type, emoji_type)
-        VALUES (${user.id}, ${resourceId}, ${resourceType}, ${emoji})
-      `;
-            active = true;
-
-            // ADMIN ALERT LOGIC
-            // If emoji is ⚠️ (Dangerous) or 🧐 (Curious), check count
-            if (emoji === '⚠️' || emoji === '🧐') {
-                const countResult = await sql`
-            SELECT COUNT(*) as count FROM reactions
-            WHERE resource_id = ${resourceId}
-              AND emoji_type = ${emoji}
-          `;
-                const count = parseInt(countResult[0].count);
-                if (count > 3) {
-                    // Create Flag in Moderation Queue
-                    // Check if already flagged?
-                    // For now, simpler to just insert into moderation_queue if not exists?
-                    // Database schema has moderation_queue.
-
-                    const contentTypeMap: Record<string, string> = {
-                        'discussion': 'discussion',
-                        'comment': 'comment',
-                        'review': 'review',
-                        'product': 'product' // moderation_queue handles product? Schema said 'discussion', 'comment', 'review'.
-                        // Schema: content_type CHECK (content_type IN ('discussion', 'comment', 'review'))
-                        // If product, maybe we can't flag it there easily.
-                    };
-
-                    const mType = contentTypeMap[resourceType];
-                    if (mType && mType !== 'product') { // Skip product for now if schema restricts
-                        await sql`
-                    INSERT INTO moderation_queue (content_type, content_id, reason, status)
-                    VALUES (${mType}, ${resourceId}, ${`High volume of ${emoji} reactions`}, 'pending')
-                    ON CONFLICT DO NOTHING -- uuid primary key, so conflict unlikely unless we have unique constraint on content_id? We don't.
-                  `;
-                    }
-                }
-            }
+            await sql.unsafe(`
+                INSERT INTO ${table} (user_id, comment_id, reaction_type)
+                VALUES ($1, $2, $3)
+            `, [user.id, commentId, reactionType]);
+            action = 'added';
         }
 
-        if (path_to_revalidate) {
-            revalidatePath(path_to_revalidate);
+        // Trigger reputation update for the comment author
+        // First get the author ID
+        const commentTable = commentType === 'discussion' ? 'discussion_comments' : 'product_comments';
+        const authorQuery = await sql.unsafe(`
+            SELECT ${commentType === 'discussion' ? 'author_id' : 'user_id'} as author_id
+            FROM ${commentTable}
+            WHERE id = $1
+        `, [commentId]);
+
+        if (authorQuery.length > 0) {
+            const authorId = authorQuery[0].author_id;
+            // We don't await this to keep UI responsive? 
+            // Actually better to await to ensure consistency or rely on trigger/queue if we implemented one.
+            // Our DB function logic has recalculate_and_update_reputation which we can call.
+            // But let's use the exported action which is safer.
+            await recalculateUserReputation(authorId);
         }
 
-        return { success: true, active };
+        // Revalidate paths - difficult to know exact path, so we might need client to refresh or optimistic updates.
+        // For now we return success and client updates state.
+
+        return { success: true, action };
 
     } catch (error: any) {
         console.error("Error toggling reaction:", error);
@@ -96,44 +97,60 @@ export async function toggleReaction(
 }
 
 /**
- * Get reaction summary for a resource
+ * Get reactions for a specific comment
  */
-export async function getReactionSummary(resourceId: string, resourceType: ResourceType) {
-    const sql = getDb();
-
-    // Get top 3 emojis
-    const summary = await sql`
-        SELECT emoji_type, COUNT(*) as count
-        FROM reactions
-        WHERE resource_id = ${resourceId}
-          AND resource_type = ${resourceType}
-        GROUP BY emoji_type
-        ORDER BY count DESC
-        LIMIT 3
-    `;
-
-    // Get current user's reactions if logged in?
-    // Client component can fetch user state or we can return it here? 
-    // Usually easier to fetch strictly "my reactions" separately or include in `reactions` list.
-    // For now returning summary.
-
-    return summary;
-}
-
-/**
- * Get current user's reactions for a resource
- */
-export async function getUserReactions(resourceId: string, resourceType: ResourceType) {
+export async function getCommentReactions(
+    commentId: string,
+    commentType: 'discussion' | 'product'
+) {
     const user = await currentUser();
-    if (!user) return [];
-
     const sql = getDb();
-    const reactions = await sql`
-        SELECT emoji_type FROM reactions
-        WHERE user_id = ${user.id}
-          AND resource_id = ${resourceId}
-          AND resource_type = ${resourceType}
-    `;
+    const currentUserId = user?.id;
 
-    return reactions.map(r => r.emoji_type);
+    try {
+        const table = commentType === 'discussion'
+            ? 'discussion_comment_reactions'
+            : 'product_comment_reactions';
+
+        // Get counts and user status
+        // We want to return an array of { type: ReactionType, count: number, userReated: boolean }
+
+        const results = await sql.unsafe(`
+            SELECT 
+                reaction_type,
+                COUNT(*)::int as count,
+                BOOL_OR(user_id = $1) as user_reacted
+            FROM ${table}
+            WHERE comment_id = $2
+            GROUP BY reaction_type
+        `, [currentUserId || 'NO_USER', commentId]);
+
+        // Format results to always include all types? Or just returned ones?
+        // UI expects all types usually.
+
+        const reactionsMap = new Map();
+        results.forEach((r: any) => {
+            reactionsMap.set(r.reaction_type, {
+                count: r.count,
+                user_reacted: r.user_reacted || false
+            });
+        });
+
+        const formattedReactions = Object.keys(REACTION_EMOJIS).map(type => {
+            const data = reactionsMap.get(type) || { count: 0, user_reacted: false };
+            return {
+                reaction_type: type as ReactionType,
+                emoji: REACTION_EMOJIS[type as ReactionType],
+                label: REACTION_LABELS[type as ReactionType],
+                count: data.count,
+                user_reacted: data.user_reacted
+            };
+        });
+
+        return { success: true, data: formattedReactions };
+
+    } catch (error: any) {
+        console.error("Error fetching reactions:", error);
+        return { success: false, error: error.message };
+    }
 }

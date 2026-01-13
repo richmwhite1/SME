@@ -54,8 +54,21 @@ export default function SMEBadge({
     // BUT the prompt asked for "Green/Leaf". I should check if Leaf is available in Lucide or add it.
     // I'll stick to the existing imports first to avoid breaking changes, but I should probably add Leaf.
 
-    const config = typeConfig[type];
+    const config = typeConfig[type as keyof typeof typeConfig] || typeConfig.scientific;
     const Icon = config.icon;
+
+    // Safety check: if type passed doesn't match and we fell back, but maybe we shouldn't render if it's completely wrong?
+    // Actually, fallback to scientific is probably safe enough for now to prevent crash, 
+    // but better might be to return null if the type isn't recognized and it wasn't optional?
+    // The props say type is optional, defaulting to scientific.
+    // But if "Trusted Voice" is passed, it falls into the lookup.
+
+    // Better logic:
+    if (!typeConfig[type as keyof typeof typeConfig]) {
+        // If the type is not one of our SME types, we probably shouldn't render an SME badge for it.
+        // e.g. "Trusted Voice" or "Member" shouldn't get a fake "Scientific" badge.
+        return null;
+    }
 
     return (
         <div

@@ -216,6 +216,7 @@ export default async function LiveLedger() {
                                         <Link
                                             href={`/products/${entry.target_slug}`}
                                             className="text-xs text-bone-white/50 hover:text-sme-gold transition-colors flex items-center gap-1"
+                                            aria-label={`View ${entry.target_name} details`}
                                         >
                                             <ExternalLink size={12} />
                                         </Link>

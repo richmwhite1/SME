@@ -79,6 +79,9 @@ export default function CommentForm({
   // Star rating state (for products only)
   const [starRating, setStarRating] = useState<number | null>(null);
 
+  // X Post URL state
+  const [xPostUrl, setXPostUrl] = useState("");
+
   // Discussion pages: Guests cannot comment
   const isDiscussion = type === "discussion";
   const canGuestComment = !isDiscussion; // Only products allow guest comments
@@ -196,7 +199,8 @@ export default function CommentForm({
             sourceLink.trim() || null,
             postType,
             pillarOfTruth,
-            starRating // Add star rating
+            starRating, // Add star rating
+            xPostUrl.trim() || undefined
           );
 
           console.log('[CommentForm] Server response:', result);
@@ -216,7 +220,9 @@ export default function CommentForm({
             parentId,
             references,
             postType,
-            pillarOfTruth
+            pillarOfTruth,
+            undefined, // isOfficialResponse
+            xPostUrl.trim() || undefined
           );
         }
       } else {
@@ -237,7 +243,8 @@ export default function CommentForm({
             content.trim(),
             guestName.trim(),
             productSlug,
-            starRating // Add star rating
+            starRating, // Add star rating
+            xPostUrl.trim() || undefined
           );
 
           console.log('[CommentForm] Guest Server response:', result);
@@ -259,6 +266,7 @@ export default function CommentForm({
       setGuestName("");
       setPillarOfTruth(null);
       setStarRating(null); // Reset star rating
+      setXPostUrl(""); // Reset X URL
       setError(null);
 
       if (onSuccess) {
@@ -500,6 +508,23 @@ export default function CommentForm({
         </>
       )}
 
+      {/* X Post URL Input (for both Discussions and Products) */}
+      <div className="space-y-2 pb-3 border-b border-translucent-emerald/50">
+        <label className="block text-xs font-mono uppercase tracking-wider text-bone-white/70">
+          Embed X Post (Optional)
+        </label>
+        <input
+          type="url"
+          value={xPostUrl}
+          onChange={(e) => setXPostUrl(e.target.value)}
+          placeholder="https://x.com/username/status/..."
+          className="w-full bg-forest-obsidian border border-translucent-emerald px-3 py-2 text-sm text-bone-white placeholder-bone-white/50 focus:border-heart-green focus:outline-none font-mono"
+        />
+        {xPostUrl && !isValidXUrl(xPostUrl) && (
+          <p className="text-xs text-red-400 font-mono">Invalid X URL. Must be like x.com/user/status/123...</p>
+        )}
+      </div>
+
       {/* Error Message */}
       {error && (
         <div className="rounded border border-red-500/50 bg-red-500/10 p-2 text-xs text-red-400 font-mono">
@@ -517,7 +542,7 @@ export default function CommentForm({
         <Button
           type="submit"
           variant="primary"
-          disabled={loading || !content.trim() || (!isSignedIn && !guestName.trim())}
+          disabled={loading || !content.trim() || (!isSignedIn && !guestName.trim()) || (!!xPostUrl && !isValidXUrl(xPostUrl))}
           className="flex items-center gap-2 text-xs font-mono border border-sme-gold bg-sme-gold text-bone-white hover:bg-[#9A7209] hover:border-[#9A7209] hover:text-bone-white uppercase tracking-wider active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? (
@@ -535,6 +560,17 @@ export default function CommentForm({
       </div>
     </form>
   );
+}
+
+// Helper for X URL validation
+function isValidXUrl(url: string) {
+  try {
+    const u = new URL(url);
+    return (u.hostname === 'x.com' || u.hostname === 'twitter.com' || u.hostname === 'www.x.com' || u.hostname === 'www.twitter.com') &&
+      u.pathname.includes('/status/');
+  } catch {
+    return false;
+  }
 }
 
 

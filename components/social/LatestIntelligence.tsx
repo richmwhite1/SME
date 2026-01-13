@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Script from "next/script";
 import { ExternalLink } from "lucide-react";
 import TelegramPulseWidget from "./TelegramPulseWidget";
 import GlobalProgressBar from "@/components/milestones/GlobalProgressBar";
@@ -30,7 +31,7 @@ export default function LatestIntelligence({
     // Option 1: Use Twitter API (requires API key in env)
     // Option 2: Use Twitter embed/iframe
     // For now, we'll create a placeholder that can be easily connected to an API
-    
+
     // If you have a Twitter API endpoint, uncomment and configure:
     /*
     async function fetchTweets() {
@@ -53,7 +54,7 @@ export default function LatestIntelligence({
     
     fetchTweets();
     */
-    
+
     // Placeholder: Set loading to false after a delay
     setTimeout(() => {
       setLoading(false);
@@ -67,15 +68,15 @@ export default function LatestIntelligence({
     <div className={`border border-translucent-emerald bg-muted-moss ${className}`}>
       {/* Global Progress Bar */}
       <GlobalProgressBar />
-      
+
       {/* Milestone Celebration Banner */}
       <div className="px-4 pt-3">
         <MilestoneBanner />
       </div>
-      
+
       {/* Telegram Pulse Widget */}
       <TelegramPulseWidget />
-      
+
       <div className="border-b border-translucent-emerald px-4 py-3">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-bone-white font-mono">
           Recent Insights
@@ -132,7 +133,7 @@ export default function LatestIntelligence({
               <ExternalLink size={14} />
             </a>
           </div>
-          
+
           {/* Optional: Twitter Timeline Embed */}
           <div className="mt-4">
             <a
@@ -144,10 +145,9 @@ export default function LatestIntelligence({
             >
               Tweets by {twitterUsername}
             </a>
-            <script
-              async
+            <Script
               src="https://platform.twitter.com/widgets.js"
-              charSet="utf-8"
+              strategy="lazyOnload"
             />
           </div>
         </div>

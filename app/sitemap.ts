@@ -15,7 +15,7 @@ interface Discussion {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sme.example.com";
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sme-production.up.railway.app";
   const sql = getDb();
 
   let products: Product[] = [];
@@ -82,11 +82,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  // Add product pages (using ID for canonical URLs)
+  // Add product pages (using slug for canonical URLs)
   if (products) {
     products.forEach((product) => {
       sitemapEntries.push({
-        url: `${baseUrl}/products/${product.id}`,
+        url: `${baseUrl}/products/${product.slug || product.id}`,
         lastModified: product.updated_at
           ? new Date(product.updated_at)
           : product.created_at

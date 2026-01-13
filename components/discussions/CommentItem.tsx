@@ -7,6 +7,7 @@ import { Lightbulb } from 'lucide-react';
 import VoteControl from '@/components/ui/VoteControl';
 import ReactionBar from '@/components/ui/ReactionBar';
 import SentimentSummary from '@/components/ui/SentimentSummary';
+import { Tweet } from 'react-tweet';
 
 export default function CommentItem({ comment, depth, discussionId, parentUsername }: any) {
   const { user } = useUser();
@@ -71,6 +72,13 @@ export default function CommentItem({ comment, depth, discussionId, parentUserna
           {comment.content}
         </p>
 
+        {/* X/Twitter Embed */}
+        {comment.metadata?.x_post_url && (
+          <div className="mt-3 max-w-[500px] border border-white/10 rounded-xl overflow-hidden bg-black/40">
+            <Tweet id={comment.metadata.x_post_url.split('/status/')[1]?.split('?')[0]} />
+          </div>
+        )}
+
         {/* REACTION SUMMARY */}
         {comment.recent_reactions && comment.recent_reactions.length > 0 && (
           <div className="mt-2">
@@ -89,8 +97,8 @@ export default function CommentItem({ comment, depth, discussionId, parentUserna
 
           <ReactionBar
             resourceId={comment.id}
-            resourceType="comment"
-          // initialUserReactions={comment.user_reactions}
+            resourceType={discussionId ? 'discussion' : 'product'}
+            initialUserReactions={comment.reactions?.filter((r: any) => r.user_reacted).map((r: any) => r.emoji) || []}
           />
 
           <button className="hover:text-sme-gold transition-colors ml-2">Reply</button>

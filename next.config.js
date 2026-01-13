@@ -62,7 +62,7 @@ const nextConfig = {
     unoptimized: false,
   },
   experimental: {
-    serverComponentsExternalPackages: ['pdf-parse', 'jsdom'],
+    serverComponentsExternalPackages: ['pdf-parse', 'jsdom', 'postgres'],
   },
 }
 

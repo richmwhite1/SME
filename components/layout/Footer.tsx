@@ -154,12 +154,12 @@ export default function Footer() {
         {/* Bottom Bar with Copyright, Version, and Social Links */}
         <div className="mt-12 border-t border-slate-800 pt-8">
           <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-            <p className="font-mono text-xs text-slate-500">
+            <p className="font-mono text-xs text-slate-400">
               © {currentYear} The Health SME. All rights reserved.
             </p>
             <div className="flex items-center gap-4">
               <SocialLinks variant="footer" />
-              <p className="font-mono text-xs text-slate-500">
+              <p className="font-mono text-xs text-slate-400">
                 {version}
               </p>
             </div>

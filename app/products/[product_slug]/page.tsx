@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { currentUser } from "@clerk/nextjs/server";
+import ProductImageGallery from "@/components/products/ProductImageGallery";
 import HeroSection from "@/components/products/dossier/HeroSection";
 import NinePillarSummary from "@/components/products/NinePillarSummary";
 import ProductDossier from "@/components/products/dossier/ProductDossier";
@@ -22,16 +24,17 @@ export const revalidate = 0;
 export async function generateMetadata({
     params,
 }: {
-    params: Promise<{ id: string }>;
+    params: Promise<{ product_slug: string }>;
 }): Promise<Metadata> {
-    const { id } = await params;
+    const { product_slug } = await params;
+    const id = product_slug; // alias for query usage
     const sql = getDb();
 
     try {
         const result = await sql`
       SELECT title, ai_summary, is_sme_certified, images, product_photos
       FROM products
-      WHERE(id:: text = ${id} OR slug = ${id})
+    WHERE(id:: text = ${id} OR slug = ${id})
         AND admin_status = 'approved'
       LIMIT 1
     `;
@@ -99,17 +102,17 @@ export async function generateMetadata({
 interface Product {
     id: string;
     title: string;
-    brand: string;
+    brand: string; // Ensure brand is fetched
     problem_solved: string;
     slug: string;
     reference_url?: string | null;
     ai_summary?: string | null;
     buy_url?: string | null;
     discount_code?: string | null;
-    lab_tested?: boolean;
-    organic?: boolean;
-    purity_verified?: boolean;
-    third_party_coa?: boolean;
+    // lab_tested?: boolean; REMOVED invalid column
+    // organic?: boolean; REMOVED invalid column
+    // purity_verified?: boolean; REMOVED invalid column
+    // third_party_coa?: boolean; REMOVED invalid column
     certification_notes?: string | null;
     lab_pdf_url?: string | null;
     is_sme_certified?: boolean;
@@ -120,20 +123,24 @@ interface Product {
     excipient_audit?: boolean;
     operational_legitimacy?: boolean;
     coa_url?: string | null;
-    product_photos?: string[] | null;
-    images?: string[] | null;
+    product_photos?: string[] | null; // New field
+    images?: string[] | null; // Legacy field
+    // Dossier View Fields
     community_consensus_score: number;
     score_scientific: number;
     score_alternative: number;
     score_esoteric: number;
     certification_vault_urls: string[] | null;
+    // Optional Fields
     founder_video_url?: string | null;
     ingredients?: string | null;
     upvote_count?: number;
+    // Brand management fields
     is_verified?: boolean;
     brand_owner_id?: string | null;
     aggregate_star_rating?: number | null;
     total_star_reviews?: number | null;
+    // New fields for enhanced display
     allergens?: string[] | null;
     dietary_tags?: string[] | null;
     price?: string | null;
@@ -148,6 +155,7 @@ interface Product {
     excipients?: string[] | null;
     certifications?: string[] | null;
     technical_docs_url?: string | null;
+    // Phase 1 enhancement fields
     category?: string | null;
     lab_report_url?: string | null;
     serving_size?: string | null;
@@ -167,18 +175,24 @@ interface Signal {
 export default async function ProductDetailPage({
     params,
 }: {
-    params: Promise<{ id: string }>;
+    params: Promise<{ product_slug: string }>;
 }) {
-    const { id } = await params;
+    // Await params (Next.js 15+ requirement)
+    const { product_slug } = await params;
+    const id = product_slug; // alias
+    const user = await currentUser();
     const sql = getDb();
 
-    console.log("Product Detail Page (Dossier) - Fetching product with ID:", id);
+    console.log("Product Detail Page (Dossier) - Fetching via [product_slug]:", id);
+    console.log("DEBUG: Router Transplant Successful");
     try {
-        // Fetch product details - NOTE: allergens and core_value_proposition columns don't exist in DB
+        // 1. Fetch product details with new fields
         const productResult = await sql`
     SELECT
-      *,
-      COALESCE(brand, 'Unknown Brand') as brand,
+      id, title, problem_solved, ai_summary, buy_url, discount_code,
+      is_sme_certified, third_party_lab_verified, purity_tested,
+      source_transparency, potency_verified, excipient_audit, operational_legitimacy,
+      coa_url, product_photos, images, slug,
       COALESCE(community_consensus_score, 0) as community_consensus_score,
       COALESCE(score_scientific, 0) as score_scientific,
       COALESCE(score_alternative, 0) as score_alternative,
@@ -204,9 +218,9 @@ export default async function ProductDetailPage({
       lab_report_url,
       serving_size,
       servings_per_container,
-      formulation_type as form,
+      form,
       recommended_dosage,
-      best_time_to_take as best_time_take,
+      best_time_take,
       storage_instructions
       FROM products
     WHERE(id:: text = ${id} OR slug = ${id})
@@ -221,7 +235,7 @@ export default async function ProductDetailPage({
             notFound();
         }
 
-        // Fetch Product Truth Signals
+        // 2. Fetch Product Truth Signals
         let signals: Signal[] = [];
         try {
             const signalsResult = await sql`
@@ -235,10 +249,11 @@ export default async function ProductDetailPage({
                 reason: s.reason
             }));
         } catch (e) {
+            // Table might not exist yet or empty
             console.warn("Could not fetch signals:", e);
         }
 
-        // Construct full product object
+        // 3. Construct full product object
         const typedProduct: Product = {
             ...product,
             community_consensus_score: product.community_consensus_score || 0,
@@ -246,15 +261,18 @@ export default async function ProductDetailPage({
             score_alternative: product.score_alternative || 0,
             score_esoteric: product.score_esoteric || 0,
             certification_vault_urls: product.certification_vault_urls || [],
+            // Handle fallback for brand if missing in DB (migration might be needed if existing products don't have brand)
             brand: product.brand || "SME Verified"
         } as Product;
 
         // Handle images - Support both new product_photos (Array) and legacy images (JSON/Array)
         let imagesArray: string[] = [];
 
+        // Check new field first
         if (typedProduct.product_photos && Array.isArray(typedProduct.product_photos) && typedProduct.product_photos.length > 0) {
             imagesArray = typedProduct.product_photos;
         }
+        // Fallback to legacy field
         else if (typedProduct.images) {
             if (Array.isArray(typedProduct.images)) {
                 imagesArray = typedProduct.images.filter((img): img is string => typeof img === 'string' && img.length > 0);
@@ -287,7 +305,7 @@ export default async function ProductDetailPage({
             }
         }
 
-        // Fetch SME reviews
+        // 4. Fetch SME reviews (with error handling for unauthenticated users)
         let smeReviews: any[] = [];
         let avgSMEScores: any = {
             purity: null,
@@ -314,18 +332,30 @@ export default async function ProductDetailPage({
             isSME = await checkIsSME();
             console.log('[SME Reviews] User is SME:', isSME);
         } catch (smeError) {
+            // Silently fail if SME data fetch fails (e.g., user not authenticated)
             console.error('[SME Reviews] Error fetching SME data:', smeError);
+            // Continue with empty data - page should still render
         }
 
-        // Fetch comments
+        // 5. Fetch comments with has_citation check and new classification fields
         let serializedComments: any[] = [];
         try {
             const commentsResult = await sql`
     SELECT
     pc.id, pc.content, pc.created_at, pc.parent_id, pc.guest_name,
-      pc.insight_summary, pc.upvote_count, pc.post_type, pc.pillar_of_truth, pc.source_metadata, pc.star_rating,
+      pc.insight_summary, pc.upvote_count, pc.post_type, pc.pillar_of_truth, pc.source_metadata, pc.star_rating, pc.metadata,
       p.id as author_id, p.full_name, p.username, p.avatar_url, p.badge_type, p.contributor_score,
-      EXISTS(SELECT 1 FROM comment_references cr WHERE cr.comment_id = pc.id) as has_citation
+      EXISTS(SELECT 1 FROM comment_references cr WHERE cr.comment_id = pc.id) as has_citation,
+        (
+          SELECT json_agg(json_build_object('emoji', emoji, 'count', count, 'user_reacted', user_reacted))
+          FROM (
+             SELECT emoji, COUNT(*) as count,
+                    bool_or(user_id::text = ${user?.id || '0'}) as user_reacted
+             FROM comment_reactions cr
+             WHERE cr.comment_id = pc.id
+             GROUP BY emoji
+          ) r
+        ) as reactions
         FROM product_comments pc
         LEFT JOIN profiles p ON pc.author_id = p.id
         WHERE pc.product_id:: text = ${product.id}
@@ -346,6 +376,7 @@ export default async function ProductDetailPage({
                 pillar_of_truth: comment.pillar_of_truth,
                 source_metadata: comment.source_metadata,
                 star_rating: comment.star_rating,
+                metadata: comment.metadata,
                 profiles: comment.author_id ? {
                     id: String(comment.author_id),
                     full_name: comment.full_name,
@@ -353,13 +384,14 @@ export default async function ProductDetailPage({
                     avatar_url: comment.avatar_url,
                     badge_type: comment.badge_type,
                     contributor_score: comment.contributor_score
-                } : null
+                } : null,
+                reactions: comment.reactions || []
             }));
         } catch (commentsErr) {
             console.error("Error fetching comments:", commentsErr);
         }
 
-        // Fetch product benefits
+        // 6. Fetch product benefits for Schema.org
         let benefits: any[] = [];
         try {
             const benefitsResult = await sql`
@@ -375,7 +407,7 @@ export default async function ProductDetailPage({
             console.error("[Benefits] Error fetching benefits:", benefitsErr);
         }
 
-        // Fetch community benefits
+        // 7. Fetch distinct community benefits for the UI component
         let communityBenefits: any[] = [];
         try {
             const communityResult = await sql`
@@ -390,10 +422,11 @@ export default async function ProductDetailPage({
             console.error("[Community Benefits] Error fetching:", err);
         }
 
+        // Build base URL for canonical and structured data
         const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sme.example.com";
         const canonicalUrl = `${baseUrl} /products/${id} `;
 
-        // Build JSON-LD structured data
+        // Build JSON-LD structured data for SEO
         const jsonLd = {
             "@context": "https://schema.org",
             "@type": "Product",
@@ -406,6 +439,7 @@ export default async function ProductDetailPage({
                 "@type": "Brand",
                 name: typedProduct.brand
             },
+            // Add benefits with citations for SEO/LLM indexing
             ...(benefits.length > 0 && {
                 hasBenefit: benefits.map(b => ({
                     "@type": "Benefit",
@@ -418,6 +452,7 @@ export default async function ProductDetailPage({
                     })
                 }))
             }),
+            // Add offers for verified brands with buy_url
             ...(typedProduct.is_verified && typedProduct.buy_url && {
                 offers: {
                     "@type": "Offer",
@@ -435,6 +470,7 @@ export default async function ProductDetailPage({
                     })
                 }
             }),
+            // Use star ratings for aggregateRating if available, otherwise fall back to consensus score
             aggregateRating: typedProduct.aggregate_star_rating && typedProduct.total_star_reviews > 0 ? {
                 "@type": "AggregateRating",
                 ratingValue: typedProduct.aggregate_star_rating,
@@ -443,7 +479,7 @@ export default async function ProductDetailPage({
             } : undefined
         };
 
-        // Calculate average SME score
+        // Calculate average SME score for dual-score display
         const avgSMEScore = avgSMEScores.reviewCount > 0
             ? Object.values(avgSMEScores)
                 .filter((v): v is number => typeof v === 'number' && v > 0)
@@ -452,12 +488,16 @@ export default async function ProductDetailPage({
 
         return (
             <>
+                {/* JSON-LD Structured Data */}
                 <script
                     type="application/ld+json"
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
                 />
+
+                {/* Canonical URL */}
                 <link rel="canonical" href={canonicalUrl} />
 
+                {/* Product View Tracker - Metered Billing */}
                 <ProductViewTracker
                     productId={typedProduct.id}
                     isVerified={typedProduct.is_verified || false}
@@ -465,12 +505,14 @@ export default async function ProductDetailPage({
 
                 <main className="min-h-screen bg-forest-obsidian text-bone-white">
                     <div className="mx-auto max-w-7xl px-6 py-8">
+                        {/* Global Search Bar - Persistent */}
                         <div className="mb-8">
                             <div className="max-w-3xl mx-auto">
                                 <SearchBar />
                             </div>
                         </div>
 
+                        {/* Back to Products Button */}
                         <div className="mb-6">
                             <Link href="/products">
                                 <button className="inline-flex items-center gap-2 text-sm text-bone-white/70 hover:text-bone-white font-mono transition-colors">
@@ -480,6 +522,7 @@ export default async function ProductDetailPage({
                             </Link>
                         </div>
 
+                        {/* HERO SECTION - Enhanced with Quadrants */}
                         <HeroSection
                             title={typedProduct.title}
                             brand={typedProduct.brand}
@@ -494,8 +537,10 @@ export default async function ProductDetailPage({
                             discountCode={typedProduct.discount_code}
                             smeTrustScore={avgSMEScore}
                             communitySentiment={typedProduct.community_consensus_score}
+                            // New Quadrant Data
                             activeIngredients={activeIngredients}
                             servingSize={typedProduct.serving_size}
+
                             servingsPerContainer={typedProduct.servings_per_container}
                             form={typedProduct.form}
                             price={typedProduct.price}
@@ -511,6 +556,7 @@ export default async function ProductDetailPage({
                             targetAudience={typedProduct.target_audience}
                         />
 
+                        {/* 9-Pillar Summary - Compact View - Moved BELOW Hero */}
                         <div className="mb-12 max-w-4xl mx-auto">
                             <NinePillarSummary
                                 avgScores={avgSMEScores}
@@ -519,6 +565,7 @@ export default async function ProductDetailPage({
                             />
                         </div>
 
+                        {/* PRODUCT DOSSIER (Continuous Scroll) */}
                         <ProductDossier
                             productId={typedProduct.id}
                             productSlug={typedProduct.slug}
@@ -532,6 +579,7 @@ export default async function ProductDetailPage({
                             isVerified={typedProduct.is_verified || false}
                             officialBenefits={benefits.filter(b => b.source_type === 'official')}
                             communityBenefits={communityBenefits}
+                            // Conserved Props
                             manufacturer={typedProduct.manufacturer}
                             price={typedProduct.price}
                             servingInfo={typedProduct.serving_info}
@@ -556,6 +604,10 @@ export default async function ProductDetailPage({
                             warnings={typedProduct.warnings}
                         />
 
+                        {/* Founder Video (Video is now lower down) - Keep here or move? 
+                User requested "Evidence & Insights" section. Video fits there or here. 
+                Let's keep it here for now as supplemental media. 
+            */}
                         {(typedProduct.youtube_link || typedProduct.founder_video_url) && (
                             <div className="mt-8 mb-8">
                                 <ProductVideo
@@ -565,9 +617,12 @@ export default async function ProductDetailPage({
                             </div>
                         )}
 
+                        {/* THE VAULT */}
                         <TheVault urls={typedProduct.certification_vault_urls} />
+
                     </div>
 
+                    {/* Sticky CTA Bar for Mobile */}
                     {typedProduct.is_verified && typedProduct.buy_url && (
                         <StickyCTABar
                             buyUrl={typedProduct.buy_url}

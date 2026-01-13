@@ -136,8 +136,8 @@ export default function ProductComments({
         <button
           onClick={() => setFilterTab("all")}
           className={`px-3 py-1.5 text-xs font-mono uppercase tracking-wider transition-colors ${filterTab === "all"
-              ? "bg-heart-green text-forest-obsidian border border-heart-green"
-              : "bg-forest-obsidian text-bone-white/70 border border-translucent-emerald hover:text-bone-white hover:border-heart-green"
+            ? "bg-heart-green text-forest-obsidian border border-heart-green"
+            : "bg-forest-obsidian text-bone-white/70 border border-translucent-emerald hover:text-bone-white hover:border-heart-green"
             }`}
         >
           All
@@ -145,8 +145,8 @@ export default function ProductComments({
         <button
           onClick={() => setFilterTab("verified_insight")}
           className={`px-3 py-1.5 text-xs font-mono uppercase tracking-wider transition-colors ${filterTab === "verified_insight"
-              ? "bg-emerald-500 text-forest-obsidian border border-emerald-500"
-              : "bg-forest-obsidian text-bone-white/70 border border-translucent-emerald hover:text-bone-white hover:border-emerald-500"
+            ? "bg-emerald-500 text-forest-obsidian border border-emerald-500"
+            : "bg-forest-obsidian text-bone-white/70 border border-translucent-emerald hover:text-bone-white hover:border-emerald-500"
             }`}
         >
           Verified Insights
@@ -154,8 +154,8 @@ export default function ProductComments({
         <button
           onClick={() => setFilterTab("community_experience")}
           className={`px-3 py-1.5 text-xs font-mono uppercase tracking-wider transition-colors ${filterTab === "community_experience"
-              ? "bg-bone-white/20 text-bone-white border border-bone-white/30"
-              : "bg-forest-obsidian text-bone-white/70 border border-translucent-emerald hover:text-bone-white hover:border-bone-white/30"
+            ? "bg-bone-white/20 text-bone-white border border-bone-white/30"
+            : "bg-forest-obsidian text-bone-white/70 border border-translucent-emerald hover:text-bone-white hover:border-bone-white/30"
             }`}
         >
           Community Experience
@@ -203,9 +203,24 @@ export default function ProductComments({
         {(() => {
           if (comments.length === 0) {
             return (
-              <p className="text-center text-bone-white font-mono opacity-60 py-8">
-                Signal Pending: Be the first auditor to share your intuition.
-              </p>
+              <div className="text-center py-12 bg-white/5 rounded-xl border border-dashed border-white/10">
+                <p className="text-bone-white font-serif text-lg mb-2">Signal Pending</p>
+                <p className="text-bone-white/60 font-mono text-sm mb-6">Be the first auditor to share your intuition.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Focus the textarea - simple hack or use a ref if available.
+                    // Since CommentForm is at the top, we can just scroll to it.
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    // Ideally we would focus the input, but this is a good first step.
+                    const textarea = document.querySelector('textarea');
+                    if (textarea) textarea.focus();
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-sme-gold text-forest-obsidian text-sm font-mono font-bold uppercase tracking-wider rounded hover:bg-yellow-400 transition-colors"
+                >
+                  Share Your Experience
+                </button>
+              </div>
             );
           }
 

@@ -22,7 +22,8 @@ export async function createProductComment(
   sourceLink?: string | null,
   postType?: 'verified_insight' | 'community_experience',
   pillarOfTruth?: string | null,
-  starRating?: number | null
+  starRating?: number | null,
+  xPostUrl?: string
 ): Promise<{ success: boolean; error?: string; commentId?: string }> {
   const user = await currentUser();
   const sql = getDb();
@@ -172,12 +173,12 @@ export async function createProductComment(
             const insertResult = await sql`
               INSERT INTO product_comments (
                 product_id, author_id, content, flag_count, is_flagged, parent_id, is_official_response,
-                post_type, pillar_of_truth, source_metadata, star_rating, citation_screened_ok
+                post_type, pillar_of_truth, source_metadata, star_rating, citation_screened_ok, metadata
               )
               VALUES (
                 ${productId}, ${authorId}, ${trimmedContent},
                 ${shouldAutoFlag ? 1 : 0}, ${shouldAutoFlag}, ${parentId || null}, ${isOfficialResponse && canMarkOfficial ? true : false},
-                ${finalPostType}, ${finalPillar}, ${sourceMetadata ? JSON.stringify(sourceMetadata) : null}, ${starRating || null}, ${citationScreenedOk}
+                ${finalPostType}, ${finalPillar}, ${sourceMetadata ? JSON.stringify(sourceMetadata) : null}, ${starRating || null}, ${citationScreenedOk}, ${xPostUrl ? { x_post_url: xPostUrl } : null}
               )
               RETURNING id
             `;
@@ -437,7 +438,8 @@ export async function createGuestProductComment(
   content: string,
   guestName: string,
   productSlug: string,
-  starRating?: number | null
+  starRating?: number | null,
+  xPostUrl?: string
 ): Promise<{ success: boolean; error?: string; commentId?: string }> {
   const user = await currentUser();
   const sql = getDb();
@@ -493,10 +495,11 @@ export async function createGuestProductComment(
     // Note: Guests cannot provide citations in current implementation, so citation_screened_ok defaults to false
     const result = await sql`
       INSERT INTO product_comments (
-        product_id, author_id, guest_name, content, flag_count, is_flagged, status, star_rating, citation_screened_ok
+        product_id, author_id, guest_name, content, flag_count, is_flagged, status, star_rating, citation_screened_ok, metadata
       )
       VALUES (
-        ${productId}, NULL, ${trimmedGuestName}, ${trimmedContent}, 0, false, ${commentStatus}, ${starRating || null}, false
+        ${productId}, NULL, ${trimmedGuestName}, ${trimmedContent}, 0, false, ${commentStatus}, ${starRating || null}, false,
+        ${xPostUrl ? { x_post_url: xPostUrl } : null}
       )
       RETURNING id
     `;
@@ -598,13 +601,7 @@ export async function createOrUpdateProduct(formData: FormData) {
             reference_url = ${referenceUrl || null},
             ai_summary = ${aiSummary || null},
             buy_url = ${buyUrl || null},
-            discount_code = ${discountCode || null},
-            lab_tested = ${labTested},
-            organic = ${organic},
-            purity_verified = ${purityVerified},
-            third_party_coa = ${thirdPartyCoa},
-            certification_notes = ${certificationNotes || null},
-            lab_pdf_url = ${labPdfUrl || null}
+            discount_code = ${discountCode || null}
         WHERE id = ${productId}
       `;
     } else {
@@ -612,14 +609,16 @@ export async function createOrUpdateProduct(formData: FormData) {
       await sql`
         INSERT INTO products (
           title, problem_solved, slug, created_by, reference_url, ai_summary,
-          buy_url, discount_code, lab_tested, organic, purity_verified,
-          third_party_coa, certification_notes, lab_pdf_url
+          buy_url, discount_code, is_sme_certified, source_transparency, purity_tested,
+          potency_verified, excipient_audit, operational_legitimacy, third_party_lab_verified,
+          coa_url
         )
         VALUES (
           ${title.trim()}, ${problemSolved.trim()}, ${slug}, ${user.id},
           ${referenceUrl || null}, ${aiSummary || null}, ${buyUrl || null},
-          ${discountCode || null}, ${labTested}, ${organic}, ${purityVerified},
-          ${thirdPartyCoa}, ${certificationNotes || null}, ${labPdfUrl || null}
+          ${discountCode || null}, ${false}, ${false}, ${false},
+          ${false}, ${false}, ${false}, ${false},
+          ${null}
         )
       `;
     }
