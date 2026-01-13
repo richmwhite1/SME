@@ -178,7 +178,7 @@ export async function createProductComment(
               VALUES (
                 ${productId}, ${authorId}, ${trimmedContent},
                 ${shouldAutoFlag ? 1 : 0}, ${shouldAutoFlag}, ${parentId || null}, ${isOfficialResponse && canMarkOfficial ? true : false},
-                ${finalPostType}, ${finalPillar}, ${sourceMetadata ? JSON.stringify(sourceMetadata) : null}, ${starRating || null}, ${citationScreenedOk}, ${xPostUrl ? { x_post_url: xPostUrl } : null}
+                ${finalPostType}, ${finalPillar}, ${sourceMetadata ? JSON.stringify(sourceMetadata) : null}, ${starRating || null}, ${citationScreenedOk}, ${xPostUrl ? sql.json({ x_post_url: xPostUrl }) : null}
               )
               RETURNING id
             `;
@@ -499,7 +499,7 @@ export async function createGuestProductComment(
       )
       VALUES (
         ${productId}, NULL, ${trimmedGuestName}, ${trimmedContent}, 0, false, ${commentStatus}, ${starRating || null}, false,
-        ${xPostUrl ? { x_post_url: xPostUrl } : null}
+        ${xPostUrl ? sql.json({ x_post_url: xPostUrl }) : null}
       )
       RETURNING id
     `;
