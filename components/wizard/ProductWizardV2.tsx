@@ -438,651 +438,653 @@ export default function ProductWizardV2() {
     const dietaryTags = watch("dietary_tags");
 
     return <div className="min-h-screen bg-[#0a0a0a] text-[#e5e5e5] font-mono">
+        <form onSubmit={handleSubmit(onSubmit)}>
 
-        {/* SMART START HERO */}
-        <div className="bg-gradient-to-b from-emerald-900/30 to-[#0a0a0a] border-b border-[#333] pt-12 pb-8 px-6">
-            <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-end gap-6">
-                <div className="flex-1">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-900/40 text-emerald-400 text-xs font-semibold mb-4 border border-emerald-800">
-                        <Sparkles className="w-3 h-3" /> AI-POWERED INTAKE
-                    </div>
-                    <h1 className="text-3xl font-bold text-white tracking-tight mb-2">Share Knowledge</h1>
-                    <p className="text-gray-400 max-w-xl mb-8">
-                        Start by pasting the product URL. Our AI will extract existing data, then you add the wisdom.
-                    </p>
+            {/* SMART START HERO */}
+            <div className="bg-gradient-to-b from-emerald-900/30 to-[#0a0a0a] border-b border-[#333] pt-12 pb-8 px-6">
+                <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-end gap-6">
+                    <div className="flex-1">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-900/40 text-emerald-400 text-xs font-semibold mb-4 border border-emerald-800">
+                            <Sparkles className="w-3 h-3" /> AI-POWERED INTAKE
+                        </div>
+                        <h1 className="text-3xl font-bold text-white tracking-tight mb-2">Share Knowledge</h1>
+                        <p className="text-gray-400 max-w-xl mb-8">
+                            Start by pasting the product URL. Our AI will extract existing data, then you add the wisdom.
+                        </p>
 
-                    {/* STEP 1: URL INPUT */}
-                    <div className="max-w-3xl mb-10">
-                        <label className="text-xs uppercase tracking-wider text-emerald-400 font-bold mb-2 block">
-                            Step 1: Paste Product URL (Required)
-                        </label>
-                        <div className="flex gap-3">
-                            <div className="flex-1 relative">
-                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">
-                                    <LinkIcon className="w-5 h-5" />
+                        {/* STEP 1: URL INPUT */}
+                        <div className="max-w-3xl mb-10">
+                            <label className="text-xs uppercase tracking-wider text-emerald-400 font-bold mb-2 block">
+                                Step 1: Paste Product URL (Required)
+                            </label>
+                            <div className="flex gap-3">
+                                <div className="flex-1 relative">
+                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">
+                                        <LinkIcon className="w-5 h-5" />
+                                    </div>
+                                    <input
+                                        {...register("product_url")}
+                                        placeholder="https://brand-site.com/products/example-supplement"
+                                        className="w-full bg-[#111] border border-[#333] p-4 pl-12 text-white rounded-lg focus:border-emerald-500 outline-none transition-all text-lg shadow-inner"
+                                    />
                                 </div>
-                                <input
-                                    {...register("product_url")}
-                                    placeholder="https://brand-site.com/products/example-supplement"
-                                    className="w-full bg-[#111] border border-[#333] p-4 pl-12 text-white rounded-lg focus:border-emerald-500 outline-none transition-all text-lg shadow-inner"
-                                />
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const url = form.getValues("product_url");
+                                        if (url) handleUrlImport(url);
+                                    }}
+                                    disabled={isAnalyzing}
+                                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 rounded-lg font-bold transition-all shadow-lg shadow-emerald-900/20 whitespace-nowrap flex items-center gap-2"
+                                >
+                                    {isAnalyzing ? <span className="animate-spin">⏳</span> : <Sparkles className="w-4 h-4" />}
+                                    {isAnalyzing ? "Analyzing..." : "Auto-Fill"}
+                                </button>
                             </div>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    const url = form.getValues("product_url");
-                                    if (url) handleUrlImport(url);
-                                }}
+                            {errors.product_url && <p className="text-red-500 text-sm mt-2">{errors.product_url.message}</p>}
+                        </div>
+
+                        {/* STEP 2: USER TYPE TOGGLE */}
+                        <div className="bg-[#111] border border-[#333] rounded-lg p-6 max-w-3xl">
+                            <p className="text-xs uppercase tracking-wider text-gray-500 mb-4">Step 2: Verify Your Identity</p>
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setUserType("community")}
+                                    className={`p-4 rounded-lg border-2 transition-all text-left ${userType === "community"
+                                        ? "border-emerald-500 bg-emerald-900/20"
+                                        : "border-[#333] bg-[#0a0a0a] hover:border-[#444]"
+                                        }`}
+                                >
+                                    <div className="flex items-start gap-3">
+                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 ${userType === "community" ? "border-emerald-500" : "border-gray-600"
+                                            }`}>
+                                            {userType === "community" && <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />}
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-white mb-1">I&apos;m a Community Member</p>
+                                            <p className="text-xs text-gray-400">Share a product I love (simplified form)</p>
+                                        </div>
+                                    </div>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setUserType("brand")}
+                                    className={`p-4 rounded-lg border-2 transition-all text-left ${userType === "brand"
+                                        ? "border-emerald-500 bg-emerald-900/20"
+                                        : "border-[#333] bg-[#0a0a0a] hover:border-[#444]"
+                                        }`}
+                                >
+                                    <div className="flex items-start gap-3">
+                                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 ${userType === "brand" ? "border-emerald-500" : "border-gray-600"
+                                            }`}>
+                                            {userType === "brand" && <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />}
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-white mb-1">I&apos;m a Brand Owner</p>
+                                            <p className="text-xs text-gray-400">Full wizard + verification ($100/mo)</p>
+                                        </div>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                        <div className="relative group">
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleLabelUpload}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                                 disabled={isAnalyzing}
-                                className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 rounded-lg font-bold transition-all shadow-lg shadow-emerald-900/20 whitespace-nowrap flex items-center gap-2"
-                            >
-                                {isAnalyzing ? <span className="animate-spin">⏳</span> : <Sparkles className="w-4 h-4" />}
-                                {isAnalyzing ? "Analyzing..." : "Auto-Fill"}
+                            />
+                            <button disabled={isAnalyzing} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded font-semibold transition-all shadow-lg shadow-emerald-900/20">
+                                {isAnalyzing ? <span className="animate-spin">⏳</span> : <Upload className="w-4 h-4" />}
+                                {isAnalyzing ? "Analyzing..." : "Upload Label"}
                             </button>
                         </div>
-                        {errors.product_url && <p className="text-red-500 text-sm mt-2">{errors.product_url.message}</p>}
-                    </div>
 
-                    {/* STEP 2: USER TYPE TOGGLE */}
-                    <div className="bg-[#111] border border-[#333] rounded-lg p-6 max-w-3xl">
-                        <p className="text-xs uppercase tracking-wider text-gray-500 mb-4">Step 2: Verify Your Identity</p>
-                        <div className="grid grid-cols-2 gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setUserType("community")}
-                                className={`p-4 rounded-lg border-2 transition-all text-left ${userType === "community"
-                                    ? "border-emerald-500 bg-emerald-900/20"
-                                    : "border-[#333] bg-[#0a0a0a] hover:border-[#444]"
-                                    }`}
-                            >
-                                <div className="flex items-start gap-3">
-                                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 ${userType === "community" ? "border-emerald-500" : "border-gray-600"
-                                        }`}>
-                                        {userType === "community" && <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />}
+
+                        {/* Barcode Modal is Below */}
+
+                        {/* Barcode Modal */}
+                        {isBarcodeModalOpen && (
+                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
+                                <div className="bg-[#111] border border-[#333] rounded-lg w-full max-w-lg shadow-2xl overflow-hidden">
+                                    <div className="bg-[#0a0a0a] border-b border-[#333] px-6 py-4 flex justify-between items-center">
+                                        <h3 className="text-white font-bold flex items-center gap-2">
+                                            <ScanBarcode className="w-4 h-4 text-emerald-500" />
+                                            Scan Barcode
+                                        </h3>
+                                        <button onClick={() => setIsBarcodeModalOpen(false)} className="text-gray-500 hover:text-white transition-colors">×</button>
                                     </div>
-                                    <div>
-                                        <p className="font-semibold text-white mb-1">I&apos;m a Community Member</p>
-                                        <p className="text-xs text-gray-400">Share a product I love (simplified form)</p>
+                                    <div className="p-6 space-y-4">
+                                        <p className="text-sm text-gray-400">
+                                            Enter the product barcode (UPC/EAN) to fetch verified data from standard databases.
+                                        </p>
+                                        <input
+                                            autoFocus
+                                            placeholder="e.g. 058449401018"
+                                            className="w-full bg-[#000] border border-[#333] p-3 text-white rounded focus:border-emerald-500 outline-none font-mono tracking-wider"
+                                            onKeyDown={async (e) => {
+                                                if (e.key === 'Enter') {
+                                                    const target = e.target as HTMLInputElement;
+                                                    if (target.value) handleBarcodeLookup(target.value);
+                                                }
+                                            }}
+                                            id="barcode-input-modal"
+                                        />
+                                        <div className="flex justify-end gap-3 pt-2">
+                                            <button onClick={() => setIsBarcodeModalOpen(false)} className="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancel</button>
+                                            <button
+                                                onClick={() => {
+                                                    const input = document.getElementById('barcode-input-modal') as HTMLInputElement;
+                                                    if (input?.value) handleBarcodeLookup(input.value);
+                                                }}
+                                                disabled={isAnalyzing}
+                                                className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded flex items-center gap-2"
+                                            >
+                                                {isAnalyzing ? "Looking up..." : "Lookup Barcode"}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setUserType("brand")}
-                                className={`p-4 rounded-lg border-2 transition-all text-left ${userType === "brand"
-                                    ? "border-emerald-500 bg-emerald-900/20"
-                                    : "border-[#333] bg-[#0a0a0a] hover:border-[#444]"
-                                    }`}
-                            >
-                                <div className="flex items-start gap-3">
-                                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 ${userType === "brand" ? "border-emerald-500" : "border-gray-600"
-                                        }`}>
-                                        {userType === "brand" && <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />}
-                                    </div>
-                                    <div>
-                                        <p className="font-semibold text-white mb-1">I&apos;m a Brand Owner</p>
-                                        <p className="text-xs text-gray-400">Full wizard + verification ($100/mo)</p>
-                                    </div>
-                                </div>
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                            </div>
+                        )}
 
-                <div className="flex gap-3">
-                    <div className="relative group">
-                        <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleLabelUpload}
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                            disabled={isAnalyzing}
-                        />
-                        <button disabled={isAnalyzing} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded font-semibold transition-all shadow-lg shadow-emerald-900/20">
-                            {isAnalyzing ? <span className="animate-spin">⏳</span> : <Upload className="w-4 h-4" />}
-                            {isAnalyzing ? "Analyzing..." : "Upload Label"}
+                        <button
+                            type="button"
+                            onClick={() => setIsBarcodeModalOpen(true)}
+                            className="flex items-center gap-2 bg-[#222] hover:bg-[#333] border border-[#444] text-gray-300 px-5 py-3 rounded font-semibold transition-all"
+                        >
+                            <ScanBarcode className="w-4 h-4" />
+                            Barcode
                         </button>
                     </div>
-
-
-                    {/* Barcode Modal is Below */}
-
-                    {/* Barcode Modal */}
-                    {isBarcodeModalOpen && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
-                            <div className="bg-[#111] border border-[#333] rounded-lg w-full max-w-lg shadow-2xl overflow-hidden">
-                                <div className="bg-[#0a0a0a] border-b border-[#333] px-6 py-4 flex justify-between items-center">
-                                    <h3 className="text-white font-bold flex items-center gap-2">
-                                        <ScanBarcode className="w-4 h-4 text-emerald-500" />
-                                        Scan Barcode
-                                    </h3>
-                                    <button onClick={() => setIsBarcodeModalOpen(false)} className="text-gray-500 hover:text-white transition-colors">×</button>
-                                </div>
-                                <div className="p-6 space-y-4">
-                                    <p className="text-sm text-gray-400">
-                                        Enter the product barcode (UPC/EAN) to fetch verified data from standard databases.
-                                    </p>
-                                    <input
-                                        autoFocus
-                                        placeholder="e.g. 058449401018"
-                                        className="w-full bg-[#000] border border-[#333] p-3 text-white rounded focus:border-emerald-500 outline-none font-mono tracking-wider"
-                                        onKeyDown={async (e) => {
-                                            if (e.key === 'Enter') {
-                                                const target = e.target as HTMLInputElement;
-                                                if (target.value) handleBarcodeLookup(target.value);
-                                            }
-                                        }}
-                                        id="barcode-input-modal"
-                                    />
-                                    <div className="flex justify-end gap-3 pt-2">
-                                        <button onClick={() => setIsBarcodeModalOpen(false)} className="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancel</button>
-                                        <button
-                                            onClick={() => {
-                                                const input = document.getElementById('barcode-input-modal') as HTMLInputElement;
-                                                if (input?.value) handleBarcodeLookup(input.value);
-                                            }}
-                                            disabled={isAnalyzing}
-                                            className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded flex items-center gap-2"
-                                        >
-                                            {isAnalyzing ? "Looking up..." : "Lookup Barcode"}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    <button
-                        type="button"
-                        onClick={() => setIsBarcodeModalOpen(true)}
-                        className="flex items-center gap-2 bg-[#222] hover:bg-[#333] border border-[#444] text-gray-300 px-5 py-3 rounded font-semibold transition-all"
-                    >
-                        <ScanBarcode className="w-4 h-4" />
-                        Barcode
-                    </button>
                 </div>
             </div>
-        </div>
 
-        <div className="max-w-6xl mx-auto px-6 py-12 flex gap-12 relative">
+            <div className="max-w-6xl mx-auto px-6 py-12 flex gap-12 relative">
 
-            {/* STICKY SIDEBAR */}
-            <div className="hidden lg:block w-64 h-fit sticky top-8 space-y-2">
-                <p className="text-xs uppercase tracking-wider text-gray-500 mb-4 pl-3">Table of Contents</p>
-                {SECTIONS
-                    .filter(section => {
-                        // Hide signals and verification for community users
-                        if (userType === "community" && (section.id === "signals" || section.id === "verification")) {
-                            return false;
-                        }
-                        return true;
-                    })
-                    .map((section) => {
-                        const Icon = section.icon;
-                        const isActive = activeSection === section.id;
-                        return (
-                            <button
-                                key={section.id}
-                                onClick={() => scrollToSection(section.id)}
-                                className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm transition-all text-left
+                {/* STICKY SIDEBAR */}
+                <div className="hidden lg:block w-64 h-fit sticky top-8 space-y-2">
+                    <p className="text-xs uppercase tracking-wider text-gray-500 mb-4 pl-3">Table of Contents</p>
+                    {SECTIONS
+                        .filter(section => {
+                            // Hide signals and verification for community users
+                            if (userType === "community" && (section.id === "signals" || section.id === "verification")) {
+                                return false;
+                            }
+                            return true;
+                        })
+                        .map((section) => {
+                            const Icon = section.icon;
+                            const isActive = activeSection === section.id;
+                            return (
+                                <button
+                                    key={section.id}
+                                    onClick={() => scrollToSection(section.id)}
+                                    className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm transition-all text-left
                                     ${isActive
-                                        ? "bg-emerald-900/20 text-emerald-400 border-l-2 border-emerald-500"
-                                        : "text-gray-500 hover:text-gray-300 hover:bg-[#111]"
-                                    }`}
-                            >
-                                <Icon className="w-4 h-4" />
-                                {section.label}
-                            </button>
-                        );
-                    })}
+                                            ? "bg-emerald-900/20 text-emerald-400 border-l-2 border-emerald-500"
+                                            : "text-gray-500 hover:text-gray-300 hover:bg-[#111]"
+                                        }`}
+                                >
+                                    <Icon className="w-4 h-4" />
+                                    {section.label}
+                                </button>
+                            );
+                        })}
 
-                <div className="pt-8 border-t border-[#222] mt-8">
-                    <button
-                        onClick={handleSubmit(onSubmit)}
-                        disabled={isSubmitting}
-                        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded font-bold shadow-lg shadow-emerald-900/20 disabled:opacity-50"
-                    >
-                        {isSubmitting ? "Submitting..." : "Submit Product"}
-                    </button>
-                    {submitError && (
-                        <p className="text-red-400 text-xs mt-3 bg-red-900/10 p-2 rounded border border-red-900/30">
-                            {submitError}
-                        </p>
-                    )}
+                    <div className="pt-8 border-t border-[#222] mt-8">
+                        <button
+                            onClick={handleSubmit(onSubmit)}
+                            disabled={isSubmitting}
+                            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded font-bold shadow-lg shadow-emerald-900/20 disabled:opacity-50"
+                        >
+                            {isSubmitting ? "Submitting..." : "Submit Product"}
+                        </button>
+                        {submitError && (
+                            <p className="text-red-400 text-xs mt-3 bg-red-900/10 p-2 rounded border border-red-900/30">
+                                {submitError}
+                            </p>
+                        )}
+                    </div>
                 </div>
-            </div>
 
-            {/* MAIN FORM CONTENT */}
-            <div className="flex-1 space-y-16 pb-32">
+                {/* MAIN FORM CONTENT */}
+                <div className="flex-1 space-y-16 pb-32">
 
-                {/* SECTION 1: NARRATIVE */}
-                <section id="narrative" ref={el => { if (el) sectionRefs.current['narrative'] = el }} className="scroll-mt-24 space-y-6">
-                    <div className="flex items-center gap-3 pb-4 border-b border-[#222]">
-                        <FileText className="w-6 h-6 text-emerald-500" />
-                        <h2 className="text-xl font-bold text-white">The Narrative</h2>
-                    </div>
-
-                    <div className="grid gap-6">
-                        <div className="space-y-2">
-                            <label className="text-xs uppercase tracking-wider text-gray-500">Product Name</label>
-                            <input {...register("name")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded" placeholder="e.g. Neuro-Vance" />
-                            {errors.name && <p className="text-red-500 text-xs">{errors.name.message}</p>}
-                        </div>
-
-                        {/* Primary Category */}
-                        <div className="space-y-2">
-                            <label className="text-xs uppercase tracking-wider text-gray-500">Primary Category *</label>
-                            <select {...register("primary_category")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded appearance-none">
-                                <option value="">Select Primary Category</option>
-                                {PRIMARY_CATEGORIES.map(cat => (
-                                    <option key={cat} value={cat}>{cat}</option>
-                                ))}
-                            </select>
-                            {watch("primary_category") && (
-                                <p className="text-xs text-gray-400 mt-1">
-                                    {PRIMARY_CATEGORY_DESCRIPTIONS[watch("primary_category") as PrimaryCategory]}
-                                </p>
-                            )}
-                            {errors.primary_category && <p className="text-red-500 text-xs">{errors.primary_category.message}</p>}
-                        </div>
-
-                        {/* Secondary Categories */}
-                        <SecondaryCategoriesSelector
-                            value={(watch("secondary_categories") as SecondaryCategories) || EMPTY_SECONDARY_CATEGORIES}
-                            onChange={(value) => setValue("secondary_categories", value, { shouldValidate: true })}
-                        />
-
-                        <div className="space-y-2">
-                            <label className="text-xs uppercase tracking-wider text-gray-500">Target Audience</label>
-                            <input {...register("target_audience")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded" placeholder="e.g. High-performance athletes" />
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="text-xs uppercase tracking-wider text-gray-500">Company Blurb & Mission</label>
-                            <textarea {...register("company_blurb")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded min-h-[120px]" placeholder="Tell us about the company mission..." />
-                            {errors.company_blurb && <p className="text-red-500 text-xs">{errors.company_blurb.message}</p>}
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="text-xs uppercase tracking-wider text-gray-500">Core Value Proposition</label>
-                            <textarea {...register("core_value_proposition")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded min-h-[100px]" placeholder="Key promise to the consumer..." />
-                        </div>
-
-                        {/* NEW FIELDS */}
-                        <div className="grid md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <label className="text-xs uppercase tracking-wider text-gray-500">Manufacturer/Brand</label>
-                                <input {...register("manufacturer")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded" placeholder="e.g. Thorne Research" />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-xs uppercase tracking-wider text-gray-500">Price (Optional)</label>
-                                <input {...register("price")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded" placeholder="e.g. $29.99" />
-                            </div>
-                        </div>
-
-                        <div className="grid md:grid-cols-3 gap-6">
-                            <div className="space-y-2">
-                                <label className="text-xs uppercase tracking-wider text-gray-500">Form</label>
-                                <input {...register("form")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded" placeholder="e.g. Capsule" />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-xs uppercase tracking-wider text-gray-500">Serving Size</label>
-                                <input {...register("serving_size")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded" placeholder="e.g. 2 Capsules" />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-xs uppercase tracking-wider text-gray-500">Servings/Container</label>
-                                <input {...register("servings_per_container")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded" placeholder="e.g. 30" />
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="text-xs uppercase tracking-wider text-gray-500">Warnings & Safety Information</label>
-                            <textarea {...register("warnings")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded min-h-[100px]" placeholder="Any warnings, contraindications, or safety notes..." />
-                        </div>
-
-                        {/* Hidden Barcode Field */}
-                        <input type="hidden" {...register("barcode")} />
-                    </div>
-                </section>
-
-                {/* SECTION 2: MEDIA */}
-                <section id="media" ref={el => { if (el) sectionRefs.current['media'] = el }} className="scroll-mt-24 space-y-6">
-                    <div className="flex items-center gap-3 pb-4 border-b border-[#222]">
-                        <Camera className="w-6 h-6 text-emerald-500" />
-                        <h2 className="text-xl font-bold text-white">Media Assets</h2>
-                    </div>
-                    {/* Reusing existing upload components */}
-                    <div className="bg-[#111] p-6 rounded border border-[#222]">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-sm font-semibold text-gray-300">Product Gallery</h3>
-                            <CloudinaryUploadWidget onUpload={(url) => setValue("product_photos", [...photos, url])} maxPhotos={MAX_PHOTOS} currentCount={photos.length} />
-                        </div>
-                        <PhotoGrid photos={photos} onDelete={(idx) => setValue("product_photos", photos.filter((_, i) => i !== idx))} onReorder={() => { }} />
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-xs uppercase tracking-wider text-gray-500">YouTube Review Link</label>
-                        <div className="flex items-center gap-2 bg-[#111] border border-[#333] rounded px-3">
-                            <span className="text-gray-500">youtube.com/</span>
-                            <input {...register("youtube_link")} className="flex-1 bg-transparent p-4 text-white outline-none" placeholder="watch?v=..." />
-                        </div>
-                    </div>
-                </section>
-
-                {/* SECTION 3: SPECS */}
-                <section id="specs" ref={el => { if (el) sectionRefs.current['specs'] = el }} className="scroll-mt-24 space-y-6">
-                    <div className="flex items-center gap-3 pb-4 border-b border-[#222]">
-                        <FlaskConical className="w-6 h-6 text-emerald-500" />
-                        <h2 className="text-xl font-bold text-white">Ingredients & Specs</h2>
-                    </div>
-
-                    {/* Ingredients Builder */}
-                    <div className="space-y-4">
-                        <div className="flex justify-between">
-                            <label className="text-xs uppercase tracking-wider text-gray-500">Active Ingredients</label>
-                            <button type="button" onClick={() => setValue("active_ingredients", [...activeIngredients, { name: "", dosage: "" }])} className="text-emerald-400 text-xs font-bold hover:text-emerald-300">+ ADD INGREDIENT</button>
-                        </div>
-                        {activeIngredients.map((ing, i) => (
-                            <div key={i} className="flex gap-2">
-                                <input placeholder="Ingredient Name" value={ing.name} onChange={e => {
-                                    const n = [...activeIngredients]; n[i].name = e.target.value; setValue("active_ingredients", n);
-                                }} className="flex-[2] bg-[#111] border border-[#333] p-3 rounded text-sm text-white" />
-                                <input placeholder="Dosage (Optional)" value={ing.dosage || ""} onChange={e => {
-                                    const n = [...activeIngredients]; n[i].dosage = e.target.value; setValue("active_ingredients", n);
-                                }} className="flex-1 bg-[#111] border border-[#333] p-3 rounded text-sm text-white" />
-                                <button type="button" onClick={() => setValue("active_ingredients", activeIngredients.filter((_, idx) => idx !== i))} className="px-3 text-red-500 hover:bg-red-900/20 rounded">×</button>
-                            </div>
-                        ))}
-                        {activeIngredients.length === 0 && <div className="p-4 bg-[#111] border border-[#333] text-gray-600 text-sm text-center rounded border-dashed">No ingredients added yet.</div>}
-                    </div>
-
-                    {/* Usage Instructions - Phase 2 */}
-                    <div className="space-y-4 pt-4 border-t border-[#222]">
-                        <h3 className="text-sm font-semibold text-white">Usage & Storage</h3>
-                        <div className="space-y-2">
-                            <label className="text-xs uppercase tracking-wider text-gray-500">Recommended Dosage</label>
-                            <textarea {...register("recommended_dosage")} className="w-full bg-[#111] border border-[#333] p-3 text-white focus:border-emerald-500 outline-none rounded h-20" placeholder="e.g. Take 2 capsules daily with water..." />
-                        </div>
-                        <div className="grid md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <label className="text-xs uppercase tracking-wider text-gray-500">Best Time to Take</label>
-                                <input {...register("best_time_take")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded" placeholder="e.g. Before bed" />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-xs uppercase tracking-wider text-gray-500">Storage Instructions</label>
-                                <input {...register("storage_instructions")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded" placeholder="e.g. Cool, dry place" />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Generic Specs */}
-                    <div className="space-y-4 pt-4">
-                        <div className="flex justify-between">
-                            <label className="text-xs uppercase tracking-wider text-gray-500">Technical Specs (Serving Size, etc)</label>
-                            <button type="button" onClick={() => setValue("technical_specs", [...technicalSpecs, { key: "", value: "" }])} className="text-emerald-400 text-xs font-bold hover:text-emerald-300">+ ADD SPEC</button>
-                        </div>
-                        {technicalSpecs.map((spec, i) => (
-                            <div key={i} className="flex gap-2">
-                                <input placeholder="Spec Name" value={spec.key} onChange={e => {
-                                    const n = [...technicalSpecs]; n[i].key = e.target.value; setValue("technical_specs", n);
-                                }} className="flex-[2] bg-[#111] border border-[#333] p-3 rounded text-sm text-white" />
-                                <input placeholder="Value" value={spec.value} onChange={e => {
-                                    const n = [...technicalSpecs]; n[i].value = e.target.value; setValue("technical_specs", n);
-                                }} className="flex-1 bg-[#111] border border-[#333] p-3 rounded text-sm text-white" />
-                                <button type="button" onClick={() => setValue("technical_specs", technicalSpecs.filter((_, idx) => idx !== i))} className="px-3 text-red-500 hover:bg-red-900/20 rounded">×</button>
-                            </div>
-                        ))}\n                        </div>
-
-                    {/* Allergen Information */}
-                    <div className="space-y-4 pt-6 border-t border-[#222]">
-                        <label className="text-xs uppercase tracking-wider text-gray-500">Allergen Information</label>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                            {["dairy", "eggs", "fish", "shellfish", "tree_nuts", "peanuts", "wheat", "soy", "gluten", "none"].map(allergen => {
-                                const isSelected = allergens.includes(allergen as any);
-                                return (
-                                    <label key={allergen} className={`flex items-center gap-2 p-3 rounded border-2 cursor-pointer transition-all ${isSelected ? "border-orange-500 bg-orange-900/20" : "border-[#333] hover:border-[#444]"
-                                        }`}>
-                                        <input
-                                            type="checkbox"
-                                            checked={isSelected}
-                                            onChange={(e) => {
-                                                const current = allergens || [];
-                                                if (e.target.checked) {
-                                                    setValue("allergens", [...current, allergen as any]);
-                                                } else {
-                                                    setValue("allergens", current.filter(a => a !== allergen));
-                                                }
-                                            }}
-                                            className="w-4 h-4 accent-orange-500"
-                                        />
-                                        <span className="text-sm capitalize text-gray-300">{allergen.replace(/_/g, ' ')}</span>
-                                    </label>
-                                );
-                            })}
-                        </div>
-                        {allergens.length > 0 && (
-                            <div className="flex flex-wrap gap-2 p-3 bg-orange-900/10 border border-orange-900/30 rounded">
-                                <span className="text-xs text-orange-400 font-semibold">Selected:</span>
-                                {allergens.map(a => (
-                                    <span key={a} className="px-2 py-1 bg-orange-900/40 text-orange-300 text-xs rounded capitalize">
-                                        {a.replace(/_/g, ' ')}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Dietary Tags */}
-                    <div className="space-y-4 pt-6 border-t border-[#222]">
-                        <label className="text-xs uppercase tracking-wider text-gray-500">Dietary Compliance Tags</label>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                            {["vegan", "vegetarian", "gluten_free", "dairy_free", "kosher", "halal", "paleo", "keto", "non_gmo"].map(tag => {
-                                const isSelected = dietaryTags.includes(tag as any);
-                                return (
-                                    <label key={tag} className={`flex items-center gap-2 p-3 rounded border-2 cursor-pointer transition-all ${isSelected ? "border-emerald-500 bg-emerald-900/20" : "border-[#333] hover:border-[#444]"
-                                        }`}>
-                                        <input
-                                            type="checkbox"
-                                            checked={isSelected}
-                                            onChange={(e) => {
-                                                const current = dietaryTags || [];
-                                                if (e.target.checked) {
-                                                    setValue("dietary_tags", [...current, tag as any]);
-                                                } else {
-                                                    setValue("dietary_tags", current.filter(t => t !== tag));
-                                                }
-                                            }}
-                                            className="w-4 h-4 accent-emerald-500"
-                                        />
-                                        <span className="text-sm capitalize text-gray-300">{tag.replace(/_/g, ' ')}</span>
-                                    </label>
-                                );
-                            })}
-                        </div>
-                        {dietaryTags.length > 0 && (
-                            <div className="flex flex-wrap gap-2 p-3 bg-emerald-900/10 border border-emerald-900/30 rounded">
-                                <span className="text-xs text-emerald-400 font-semibold">Selected:</span>
-                                {dietaryTags.map(t => (
-                                    <span key={t} className="px-2 py-1 bg-emerald-900/40 text-emerald-300 text-xs rounded capitalize">
-                                        {t.replace(/_/g, ' ')}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </section>
-
-                {/* SECTION 4: BENEFITS */}
-                <section id="benefits" ref={el => { if (el) sectionRefs.current['benefits'] = el }} className="scroll-mt-24 space-y-6">
-                    <div className="flex items-center gap-3 pb-4 border-b border-[#222]">
-                        <Sparkles className="w-6 h-6 text-emerald-500" />
-                        <h2 className="text-xl font-bold text-white">Potential Benefits</h2>
-                    </div>
-
-                    <div className="space-y-4">
-                        <div className="flex justify-end">
-                            <button type="button" onClick={() => setValue("benefits", [...benefits, { title: "", type: "anecdotal" }])} className="text-emerald-400 text-xs font-bold hover:text-emerald-300">+ ADD BENEFIT</button>
-                        </div>
-                        {benefits.map((benefit, i) => (
-                            <div key={i} className="bg-[#111] p-4 rounded border border-[#333] space-y-3">
-                                <div className="flex justify-between">
-                                    <input value={benefit.title} onChange={e => {
-                                        const b = [...benefits]; b[i].title = e.target.value; setValue("benefits", b);
-                                    }} placeholder="Benefit Title (e.g. Reduces Inflammation)" className="w-full bg-transparent text-white font-medium border-b border-[#333] focus:border-emerald-500 outline-none pb-2" />
-                                    <button type="button" onClick={() => setValue("benefits", benefits.filter((_, idx) => idx !== i))} className="ml-2 text-red-500 text-xs">Remove</button>
-                                </div>
-                                <div className="flex gap-4">
-                                    <label className="flex items-center gap-2 text-sm text-gray-400">
-                                        <input type="radio" checked={benefit.type === 'anecdotal'} onChange={() => {
-                                            const b = [...benefits]; b[i].type = 'anecdotal'; setValue("benefits", b);
-                                        }} /> Personal Experience
-                                    </label>
-                                    <label className="flex items-center gap-2 text-sm text-gray-400">
-                                        <input type="radio" checked={benefit.type === 'evidence_based'} onChange={() => {
-                                            const b = [...benefits]; b[i].type = 'evidence_based'; setValue("benefits", b);
-                                        }} /> Scientific Evidence
-                                    </label>
-                                </div>
-                                {benefit.type === 'evidence_based' && (
-                                    <input value={benefit.citation} onChange={e => {
-                                        const b = [...benefits]; b[i].citation = e.target.value; setValue("benefits", b);
-                                    }} placeholder="Citation URL" className="w-full bg-[#000] border border-[#333] p-2 text-xs text-gray-300 rounded" />
-                                )}
-                            </div>
-                        ))}
-                        {benefits.length === 0 && <div className="p-4 bg-[#111] border border-[#333] text-gray-600 text-sm text-center rounded border-dashed">No benefits listed.</div>}
-                    </div>
-                </section>
-
-                {/* SECTION 5: SIGNALS - Only for Brand Owners */}
-                {userType === "brand" && (
-                    <section id="signals" ref={el => { if (el) sectionRefs.current['signals'] = el }} className="scroll-mt-24 space-y-6">
+                    {/* SECTION 1: NARRATIVE */}
+                    <section id="narrative" ref={el => { if (el) sectionRefs.current['narrative'] = el }} className="scroll-mt-24 space-y-6">
                         <div className="flex items-center gap-3 pb-4 border-b border-[#222]">
-                            <ShieldCheck className="w-6 h-6 text-emerald-500" />
-                            <h2 className="text-xl font-bold text-white">Truth Signals & Verification</h2>
+                            <FileText className="w-6 h-6 text-emerald-500" />
+                            <h2 className="text-xl font-bold text-white">The Narrative</h2>
                         </div>
+
+                        <div className="grid gap-6">
+                            <div className="space-y-2">
+                                <label className="text-xs uppercase tracking-wider text-gray-500">Product Name</label>
+                                <input {...register("name")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded" placeholder="e.g. Neuro-Vance" />
+                                {errors.name && <p className="text-red-500 text-xs">{errors.name.message}</p>}
+                            </div>
+
+                            {/* Primary Category */}
+                            <div className="space-y-2">
+                                <label className="text-xs uppercase tracking-wider text-gray-500">Primary Category *</label>
+                                <select {...register("primary_category")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded appearance-none">
+                                    <option value="">Select Primary Category</option>
+                                    {PRIMARY_CATEGORIES.map(cat => (
+                                        <option key={cat} value={cat}>{cat}</option>
+                                    ))}
+                                </select>
+                                {watch("primary_category") && (
+                                    <p className="text-xs text-gray-400 mt-1">
+                                        {PRIMARY_CATEGORY_DESCRIPTIONS[watch("primary_category") as PrimaryCategory]}
+                                    </p>
+                                )}
+                                {errors.primary_category && <p className="text-red-500 text-xs">{errors.primary_category.message}</p>}
+                            </div>
+
+                            {/* Secondary Categories */}
+                            <SecondaryCategoriesSelector
+                                value={(watch("secondary_categories") as SecondaryCategories) || EMPTY_SECONDARY_CATEGORIES}
+                                onChange={(value) => setValue("secondary_categories", value, { shouldValidate: true })}
+                            />
+
+                            <div className="space-y-2">
+                                <label className="text-xs uppercase tracking-wider text-gray-500">Target Audience</label>
+                                <input {...register("target_audience")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded" placeholder="e.g. High-performance athletes" />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs uppercase tracking-wider text-gray-500">Company Blurb & Mission</label>
+                                <textarea {...register("company_blurb")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded min-h-[120px]" placeholder="Tell us about the company mission..." />
+                                {errors.company_blurb && <p className="text-red-500 text-xs">{errors.company_blurb.message}</p>}
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs uppercase tracking-wider text-gray-500">Core Value Proposition</label>
+                                <textarea {...register("core_value_proposition")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded min-h-[100px]" placeholder="Key promise to the consumer..." />
+                            </div>
+
+                            {/* NEW FIELDS */}
+                            <div className="grid md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-wider text-gray-500">Manufacturer/Brand</label>
+                                    <input {...register("manufacturer")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded" placeholder="e.g. Thorne Research" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-wider text-gray-500">Price (Optional)</label>
+                                    <input {...register("price")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded" placeholder="e.g. $29.99" />
+                                </div>
+                            </div>
+
+                            <div className="grid md:grid-cols-3 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-wider text-gray-500">Form</label>
+                                    <input {...register("form")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded" placeholder="e.g. Capsule" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-wider text-gray-500">Serving Size</label>
+                                    <input {...register("serving_size")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded" placeholder="e.g. 2 Capsules" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-wider text-gray-500">Servings/Container</label>
+                                    <input {...register("servings_per_container")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded" placeholder="e.g. 30" />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs uppercase tracking-wider text-gray-500">Warnings & Safety Information</label>
+                                <textarea {...register("warnings")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded min-h-[100px]" placeholder="Any warnings, contraindications, or safety notes..." />
+                            </div>
+
+                            {/* Hidden Barcode Field */}
+                            <input type="hidden" {...register("barcode")} />
+                        </div>
+                    </section>
+
+                    {/* SECTION 2: MEDIA */}
+                    <section id="media" ref={el => { if (el) sectionRefs.current['media'] = el }} className="scroll-mt-24 space-y-6">
+                        <div className="flex items-center gap-3 pb-4 border-b border-[#222]">
+                            <Camera className="w-6 h-6 text-emerald-500" />
+                            <h2 className="text-xl font-bold text-white">Media Assets</h2>
+                        </div>
+                        {/* Reusing existing upload components */}
                         <div className="bg-[#111] p-6 rounded border border-[#222]">
-                            <p className="text-gray-400 text-sm mb-4">Select signals to verify (upload proof required for each).</p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {['third_party_lab_verified', 'purity_tested', 'source_transparency', 'potency_verified', 'excipient_audit', 'operational_legitimacy'].map(key => {
-                                    const isSelected = !!smeSignals[key];
-                                    const evidence = smeSignals[key]?.evidence;
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-sm font-semibold text-gray-300">Product Gallery</h3>
+                                <CloudinaryUploadWidget onUpload={(url) => setValue("product_photos", [...photos, url])} maxPhotos={MAX_PHOTOS} currentCount={photos.length} />
+                            </div>
+                            <PhotoGrid photos={photos} onDelete={(idx) => setValue("product_photos", photos.filter((_, i) => i !== idx))} onReorder={() => { }} />
+                        </div>
 
+                        <div className="space-y-2">
+                            <label className="text-xs uppercase tracking-wider text-gray-500">YouTube Review Link</label>
+                            <div className="flex items-center gap-2 bg-[#111] border border-[#333] rounded px-3">
+                                <span className="text-gray-500">youtube.com/</span>
+                                <input {...register("youtube_link")} className="flex-1 bg-transparent p-4 text-white outline-none" placeholder="watch?v=..." />
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* SECTION 3: SPECS */}
+                    <section id="specs" ref={el => { if (el) sectionRefs.current['specs'] = el }} className="scroll-mt-24 space-y-6">
+                        <div className="flex items-center gap-3 pb-4 border-b border-[#222]">
+                            <FlaskConical className="w-6 h-6 text-emerald-500" />
+                            <h2 className="text-xl font-bold text-white">Ingredients & Specs</h2>
+                        </div>
+
+                        {/* Ingredients Builder */}
+                        <div className="space-y-4">
+                            <div className="flex justify-between">
+                                <label className="text-xs uppercase tracking-wider text-gray-500">Active Ingredients</label>
+                                <button type="button" onClick={() => setValue("active_ingredients", [...activeIngredients, { name: "", dosage: "" }])} className="text-emerald-400 text-xs font-bold hover:text-emerald-300">+ ADD INGREDIENT</button>
+                            </div>
+                            {activeIngredients.map((ing, i) => (
+                                <div key={i} className="flex gap-2">
+                                    <input placeholder="Ingredient Name" value={ing.name} onChange={e => {
+                                        const n = [...activeIngredients]; n[i].name = e.target.value; setValue("active_ingredients", n);
+                                    }} className="flex-[2] bg-[#111] border border-[#333] p-3 rounded text-sm text-white" />
+                                    <input placeholder="Dosage (Optional)" value={ing.dosage || ""} onChange={e => {
+                                        const n = [...activeIngredients]; n[i].dosage = e.target.value; setValue("active_ingredients", n);
+                                    }} className="flex-1 bg-[#111] border border-[#333] p-3 rounded text-sm text-white" />
+                                    <button type="button" onClick={() => setValue("active_ingredients", activeIngredients.filter((_, idx) => idx !== i))} className="px-3 text-red-500 hover:bg-red-900/20 rounded">×</button>
+                                </div>
+                            ))}
+                            {activeIngredients.length === 0 && <div className="p-4 bg-[#111] border border-[#333] text-gray-600 text-sm text-center rounded border-dashed">No ingredients added yet.</div>}
+                        </div>
+
+                        {/* Usage Instructions - Phase 2 */}
+                        <div className="space-y-4 pt-4 border-t border-[#222]">
+                            <h3 className="text-sm font-semibold text-white">Usage & Storage</h3>
+                            <div className="space-y-2">
+                                <label className="text-xs uppercase tracking-wider text-gray-500">Recommended Dosage</label>
+                                <textarea {...register("recommended_dosage")} className="w-full bg-[#111] border border-[#333] p-3 text-white focus:border-emerald-500 outline-none rounded h-20" placeholder="e.g. Take 2 capsules daily with water..." />
+                            </div>
+                            <div className="grid md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-wider text-gray-500">Best Time to Take</label>
+                                    <input {...register("best_time_take")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded" placeholder="e.g. Before bed" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-wider text-gray-500">Storage Instructions</label>
+                                    <input {...register("storage_instructions")} className="w-full bg-[#111] border border-[#333] p-4 text-white focus:border-emerald-500 outline-none rounded" placeholder="e.g. Cool, dry place" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Generic Specs */}
+                        <div className="space-y-4 pt-4">
+                            <div className="flex justify-between">
+                                <label className="text-xs uppercase tracking-wider text-gray-500">Technical Specs (Serving Size, etc)</label>
+                                <button type="button" onClick={() => setValue("technical_specs", [...technicalSpecs, { key: "", value: "" }])} className="text-emerald-400 text-xs font-bold hover:text-emerald-300">+ ADD SPEC</button>
+                            </div>
+                            {technicalSpecs.map((spec, i) => (
+                                <div key={i} className="flex gap-2">
+                                    <input placeholder="Spec Name" value={spec.key} onChange={e => {
+                                        const n = [...technicalSpecs]; n[i].key = e.target.value; setValue("technical_specs", n);
+                                    }} className="flex-[2] bg-[#111] border border-[#333] p-3 rounded text-sm text-white" />
+                                    <input placeholder="Value" value={spec.value} onChange={e => {
+                                        const n = [...technicalSpecs]; n[i].value = e.target.value; setValue("technical_specs", n);
+                                    }} className="flex-1 bg-[#111] border border-[#333] p-3 rounded text-sm text-white" />
+                                    <button type="button" onClick={() => setValue("technical_specs", technicalSpecs.filter((_, idx) => idx !== i))} className="px-3 text-red-500 hover:bg-red-900/20 rounded">×</button>
+                                </div>
+                            ))}\n                        </div>
+
+                        {/* Allergen Information */}
+                        <div className="space-y-4 pt-6 border-t border-[#222]">
+                            <label className="text-xs uppercase tracking-wider text-gray-500">Allergen Information</label>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                {["dairy", "eggs", "fish", "shellfish", "tree_nuts", "peanuts", "wheat", "soy", "gluten", "none"].map(allergen => {
+                                    const isSelected = allergens.includes(allergen as any);
                                     return (
-                                        <div key={key} className={`p-4 border rounded transition-colors ${isSelected ? 'border-emerald-500 bg-emerald-900/10' : 'border-[#333]'}`}>
-                                            <label className="flex items-center gap-3 cursor-pointer">
-                                                <input type="checkbox" checked={isSelected} onChange={() => {
-                                                    const s = { ...smeSignals };
-                                                    if (s[key]) delete s[key];
-                                                    else s[key] = { verified: false, evidence: "" };
-                                                    setValue("sme_signals", s);
-                                                }} className="w-4 h-4 accent-emerald-500" />
-                                                <span className="capitalize font-medium text-gray-200">{key.replace(/_/g, ' ')}</span>
-                                            </label>
-
-                                            {isSelected && (
-                                                <div className="mt-4 pl-7 space-y-2">
-                                                    <p className="text-xs text-emerald-400">Proof Required via Upload/Link:</p>
-                                                    {evidence ? (
-                                                        <div className="flex items-center justify-between p-2 bg-black/40 border border-emerald-500/30 rounded">
-                                                            <a href={evidence} target="_blank" className="text-xs text-blue-400 hover:underline truncate max-w-[150px]">View Proof</a>
-                                                            <button type="button" onClick={() => {
-                                                                const s = { ...smeSignals }; s[key].evidence = ""; setValue("sme_signals", s);
-                                                            }} className="text-red-500 text-xs">Remove</button>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex flex-col gap-3">
-                                                            <div className="flex gap-2 items-center">
-                                                                <label className={`flex items-center gap-2 px-4 py-2 bg-[#222] hover:bg-[#333] border border-[#444] rounded cursor-pointer transition-colors text-sm text-gray-300 ${uploadingSignals[key] ? 'opacity-50 pointer-events-none' : ''}`}>
-                                                                    {uploadingSignals[key] ? <span className="animate-spin">⏳</span> : <Upload className="w-4 h-4" />}
-                                                                    {uploadingSignals[key] ? "Uploading..." : "Upload PDF/Image"}
-                                                                    <input
-                                                                        type="file"
-                                                                        className="hidden"
-                                                                        accept=".pdf,.jpg,.jpeg,.png"
-                                                                        onChange={(e) => {
-                                                                            const file = e.target.files?.[0];
-                                                                            if (file) handleSignalUpload(key, file);
-                                                                        }}
-                                                                    />
-                                                                </label>
-                                                                <span className="text-gray-500 text-xs">or</span>
-                                                                <input
-                                                                    type="text"
-                                                                    placeholder="Paste link to proof..."
-                                                                    className="flex-1 bg-[#111] border border-[#333] px-3 py-2 text-sm text-white rounded focus:border-emerald-500 outline-none"
-                                                                    onBlur={(e) => {
-                                                                        if (e.target.value) {
-                                                                            const s = { ...smeSignals };
-                                                                            if (!s[key]) s[key] = { verified: false, evidence: "" };
-                                                                            s[key].evidence = e.target.value;
-                                                                            setValue("sme_signals", s);
-                                                                        }
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
+                                        <label key={allergen} className={`flex items-center gap-2 p-3 rounded border-2 cursor-pointer transition-all ${isSelected ? "border-orange-500 bg-orange-900/20" : "border-[#333] hover:border-[#444]"
+                                            }`}>
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                onChange={(e) => {
+                                                    const current = allergens || [];
+                                                    if (e.target.checked) {
+                                                        setValue("allergens", [...current, allergen as any]);
+                                                    } else {
+                                                        setValue("allergens", current.filter(a => a !== allergen));
+                                                    }
+                                                }}
+                                                className="w-4 h-4 accent-orange-500"
+                                            />
+                                            <span className="text-sm capitalize text-gray-300">{allergen.replace(/_/g, ' ')}</span>
+                                        </label>
                                     );
                                 })}
                             </div>
-                        </div>
-                    </section>
-                )}
-
-                {/* SECTION 6: VERIFICATION - Only for Brand Owners */}
-                {userType === "brand" && (
-                    <section id="verification" ref={el => { if (el) sectionRefs.current['verification'] = el }} className="scroll-mt-24 space-y-6 pb-24">
-                        <div className="flex items-center gap-3 pb-4 border-b border-[#222]">
-                            <Check className="w-6 h-6 text-emerald-500" />
-                            <h2 className="text-xl font-bold text-white">Final Verification</h2>
-                        </div>
-
-                        {/* Why Verify Benefits */}
-                        <div className="bg-gradient-to-br from-emerald-900/20 to-black border border-emerald-500/30 rounded-lg p-6">
-                            <h3 className="text-emerald-400 font-bold mb-4 flex items-center gap-2">
-                                <Sparkles className="w-5 h-5" /> Why Verify? ($100/month)
-                            </h3>
-                            <ul className="space-y-3">
-                                <li className="flex gap-2">
-                                    <Check className="w-5 h-5 text-emerald-500 shrink-0" />
-                                    <span className="text-gray-300 text-sm"><strong>Verified Business Representative:</strong> Official badge (separate from SME certification).</span>
-                                </li>
-                                <li className="flex gap-2">
-                                    <Check className="w-5 h-5 text-emerald-500 shrink-0" />
-                                    <span className="text-gray-300 text-sm"><strong>Enhanced Data Display:</strong> Showcase additional product details and truth signals.</span>
-                                </li>
-                                <li className="flex gap-2">
-                                    <Check className="w-5 h-5 text-emerald-500 shrink-0" />
-                                    <span className="text-gray-300 text-sm"><strong>Path to Certification:</strong> Eligibility for full SME Certification.</span>
-                                </li>
-                            </ul>
+                            {allergens.length > 0 && (
+                                <div className="flex flex-wrap gap-2 p-3 bg-orange-900/10 border border-orange-900/30 rounded">
+                                    <span className="text-xs text-orange-400 font-semibold">Selected:</span>
+                                    {allergens.map(a => (
+                                        <span key={a} className="px-2 py-1 bg-orange-900/40 text-orange-300 text-xs rounded capitalize">
+                                            {a.replace(/_/g, ' ')}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
-                        <div className="flex items-center gap-3 mb-4">
-                            <input type="checkbox" {...register("is_brand_owner")} className="w-5 h-5 accent-emerald-500" />
-                            <label className="text-white">I am the brand owner or authorized representative.</label>
-                        </div>
-
-                        {watch("is_brand_owner") && (
-                            <div className="grid md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
-                                <input {...register("work_email")} placeholder="Work Email" className="bg-[#111] border border-[#333] p-3 text-white rounded" />
-                                <input {...register("company_website")} placeholder="Company Website" className="bg-[#111] border border-[#333] p-3 text-white rounded" />
+                        {/* Dietary Tags */}
+                        <div className="space-y-4 pt-6 border-t border-[#222]">
+                            <label className="text-xs uppercase tracking-wider text-gray-500">Dietary Compliance Tags</label>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                {["vegan", "vegetarian", "gluten_free", "dairy_free", "kosher", "halal", "paleo", "keto", "non_gmo"].map(tag => {
+                                    const isSelected = dietaryTags.includes(tag as any);
+                                    return (
+                                        <label key={tag} className={`flex items-center gap-2 p-3 rounded border-2 cursor-pointer transition-all ${isSelected ? "border-emerald-500 bg-emerald-900/20" : "border-[#333] hover:border-[#444]"
+                                            }`}>
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                onChange={(e) => {
+                                                    const current = dietaryTags || [];
+                                                    if (e.target.checked) {
+                                                        setValue("dietary_tags", [...current, tag as any]);
+                                                    } else {
+                                                        setValue("dietary_tags", current.filter(t => t !== tag));
+                                                    }
+                                                }}
+                                                className="w-4 h-4 accent-emerald-500"
+                                            />
+                                            <span className="text-sm capitalize text-gray-300">{tag.replace(/_/g, ' ')}</span>
+                                        </label>
+                                    );
+                                })}
                             </div>
-                        )}
-
-                        <div className="lg:hidden mt-8">
-                            <button onClick={handleSubmit(onSubmit)} disabled={isSubmitting} className="w-full bg-emerald-600 text-white py-4 rounded font-bold text-lg">
-                                {isSubmitting ? "Submitting..." : "Submit Product"}
-                            </button>
+                            {dietaryTags.length > 0 && (
+                                <div className="flex flex-wrap gap-2 p-3 bg-emerald-900/10 border border-emerald-900/30 rounded">
+                                    <span className="text-xs text-emerald-400 font-semibold">Selected:</span>
+                                    {dietaryTags.map(t => (
+                                        <span key={t} className="px-2 py-1 bg-emerald-900/40 text-emerald-300 text-xs rounded capitalize">
+                                            {t.replace(/_/g, ' ')}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </section>
-                )}
+
+                    {/* SECTION 4: BENEFITS */}
+                    <section id="benefits" ref={el => { if (el) sectionRefs.current['benefits'] = el }} className="scroll-mt-24 space-y-6">
+                        <div className="flex items-center gap-3 pb-4 border-b border-[#222]">
+                            <Sparkles className="w-6 h-6 text-emerald-500" />
+                            <h2 className="text-xl font-bold text-white">Potential Benefits</h2>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="flex justify-end">
+                                <button type="button" onClick={() => setValue("benefits", [...benefits, { title: "", type: "anecdotal" }])} className="text-emerald-400 text-xs font-bold hover:text-emerald-300">+ ADD BENEFIT</button>
+                            </div>
+                            {benefits.map((benefit, i) => (
+                                <div key={i} className="bg-[#111] p-4 rounded border border-[#333] space-y-3">
+                                    <div className="flex justify-between">
+                                        <input value={benefit.title} onChange={e => {
+                                            const b = [...benefits]; b[i].title = e.target.value; setValue("benefits", b);
+                                        }} placeholder="Benefit Title (e.g. Reduces Inflammation)" className="w-full bg-transparent text-white font-medium border-b border-[#333] focus:border-emerald-500 outline-none pb-2" />
+                                        <button type="button" onClick={() => setValue("benefits", benefits.filter((_, idx) => idx !== i))} className="ml-2 text-red-500 text-xs">Remove</button>
+                                    </div>
+                                    <div className="flex gap-4">
+                                        <label className="flex items-center gap-2 text-sm text-gray-400">
+                                            <input type="radio" checked={benefit.type === 'anecdotal'} onChange={() => {
+                                                const b = [...benefits]; b[i].type = 'anecdotal'; setValue("benefits", b);
+                                            }} /> Personal Experience
+                                        </label>
+                                        <label className="flex items-center gap-2 text-sm text-gray-400">
+                                            <input type="radio" checked={benefit.type === 'evidence_based'} onChange={() => {
+                                                const b = [...benefits]; b[i].type = 'evidence_based'; setValue("benefits", b);
+                                            }} /> Scientific Evidence
+                                        </label>
+                                    </div>
+                                    {benefit.type === 'evidence_based' && (
+                                        <input value={benefit.citation} onChange={e => {
+                                            const b = [...benefits]; b[i].citation = e.target.value; setValue("benefits", b);
+                                        }} placeholder="Citation URL" className="w-full bg-[#000] border border-[#333] p-2 text-xs text-gray-300 rounded" />
+                                    )}
+                                </div>
+                            ))}
+                            {benefits.length === 0 && <div className="p-4 bg-[#111] border border-[#333] text-gray-600 text-sm text-center rounded border-dashed">No benefits listed.</div>}
+                        </div>
+                    </section>
+
+                    {/* SECTION 5: SIGNALS - Only for Brand Owners */}
+                    {userType === "brand" && (
+                        <section id="signals" ref={el => { if (el) sectionRefs.current['signals'] = el }} className="scroll-mt-24 space-y-6">
+                            <div className="flex items-center gap-3 pb-4 border-b border-[#222]">
+                                <ShieldCheck className="w-6 h-6 text-emerald-500" />
+                                <h2 className="text-xl font-bold text-white">Truth Signals & Verification</h2>
+                            </div>
+                            <div className="bg-[#111] p-6 rounded border border-[#222]">
+                                <p className="text-gray-400 text-sm mb-4">Select signals to verify (upload proof required for each).</p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {['third_party_lab_verified', 'purity_tested', 'source_transparency', 'potency_verified', 'excipient_audit', 'operational_legitimacy'].map(key => {
+                                        const isSelected = !!smeSignals[key];
+                                        const evidence = smeSignals[key]?.evidence;
+
+                                        return (
+                                            <div key={key} className={`p-4 border rounded transition-colors ${isSelected ? 'border-emerald-500 bg-emerald-900/10' : 'border-[#333]'}`}>
+                                                <label className="flex items-center gap-3 cursor-pointer">
+                                                    <input type="checkbox" checked={isSelected} onChange={() => {
+                                                        const s = { ...smeSignals };
+                                                        if (s[key]) delete s[key];
+                                                        else s[key] = { verified: false, evidence: "" };
+                                                        setValue("sme_signals", s);
+                                                    }} className="w-4 h-4 accent-emerald-500" />
+                                                    <span className="capitalize font-medium text-gray-200">{key.replace(/_/g, ' ')}</span>
+                                                </label>
+
+                                                {isSelected && (
+                                                    <div className="mt-4 pl-7 space-y-2">
+                                                        <p className="text-xs text-emerald-400">Proof Required via Upload/Link:</p>
+                                                        {evidence ? (
+                                                            <div className="flex items-center justify-between p-2 bg-black/40 border border-emerald-500/30 rounded">
+                                                                <a href={evidence} target="_blank" className="text-xs text-blue-400 hover:underline truncate max-w-[150px]">View Proof</a>
+                                                                <button type="button" onClick={() => {
+                                                                    const s = { ...smeSignals }; s[key].evidence = ""; setValue("sme_signals", s);
+                                                                }} className="text-red-500 text-xs">Remove</button>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex flex-col gap-3">
+                                                                <div className="flex gap-2 items-center">
+                                                                    <label className={`flex items-center gap-2 px-4 py-2 bg-[#222] hover:bg-[#333] border border-[#444] rounded cursor-pointer transition-colors text-sm text-gray-300 ${uploadingSignals[key] ? 'opacity-50 pointer-events-none' : ''}`}>
+                                                                        {uploadingSignals[key] ? <span className="animate-spin">⏳</span> : <Upload className="w-4 h-4" />}
+                                                                        {uploadingSignals[key] ? "Uploading..." : "Upload PDF/Image"}
+                                                                        <input
+                                                                            type="file"
+                                                                            className="hidden"
+                                                                            accept=".pdf,.jpg,.jpeg,.png"
+                                                                            onChange={(e) => {
+                                                                                const file = e.target.files?.[0];
+                                                                                if (file) handleSignalUpload(key, file);
+                                                                            }}
+                                                                        />
+                                                                    </label>
+                                                                    <span className="text-gray-500 text-xs">or</span>
+                                                                    <input
+                                                                        type="text"
+                                                                        placeholder="Paste link to proof..."
+                                                                        className="flex-1 bg-[#111] border border-[#333] px-3 py-2 text-sm text-white rounded focus:border-emerald-500 outline-none"
+                                                                        onBlur={(e) => {
+                                                                            if (e.target.value) {
+                                                                                const s = { ...smeSignals };
+                                                                                if (!s[key]) s[key] = { verified: false, evidence: "" };
+                                                                                s[key].evidence = e.target.value;
+                                                                                setValue("sme_signals", s);
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </section>
+                    )}
+
+                    {/* SECTION 6: VERIFICATION - Only for Brand Owners */}
+                    {userType === "brand" && (
+                        <section id="verification" ref={el => { if (el) sectionRefs.current['verification'] = el }} className="scroll-mt-24 space-y-6 pb-24">
+                            <div className="flex items-center gap-3 pb-4 border-b border-[#222]">
+                                <Check className="w-6 h-6 text-emerald-500" />
+                                <h2 className="text-xl font-bold text-white">Final Verification</h2>
+                            </div>
+
+                            {/* Why Verify Benefits */}
+                            <div className="bg-gradient-to-br from-emerald-900/20 to-black border border-emerald-500/30 rounded-lg p-6">
+                                <h3 className="text-emerald-400 font-bold mb-4 flex items-center gap-2">
+                                    <Sparkles className="w-5 h-5" /> Why Verify? ($100/month)
+                                </h3>
+                                <ul className="space-y-3">
+                                    <li className="flex gap-2">
+                                        <Check className="w-5 h-5 text-emerald-500 shrink-0" />
+                                        <span className="text-gray-300 text-sm"><strong>Verified Business Representative:</strong> Official badge (separate from SME certification).</span>
+                                    </li>
+                                    <li className="flex gap-2">
+                                        <Check className="w-5 h-5 text-emerald-500 shrink-0" />
+                                        <span className="text-gray-300 text-sm"><strong>Enhanced Data Display:</strong> Showcase additional product details and truth signals.</span>
+                                    </li>
+                                    <li className="flex gap-2">
+                                        <Check className="w-5 h-5 text-emerald-500 shrink-0" />
+                                        <span className="text-gray-300 text-sm"><strong>Path to Certification:</strong> Eligibility for full SME Certification.</span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div className="flex items-center gap-3 mb-4">
+                                <input type="checkbox" {...register("is_brand_owner")} className="w-5 h-5 accent-emerald-500" />
+                                <label className="text-white">I am the brand owner or authorized representative.</label>
+                            </div>
+
+                            {watch("is_brand_owner") && (
+                                <div className="grid md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
+                                    <input {...register("work_email")} placeholder="Work Email" className="bg-[#111] border border-[#333] p-3 text-white rounded" />
+                                    <input {...register("company_website")} placeholder="Company Website" className="bg-[#111] border border-[#333] p-3 text-white rounded" />
+                                </div>
+                            )}
+
+                            <div className="lg:hidden mt-8">
+                                <button type="submit" disabled={isSubmitting} className="w-full bg-emerald-600 text-white py-4 rounded font-bold text-lg">
+                                    {isSubmitting ? "Submitting..." : "Submit Product"}
+                                </button>
+                            </div>
+                        </section>
+                    )}
+                </div>
             </div>
-        </div>
+        </form>
     </div>
 }
 

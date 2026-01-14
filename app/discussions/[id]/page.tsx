@@ -21,6 +21,7 @@ interface Discussion {
   upvote_count: number;
   tags: string[];
   slug: string;
+  metadata?: { x_post_url?: string };
   profiles: {
     id: string;
     full_name: string;
@@ -71,6 +72,7 @@ export default async function DiscussionPage({ params }: { params: Promise<{ id:
     upvote_count: discussionData.upvote_count,
     tags: discussionData.tags || [],
     slug: discussionData.slug,
+    metadata: discussionData.metadata || {},
     profiles: {
       id: discussionData.author_id,
       full_name: discussionData.full_name,
