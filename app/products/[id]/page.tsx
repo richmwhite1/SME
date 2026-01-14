@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import ProductImageGallery from "@/components/products/ProductImageGallery";
 import HeroSection from "@/components/products/dossier/HeroSection";
-import TabbedDossier from "@/components/products/dossier/TabbedDossier";
+import ContinuousDossier from "@/components/products/dossier/ContinuousDossier";
 import TheVault from "@/components/products/dossier/TheVault";
 import SearchBar from "@/components/search/SearchBar";
 import ProductViewTracker from "@/components/products/ProductViewTracker";
@@ -538,8 +538,8 @@ export default async function ProductDetailPage({
               targetAudience={typedProduct.target_audience}
             />
 
-            {/* TABBED DOSSIER */}
-            <TabbedDossier
+            {/* CONTINUOUS DOSSIER - All Content Visible */}
+            <ContinuousDossier
               productId={typedProduct.id}
               productSlug={typedProduct.slug}
               isSME={isSME}
