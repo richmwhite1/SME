@@ -64,7 +64,7 @@ export default function PillarProgressBar({ avgScores, reviewCount, compact = fa
         return (
             <div className={`flex items-center gap-2 ${compact ? 'text-xs' : 'text-sm'} text-bone-white/40 font-mono`}>
                 <Activity className={compact ? 'w-3 h-3' : 'w-4 h-4'} />
-                <span>Expert Analysis Pending</span>
+                <span>Audit Pending</span>
             </div>
         );
     }

@@ -9,6 +9,8 @@ import TrustWeight from "@/components/ui/TrustWeight";
 import { getDb } from "@/lib/db";
 import { getTopSmeSummons, SmeSummons } from "@/app/actions/sme-actions";
 import SmeSummonsFeed from "@/components/profile/SmeSummonsFeed";
+import { ChakraLevelDisplay } from "@/components/profile/ChakraLevelDisplay";
+import { PillarExpertiseSelector } from "@/components/profile/PillarExpertiseSelector";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +27,10 @@ interface Profile {
   email: string | null;
   social_links: any | null;
   badge_type: string | null;
+  chakra_level: number;
+  sme_score: number;
+  sme_score_details: any | null;
+  pillar_expertise: string[];
 }
 
 export default async function UserProfilePage({
@@ -49,7 +55,7 @@ export default async function UserProfilePage({
   try {
     // Fetch profile by username
     const profileResult = await sql`
-      SELECT id, full_name, username, bio, credentials, profession, website_url, avatar_url, contributor_score, email, social_links, badge_type
+      SELECT id, full_name, username, bio, credentials, profession, website_url, avatar_url, contributor_score, email, social_links, badge_type, chakra_level, sme_score, sme_score_details, pillar_expertise
       FROM profiles
       WHERE username = ${username}
       LIMIT 1
@@ -252,8 +258,25 @@ export default async function UserProfilePage({
                 </div>
               )}
 
+              {/* Pillar Expertise Badges */}
+              {typedProfile.pillar_expertise && typedProfile.pillar_expertise.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="mb-2 text-xs font-semibold text-bone-white/70 font-mono uppercase">Expertise</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {typedProfile.pillar_expertise.map((pillar: string) => (
+                      <span
+                        key={pillar}
+                        className="rounded bg-sme-gold/10 px-2 py-1 text-xs text-sme-gold border border-sme-gold/30 font-mono"
+                      >
+                        {pillar}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Stats */}
-              <div className="mb-4 grid grid-cols-3 gap-3 text-xs font-mono">
+              <div className="mb-4 grid grid-cols-2 gap-3 text-xs font-mono">
                 <div className="text-center">
                   <div className="font-semibold text-bone-white text-lg">{followerCount || 0}</div>
                   <div className="text-bone-white/60 uppercase tracking-wider text-[10px]">Followers</div>
@@ -262,38 +285,9 @@ export default async function UserProfilePage({
                   <div className="font-semibold text-bone-white text-lg">{followingCount || 0}</div>
                   <div className="text-bone-white/60 uppercase tracking-wider text-[10px]">Following</div>
                 </div>
-                <div className="text-center">
-                  <div className="font-semibold text-heart-green text-lg">
-                    {typedProfile.contributor_score || 0}
-                  </div>
-                  <div className="text-bone-white/60 uppercase tracking-wider text-[10px]">Contributor
-                    Score</div>
-                </div>
               </div>
 
-              {/* Badge Progress - Only visible to profile owner */}
-              {isOwner && (
-                <div className="mb-4 border border-translucent-emerald bg-forest-obsidian p-4 text-left">
-                  <h3 className="mb-3 text-xs font-semibold text-bone-white font-mono uppercase tracking-wider">Badge Progress</h3>
-                  <div className="space-y-2 text-xs font-mono">
-                    <div className="flex items-center justify-between">
-                      <span className="text-bone-white/70">Contributor Score:</span>
-                      <span className="font-semibold text-bone-white">
-                        {typedProfile.contributor_score || 0} / 50
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-bone-white/70">Total Upvotes Received:</span>
-                      <span className="font-semibold text-bone-white">
-                        {totalUpvotes} / 10
-                      </span>
-                    </div>
-                    <div className="mt-3 border border-translucent-emerald bg-muted-moss p-2 text-[10px] text-bone-white/70 font-mono leading-relaxed">
-                      <strong>Requirement:</strong> Need 10 Contributor Score & 10 Upvotes for Trusted Voice status
-                    </div>
-                  </div>
-                </div>
-              )}
+
 
               {/* Action Button - Self-view vs Public view */}
               {isOwner ? (
@@ -316,11 +310,29 @@ export default async function UserProfilePage({
             </div>
           </div>
 
-          {/* Right Column: Activity */}
-          <div className="md:col-span-2">
+          {/* Right Column: Activity & Chakra */}
+          <div className="md:col-span-2 space-y-6">
+            {/* Chakra Level Display */}
+            <ChakraLevelDisplay
+              currentScore={typedProfile.sme_score || 0}
+              currentLevel={typedProfile.chakra_level || 1}
+              scoreDetails={typedProfile.sme_score_details}
+            />
+
+            {/* Pillar Expertise Selector - Only for owner */}
+            {isOwner && (
+              <PillarExpertiseSelector
+                currentExpertise={Array.isArray(typedProfile.pillar_expertise) ? typedProfile.pillar_expertise : []}
+                userId={typedProfile.id}
+              />
+            )}
+
+            {/* SME Summons Feed */}
             {isOwner && isVerifiedSme && smeSummons.length > 0 && (
               <SmeSummonsFeed summons={smeSummons} />
             )}
+
+            {/* Activity Feed */}
             <ProfileActivity userId={typedProfile.id} />
           </div>
         </div>

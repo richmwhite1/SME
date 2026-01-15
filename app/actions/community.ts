@@ -14,6 +14,9 @@ export type CommunityUser = {
   contributor_score: number;
   badge_type: string | null;
   is_verified_expert: boolean;
+  chakra_level: number;
+  sme_score: number;
+  pillar_expertise: string[];
   top_tags: string[];
   is_following: boolean;
   is_mutual: boolean;
@@ -63,11 +66,12 @@ export async function getCommunityUsers({
       )`;
     }
 
-    // Pillar filtering (tags overlap)
+    // Pillar filtering (JSONB array overlap)
     let pillarClause = sql``;
     if (pillars && pillars.length > 0) {
-      // Postres array overlap operator &&
-      pillarClause = sql`AND tags && ${pillars}`;
+      // Check if pillar_expertise JSONB array contains any of the requested pillars
+      // Using ?| operator for JSONB array overlap
+      pillarClause = sql`AND pillar_expertise ?| array[${sql.unsafe(pillars.map(p => `'${p}'`).join(','))}]`;
     }
 
     // Activity Threshold (15 mins for green dot)
@@ -84,6 +88,9 @@ export async function getCommunityUsers({
         p.contributor_score,
         p.badge_type,
         p.is_verified_expert,
+        p.chakra_level,
+        p.sme_score,
+        p.pillar_expertise,
         p.last_active_at,
         ${currentUserId
         ? sql`EXISTS(SELECT 1 FROM follows WHERE follower_id = ${currentUserId} AND following_id = p.id) as is_following`
@@ -99,7 +106,7 @@ export async function getCommunityUsers({
       ${searchClause}
       ${filterClause}
       ${pillarClause}
-      ORDER BY p.last_active_at DESC NULLS LAST, p.contributor_score DESC
+      ORDER BY p.last_active_at DESC NULLS LAST, p.sme_score DESC
       LIMIT ${limit} OFFSET ${offset}
     `;
 
@@ -112,6 +119,9 @@ export async function getCommunityUsers({
 
       return {
         ...u,
+        chakra_level: u.chakra_level || 1,
+        sme_score: parseFloat(u.sme_score) || 0,
+        pillar_expertise: Array.isArray(u.pillar_expertise) ? u.pillar_expertise : (u.pillar_expertise ? JSON.parse(u.pillar_expertise) : []),
         is_following: !!u.is_following, // Ensure boolean
         is_mutual: !!u.is_following && !!u.is_followed_by, // Mutual = I follow them AND they follow me
         is_online: isOnline,

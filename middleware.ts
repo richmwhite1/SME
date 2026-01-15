@@ -17,9 +17,14 @@ const isPublicRoute = createRouteMatcher([
   "/leaderboard(.*)",
   "/how-it-works(.*)",
   "/standards(.*)",
+  "/sme-standards(.*)",
   "/terms(.*)",
   "/disclaimer(.*)",
   "/brand-standards(.*)",
+  "/brand-partner-standards(.*)",
+  "/get-certified(.*)",
+  "/list-your-product(.*)",
+  "/sme-citations(.*)",
   "/contact(.*)",
 ]);
 

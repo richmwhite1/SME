@@ -23,6 +23,11 @@ CREATE TABLE IF NOT EXISTS profiles (
   is_admin BOOLEAN DEFAULT false,
   is_verified_expert BOOLEAN DEFAULT false,
   social_links JSONB DEFAULT '{}'::jsonb,
+  chakra_level INTEGER DEFAULT 1 CHECK (chakra_level BETWEEN 1 AND 7),
+  sme_score DECIMAL(10, 2) DEFAULT 0.00,
+  sme_score_details JSONB DEFAULT '{}'::jsonb,
+  last_score_update TIMESTAMPTZ DEFAULT NOW(),
+  pillar_expertise JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -34,6 +39,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_username ON profiles(username) WH
 CREATE INDEX IF NOT EXISTS idx_profiles_username_lookup ON profiles(username);
 CREATE INDEX IF NOT EXISTS idx_profiles_is_admin ON profiles(is_admin) WHERE is_admin = true;
 CREATE INDEX IF NOT EXISTS idx_profiles_social_links ON profiles USING GIN (social_links);
+CREATE INDEX IF NOT EXISTS idx_profiles_chakra_level ON profiles(chakra_level DESC);
+CREATE INDEX IF NOT EXISTS idx_profiles_sme_score ON profiles(sme_score DESC);
+CREATE INDEX IF NOT EXISTS idx_profiles_pillar_expertise ON profiles USING GIN (pillar_expertise);
 
 -- Disable RLS for Clerk integration
 ALTER TABLE profiles DISABLE ROW LEVEL SECURITY;
@@ -45,6 +53,10 @@ COMMENT ON COLUMN profiles.profession IS 'User profession or role (e.g., Neurosc
 COMMENT ON COLUMN profiles.is_admin IS 'Whether the user has admin/moderator privileges';
 COMMENT ON COLUMN profiles.social_links IS 'Social media links stored as JSONB: {discord, telegram, x, instagram}';
 COMMENT ON COLUMN profiles.contributor_score IS 'Community contribution score';
+COMMENT ON COLUMN profiles.chakra_level IS 'Current Chakra Level (1-7) representing SME status';
+COMMENT ON COLUMN profiles.sme_score IS 'Granular SME score calculated from contributions and weighting';
+COMMENT ON COLUMN profiles.sme_score_details IS 'Detailed breakdown of how the score was calculated';
+COMMENT ON COLUMN profiles.pillar_expertise IS 'Array of 9-Pillar categories where user has expertise';
 
 -- =====================================================
 -- 2. PRODUCTS TABLE (Products/Supplements)

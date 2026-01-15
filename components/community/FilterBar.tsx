@@ -4,12 +4,7 @@ import { cn } from "@/lib/utils";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown, X } from "lucide-react";
-
-const MASTER_TOPICS = [
-    "Biohacking", "Longevity", "Research", "Supplements",
-    "Nutrition", "Wellness", "Gut Health", "Mental Health",
-    "Fitness", "Sleep", "Hormones", "Prevention"
-];
+import { SME_PILLARS } from "@/lib/sme-constants";
 
 export default function FilterBar() {
     const searchParams = useSearchParams();
@@ -101,19 +96,19 @@ export default function FilterBar() {
                 {pillarOpen && (
                     <div className="absolute right-0 top-full mt-2 w-64 rounded-lg border border-translucent-emerald bg-forest-obsidian/95 p-2 shadow-xl backdrop-blur-md z-10">
                         <div className="grid grid-cols-1 gap-1 max-h-60 overflow-y-auto">
-                            {MASTER_TOPICS.map(topic => (
+                            {SME_PILLARS.map(pillar => (
                                 <button
-                                    key={topic}
-                                    onClick={() => togglePillar(topic)}
+                                    key={pillar}
+                                    onClick={() => togglePillar(pillar)}
                                     className={cn(
                                         "flex items-center justify-between rounded px-3 py-2 text-left text-xs font-mono transition-colors",
-                                        currentPillars.includes(topic)
+                                        currentPillars.includes(pillar)
                                             ? "bg-heart-green text-forest-obsidian"
                                             : "text-bone-white/70 hover:bg-muted-moss hover:text-bone-white"
                                     )}
                                 >
-                                    <span>{topic}</span>
-                                    {currentPillars.includes(topic) && <X size={12} />}
+                                    <span>{pillar}</span>
+                                    {currentPillars.includes(pillar) && <X size={12} />}
                                 </button>
                             ))}
                         </div>

@@ -3,11 +3,12 @@
 import { useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { MessageCircle, UserPlus, UserCheck, Shield, Star, Award, Users } from "lucide-react";
+import { MessageCircle, UserPlus, UserCheck, Shield, Award, Users } from "lucide-react";
 import { CommunityUser, followUser, unfollowUser } from "@/app/actions/community";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useChat } from "../messages/ChatContext";
+import { ChakraBadge } from "../sme/ChakraBadge";
 
 interface UserCardProps {
     user: CommunityUser;
@@ -87,12 +88,9 @@ export default function UserCard({ user }: UserCardProps) {
                             </p>
                         )}
 
-                        {/* Reputation/Trust */}
+                        {/* Chakra Level & Badge */}
                         <div className="mt-1 flex items-center gap-3 text-xs font-mono">
-                            <div className="flex items-center gap-1 text-heart-green">
-                                <Star size={10} fill="currentColor" />
-                                <span>{user.contributor_score} Trust</span>
-                            </div>
+                            <ChakraBadge level={user.chakra_level} showTitle={false} size="sm" />
                             {user.badge_type && (
                                 <div className="flex items-center gap-1 text-sme-gold">
                                     <Award size={10} />
@@ -114,19 +112,20 @@ export default function UserCard({ user }: UserCardProps) {
                     {user.bio || "No bio provided."}
                 </p>
 
-                {/* Pillar Tags */}
+                {/* Pillar Expertise Tags */}
                 <div className="mb-6 flex flex-wrap gap-2">
-                    {user.top_tags && user.top_tags.length > 0 ? (
-                        user.top_tags.map((tag) => (
+                    {user.pillar_expertise && user.pillar_expertise.length > 0 ? (
+                        user.pillar_expertise.map((pillar) => (
                             <span
-                                key={tag}
-                                className="rounded bg-forest-obsidian/50 px-2 py-0.5 text-xs text-bone-white/60 border border-translucent-emerald/50"
+                                key={pillar}
+                                className="rounded bg-sme-gold/10 px-2 py-0.5 text-xs text-sme-gold border border-sme-gold/30 font-mono"
+                                title="SME Pillar Expertise"
                             >
-                                #{tag}
+                                {pillar}
                             </span>
                         ))
                     ) : (
-                        <span className="text-xs text-bone-white/40 italic">No active pillars</span>
+                        <span className="text-xs text-bone-white/40 italic">No declared pillar expertise</span>
                     )}
                 </div>
 

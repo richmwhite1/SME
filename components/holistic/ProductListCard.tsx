@@ -78,6 +78,9 @@ export default function ProductListCard({
         operationalLegitimacy,
     ].filter(Boolean).length;
 
+    // Check if product has been audited (at least one pillar is explicitly true)
+    const hasBeenAudited = sourceTransparency || purityTested || potencyVerified || excipientAudit || operationalLegitimacy;
+
     // Total engagement (reviews + comments)
     const totalEngagement = reviewCount + commentCount;
 
@@ -150,24 +153,43 @@ export default function ProductListCard({
                                 </span>
                                 <Tooltip content={TERMINOLOGY.PILLAR_SCORE} />
                             </div>
-                            <div className="flex items-center gap-0.5">
-                                {[sourceTransparency, purityTested, potencyVerified, excipientAudit, operationalLegitimacy].map((verified, index) => (
-                                    <div
-                                        key={index}
-                                        className={`h-2 w-2 rounded-sm ${verified ? "bg-heart-green" : "bg-bone-white/20"}`}
-                                    />
-                                ))}
-                            </div>
-                            <span className="text-[10px] sm:text-[9px] font-mono text-bone-white" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
-                                {verifiedPillars}/5
-                            </span>
-                            <Link
-                                href="/how-it-works#nine-pillars"
-                                onClick={(e) => e.stopPropagation()}
-                                className="ml-1 text-[8px] text-sme-gold hover:text-white transition-colors border-b border-sme-gold/30 uppercase tracking-tighter"
-                            >
-                                Standards
-                            </Link>
+                            {!hasBeenAudited && verifiedPillars === 0 ? (
+                                // Show "Audit Pending" for unaudited products
+                                <>
+                                    <span className="text-[10px] sm:text-[9px] font-mono text-bone-white/50 italic" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+                                        Audit Pending
+                                    </span>
+                                    <Link
+                                        href="/how-it-works#nine-pillars"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="ml-1 text-[8px] text-sme-gold hover:text-white transition-colors border-b border-sme-gold/30 uppercase tracking-tighter"
+                                    >
+                                        Standards
+                                    </Link>
+                                </>
+                            ) : (
+                                // Show score and dots for audited products
+                                <>
+                                    <div className="flex items-center gap-0.5">
+                                        {[sourceTransparency, purityTested, potencyVerified, excipientAudit, operationalLegitimacy].map((verified, index) => (
+                                            <div
+                                                key={index}
+                                                className={`h-2 w-2 rounded-sm ${verified ? "bg-heart-green" : "bg-bone-white/20"}`}
+                                            />
+                                        ))}
+                                    </div>
+                                    <span className="text-[10px] sm:text-[9px] font-mono text-bone-white" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+                                        {verifiedPillars}/5
+                                    </span>
+                                    <Link
+                                        href="/how-it-works#nine-pillars"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="ml-1 text-[8px] text-sme-gold hover:text-white transition-colors border-b border-sme-gold/30 uppercase tracking-tighter"
+                                    >
+                                        Standards
+                                    </Link>
+                                </>
+                            )}
                         </div>
 
                         {/* Community Heat - Message Icon + Count */}

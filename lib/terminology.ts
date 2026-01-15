@@ -4,7 +4,7 @@
  */
 
 export const TERMINOLOGY = {
-    PILLAR_SCORE: "The 9-Pillar Audit: A comprehensive technical deep-dive evaluating Purity, Potency, Evidence, and more. A higher count indicates more verified standards have been met.",
+    PILLAR_SCORE: "The 9-Pillar Audit: A comprehensive technical deep-dive evaluating Purity, Potency, Evidence, and more. The score shows how many of the 9 pillars have been verified (X out of 5 displayed). 'Audit Pending' means this product has not yet undergone expert review.",
     TRUST_WEIGHT: "Evidence-backed sentiment from verified experts.",
     SPECIMEN_UNDER_AUDIT: "A product currently undergoing community and expert review.",
     SIGNAL: "High-value, credible information validated by scientific evidence and community consensus.",
