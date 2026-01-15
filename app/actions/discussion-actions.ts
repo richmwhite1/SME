@@ -3,7 +3,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { getDb } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { checkVibe, checkVibeForGuest } from "@/lib/ai/gemma-vibe-check";
+import { checkVibe, checkVibeForGuest } from "@/lib/ai/vibe-check";
 import { checkUserBanned, checkKeywordBlacklist, handleBlacklistedContent } from "@/lib/trust-safety";
 import { generateInsight } from "@/lib/ai/insight-engine";
 import { createNotification } from "@/app/actions/notifications";

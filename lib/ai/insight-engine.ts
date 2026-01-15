@@ -1,4 +1,4 @@
-import { getGemmaClient } from "./gemma-client";
+import { getGeminiClient } from "./gemini-client";
 
 /**
  * Technical Insights Synthesizer
@@ -13,7 +13,7 @@ export async function generateInsight(commentText: string): Promise<string | nul
     }
 
     try {
-        const gemma = getGemmaClient();
+        const gemini = getGeminiClient();
 
         const prompt = `You are the Technical Insights Synthesizer. Your task is to extract the core value from verified Subject Matter Expert (SME) comments.
 
@@ -31,8 +31,8 @@ Comment: "${commentText}"
 
 Response:`;
 
-        // Use 'gemini-2.0-flash' explicitly or undefined for default (default is gemini-2.0-flash now)
-        const response = await gemma.generateText('gemini-2.0-flash', prompt, {
+        // Use 'gemini-2.0-flash-exp' explicitly
+        const response = await gemini.generateText('gemini-2.0-flash-exp', prompt, {
             temperature: 0.5,
             maxTokens: 60,
         });

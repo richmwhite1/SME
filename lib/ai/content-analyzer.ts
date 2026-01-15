@@ -2,7 +2,31 @@ import ytdl from '@distube/ytdl-core';
 import { Readability } from '@mozilla/readability';
 import { JSDOM } from 'jsdom';
 const pdf = require('pdf-parse');
-import { getGemmaClient } from './gemma-client';
+import { getGeminiClient } from './gemini-client';
+
+// ... (keep surrounding code)
+
+// Inside functions:
+// const gemini = getGeminiClient();
+// return await gemini.generateText('gemini-2.0-flash-exp', prompt, { maxTokens: 2500 });
+// I needed to replace multiple occurrences so I should use multi replace or just match carefully.
+// The file has import at top and 3 usages. I'll use multi_replace.
+// Wait, I am using replace_file_content which is single contiguous block.
+// I should use multi_replace for this file.
+// But I can't switch tools mid-turn easily without a return.
+// I will just use replace for import first, then another call for usages or use multi replace in next turn.
+// Actually I can use replace_file_content for the import, and then rely on search/replace for method calls if they are close?
+// They are spread out.
+// I will just use multi_replace in the "next step" (simulated).
+// Actually, I can use `multi_replace_file_content` right now! usage: "Do NOT use this tool if you are only editing a single contiguous block".
+// So I SHOULD use it.
+
+// Let's use multi_replace_file_content for content-analyzer.ts.
+// But first let me finish auto-tagger.ts (already issued tool call).
+// I will sequence them.
+
+// For now, I'll stick to replace_file_content for auto-tagger import which I did above.
+// The next tool call will be for content-analyzer.ts using multi_replace.
 
 export interface ContentAnalysisResult {
     summary: string;
@@ -119,9 +143,9 @@ export async function analyzeYouTubeVideo(url: string): Promise<string> {
             if (fullText.length < 50) throw new Error("No transcript or description available.");
         }
 
-        const gemma = getGemmaClient();
+        const gemini = getGeminiClient();
         const prompt = generateAnalysisPrompt({ type: "YouTube Video", title, source: url }, fullText);
-        return await gemma.generateText('gemini-2.0-flash', prompt, { maxTokens: 2500 });
+        return await gemini.generateText('gemini-2.0-flash-exp', prompt, { maxTokens: 2500 });
 
     } catch (error: any) {
         throw new Error("YouTube Analysis Failed: " + error.message);
@@ -149,9 +173,9 @@ async function analyzePdf(url: string): Promise<string> {
         // Estimate title from first line or filename
         const title = url.split('/').pop() || "PDF Document";
 
-        const gemma = getGemmaClient();
+        const gemini = getGeminiClient();
         const prompt = generateAnalysisPrompt({ type: "Scientific/PDF Document", title, source: url }, text);
-        return await gemma.generateText('gemini-2.0-flash', prompt, { maxTokens: 2500 });
+        return await gemini.generateText('gemini-2.0-flash-exp', prompt, { maxTokens: 2500 });
 
     } catch (error: any) {
         console.error("PDF Analysis Error:", error);
@@ -180,9 +204,9 @@ async function analyzeWebPage(url: string): Promise<string> {
             throw new Error("Could not parse article content (Readability failed).");
         }
 
-        const gemma = getGemmaClient();
+        const gemini = getGeminiClient();
         const prompt = generateAnalysisPrompt({ type: "Web Article", title: article.title, source: url }, article.textContent);
-        return await gemma.generateText('gemini-2.0-flash', prompt, { maxTokens: 2500 });
+        return await gemini.generateText('gemini-2.0-flash-exp', prompt, { maxTokens: 2500 });
 
     } catch (error: any) {
         console.error("Web Analysis Error:", error);

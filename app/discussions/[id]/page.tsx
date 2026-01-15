@@ -96,6 +96,7 @@ export default async function DiscussionPage({ params }: { params: Promise<{ id:
   const isBounty = discussion.is_bounty || false;
   const solutionCommentId = discussion.solution_comment_id || null;
   const bountyStatus = discussion.bounty_status || null;
+  const wcs = (discussion.upvote_count * 2) + (commentsWithReferences.length * 5);
 
   return (
     <main className="min-h-screen bg-forest-obsidian text-bone-white">
@@ -160,7 +161,7 @@ export default async function DiscussionPage({ params }: { params: Promise<{ id:
           <div className="p-6 sm:p-8">
             <div className="mb-4 flex items-center justify-between border-b border-translucent-emerald pb-3">
               <h2 className="text-lg font-serif font-semibold text-bone-white">
-                <span className="text-sme-gold">{commentsWithReferences.length}</span> Community Signals Recorded
+                <span className="text-sme-gold">{wcs}</span> Discussion Credibility Score
               </h2>
             </div>
 

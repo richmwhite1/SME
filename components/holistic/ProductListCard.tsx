@@ -134,12 +134,11 @@ export default function ProductListCard({
                     {title}
                 </h3>
                 {/* Activity Score - Technical Metadata */}
-                {activityScore > 0 && (
-                    <p className="mb-2 text-[10px] font-mono text-bone-white flex items-center gap-1" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
-                        [{activityScore}] Community Signals Recorded
-                        <Tooltip content={TERMINOLOGY.COMMUNITY_SIGNALS} />
-                    </p>
-                )}
+                <p className="mb-2 text-[10px] font-mono text-bone-white flex items-center gap-1" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+                    [{activityScore}] Community Validation Score
+                    <Tooltip content={TERMINOLOGY.COMMUNITY_VALIDATION_SCORE} />
+                </p>
+
                 <p className="text-sm text-bone-white/80 line-clamp-2 leading-relaxed mb-3">{problemSolved}</p>
 
                 {/* Signal Bar Footer - High-Signal Indicators */}
@@ -153,7 +152,7 @@ export default function ProductListCard({
                                 </span>
                                 <Tooltip content={TERMINOLOGY.PILLAR_SCORE} />
                             </div>
-                            {!hasBeenAudited && verifiedPillars === 0 ? (
+                            {!hasBeenAudited ? (
                                 // Show "Audit Pending" for unaudited products
                                 <>
                                     <span className="text-[10px] sm:text-[9px] font-mono text-bone-white/50 italic" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>

@@ -1,4 +1,4 @@
-import { getGemmaClient } from './gemma-client';
+import { getGeminiClient } from './gemini-client';
 import { extractTextFromHTML, generateSlug } from '../html-to-text';
 
 /**
@@ -63,10 +63,10 @@ Rules:
 
 JSON Response:`;
 
-        const gemmaClient = getGemmaClient();
+        const geminiClient = getGeminiClient();
 
         // Generate with JSON mode
-        const response = await gemmaClient.generateText(undefined, prompt, {
+        const response = await geminiClient.generateText(undefined, prompt, {
             temperature: 0.2,
             maxTokens: 800,
             jsonMode: true,

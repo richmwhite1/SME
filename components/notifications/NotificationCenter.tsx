@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useUser } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { Bell, X, MessageSquare, ThumbsUp, BookOpen, UserPlus, ChevronRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -325,8 +325,8 @@ export default function NotificationCenter() {
                             setIsOpen(false);
                           }}
                           className={`block border-l-2 p-3 transition-colors ${isUnread
-                              ? "border-sme-gold bg-forest-obsidian/50"
-                              : "border-transparent bg-muted-moss"
+                            ? "border-sme-gold bg-forest-obsidian/50"
+                            : "border-transparent bg-muted-moss"
                             } hover:bg-forest-obsidian`}
                         >
                           <div className="flex items-start gap-3">

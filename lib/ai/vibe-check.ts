@@ -1,9 +1,9 @@
-import { getGemmaClient } from './gemma-client';
+import { getGeminiClient } from './gemini-client';
 import { getCredibilityContext } from './credibility-scorer';
 
 /**
- * Gemma-powered Vibe Check
- * Replaces OpenAI-based content moderation with Gemma 2B
+ * Gemini-powered Vibe Check
+ * Replaces OpenAI-based content moderation with Gemini Flash
  */
 
 export interface VibeCheckResult {
@@ -15,14 +15,14 @@ export interface VibeCheckResult {
 
 /**
  * Check if content is safe and appropriate for the community
- * Uses Gemma 2B with credibility-aware moderation
+ * Uses Gemini with credibility-aware moderation
  */
 export async function checkVibe(
     content: string,
     userId?: string
 ): Promise<VibeCheckResult> {
-    if (!process.env.GOOGLE_AI_API_KEY) {
-        console.error('GOOGLE_AI_API_KEY not set - BLOCKING for safety');
+    if (!process.env.GOOGLE_VERTEX_API_KEY && !process.env.GOOGLE_AI_API_KEY) {
+        console.error('AI API Key not set - BLOCKING for safety');
         return {
             isSafe: false,
             reason: 'Moderation system not configured - content blocked for safety'
@@ -30,16 +30,16 @@ export async function checkVibe(
     }
 
     try {
-        const gemma = getGemmaClient();
+        const client = getGeminiClient();
         const context = await getCredibilityContext(userId);
 
-        const result = await gemma.moderateContent(content, {
+        const result = await client.moderateContent(content, {
             userId,
             userReputation: context.userReputation,
             isSme: context.isSme,
         });
 
-        console.log('Gemma moderation result:', {
+        console.log('Gemini moderation result:', {
             content: content.substring(0, 50) + '...',
             result,
             context,
@@ -47,7 +47,7 @@ export async function checkVibe(
 
         return result;
     } catch (error) {
-        console.error('Error in Gemma vibe check:', error);
+        console.error('Error in Gemini vibe check:', error);
         // FAIL CLOSED: If API fails, block the content for safety
         return {
             isSafe: false,
@@ -64,8 +64,8 @@ export async function checkVibeForGuest(
     content: string,
     productId?: string
 ): Promise<VibeCheckResult> {
-    if (!process.env.GOOGLE_AI_API_KEY) {
-        console.error('GOOGLE_AI_API_KEY not set - BLOCKING for safety');
+    if (!process.env.GOOGLE_VERTEX_API_KEY && !process.env.GOOGLE_AI_API_KEY) {
+        console.error('AI API Key not set - BLOCKING for safety');
         return {
             isSafe: false,
             reason: 'Moderation system not configured - content blocked for safety'
@@ -73,14 +73,14 @@ export async function checkVibeForGuest(
     }
 
     try {
-        const gemma = getGemmaClient();
+        const client = getGeminiClient();
         const context = await getCredibilityContext(undefined, productId);
 
-        const result = await gemma.moderateContent(content, {
+        const result = await client.moderateContent(content, {
             isVerifiedProduct: context.isVerifiedProduct,
         });
 
-        console.log('Gemma guest moderation result:', {
+        console.log('Gemini guest moderation result:', {
             content: content.substring(0, 50) + '...',
             result,
             productId,
@@ -89,7 +89,7 @@ export async function checkVibeForGuest(
 
         return result;
     } catch (error) {
-        console.error('Error in Gemma guest vibe check:', error);
+        console.error('Error in Gemini guest vibe check:', error);
         return {
             isSafe: false,
             reason: 'Moderation API error - content blocked for safety'

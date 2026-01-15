@@ -120,9 +120,11 @@ export default function ReactionBar({
                             </span>
 
                             {/* Tooltip */}
-                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-3 py-2 bg-black/90 border border-white/10 text-white text-[10px] rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all z-50 shadow-xl backdrop-blur-sm">
-                                <span className="font-bold block text-sme-gold mb-0.5">{REACTION_LABELS[type]}</span>
-                                <span className="opacity-80 block max-w-[150px] whitespace-normal leading-tight">{REACTION_DESCRIPTIONS[type]}</span>
+                            <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 px-3 py-2 bg-forest-obsidian border border-translucent-emerald text-bone-white text-[10px] rounded-lg shadow-xl backdrop-blur-md opacity-0 group-hover:opacity-100 pointer-events-none transition-all z-[100] min-w-[140px] text-center">
+                                <span className="font-bold block text-sme-gold mb-1 text-xs">{REACTION_LABELS[type]}</span>
+                                <span className="opacity-80 block leading-tight text-bone-white/80">{REACTION_DESCRIPTIONS[type]}</span>
+                                {/* Arrow */}
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-forest-obsidian"></div>
                             </div>
                         </button>
                     );

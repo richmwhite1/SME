@@ -395,7 +395,7 @@ export default async function ProductsPage({
                               </span>
                             </div>
                             <div className="text-[9px] font-mono text-bone-white/30 uppercase tracking-widest pl-5">
-                              {product.activityScore} Signals Recorded
+                              {product.activityScore} Community Validation Score
                             </div>
                           </div>
 

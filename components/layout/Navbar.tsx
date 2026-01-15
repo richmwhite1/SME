@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
+import { SignedIn, SignedOut, SignInButton } from "@/lib/auth";
 import Link from "next/link";
 import { Library, Menu, X, Plus, ChevronDown, Search } from "lucide-react";
 import AdminNavLink from "./AdminNavLink";

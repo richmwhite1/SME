@@ -1,6 +1,6 @@
 "use server";
 
-import { getGemmaClient } from "@/lib/ai/gemma-client";
+import { getGeminiClient } from "@/lib/ai/gemini-client";
 import { JSDOM } from 'jsdom';
 import { Readability } from '@mozilla/readability';
 
@@ -22,7 +22,7 @@ export async function analyzeProductLabel(formData: FormData): Promise<AnalyzedP
         const base64 = buffer.toString("base64");
         const mimeType = file.type || "image/jpeg";
 
-        const gemma = getGemmaClient();
+        const gemini = getGeminiClient();
 
         const prompt = `
             Analyze this product label image deeply.
@@ -43,7 +43,7 @@ export async function analyzeProductLabel(formData: FormData): Promise<AnalyzedP
             Ensure strict JSON format.
         `;
 
-        const result = await gemma.generateWithVision(prompt, base64, mimeType, {
+        const result = await gemini.generateWithVision(prompt, base64, mimeType, {
             jsonMode: true,
             maxTokens: 2000,
             temperature: 0.1
@@ -183,7 +183,7 @@ export async function analyzeProductUrl(url: string): Promise<AnalyzedProductDat
         const limitedContent = content.substring(0, 50000); // Limit context for Gemini
 
         // 6. Enhanced AI Analysis with Gemini Flash
-        const gemma = getGemmaClient();
+        const gemini = getGeminiClient();
         const prompt = `
 You are analyzing a health/supplement product page. Extract comprehensive product information.
 
@@ -247,7 +247,7 @@ IMPORTANT RULES:
 Return the JSON object now:
         `;
 
-        const result = await gemma.generateText('gemini-2.0-flash', prompt, {
+        const result = await gemini.generateText('gemini-2.0-flash', prompt, {
             jsonMode: true,
             maxTokens: 3000,
             temperature: 0.1

@@ -36,7 +36,7 @@ export default function HowItWorksPage() {
                         {/* Visual Diagram - Verification Flow */}
                         <div className="mb-8 rounded-xl overflow-hidden border border-translucent-emerald/30 shadow-lg">
                             <Image
-                                src="/brain/52afa08e-2573-45b3-86d9-9dfba300a867/verification_flow_1768278844202.png"
+                                src="/images/verification-flow.png"
                                 alt="SME Verification Flow: From Evidence to Verified Signal"
                                 width={600}
                                 height={300}
@@ -69,7 +69,7 @@ export default function HowItWorksPage() {
                         <div className="mb-8 flex justify-center">
                             <div className="relative w-full max-w-md rounded-xl overflow-hidden">
                                 <Image
-                                    src="/brain/52afa08e-2573-45b3-86d9-9dfba300a867/nine_pillar_framework_1768278827493.png"
+                                    src="/images/nine-pillar-framework.png"
                                     alt="The 9-Pillar Framework: A comprehensive health product analysis system"
                                     width={600}
                                     height={600}
@@ -165,7 +165,7 @@ export default function HowItWorksPage() {
                             <div className="mb-10 flex justify-center">
                                 <div className="relative w-full max-w-2xl rounded-xl overflow-hidden border border-translucent-emerald/50">
                                     <Image
-                                        src="/brain/52afa08e-2573-45b3-86d9-9dfba300a867/signal_vs_noise_diagram_1768278815749.png"
+                                        src="/images/signal-vs-noise.png"
                                         alt="Signal vs Noise: How SME filters credible information from misinformation"
                                         width={800}
                                         height={800}

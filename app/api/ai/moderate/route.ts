@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { checkVibe, checkVibeForGuest } from '@/lib/ai/gemma-vibe-check';
+import { checkVibe, checkVibeForGuest } from '@/lib/ai/vibe-check';
 import { calculateCredibility } from '@/lib/ai/credibility-scorer';
 
 /**

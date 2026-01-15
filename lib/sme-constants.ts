@@ -21,12 +21,18 @@ export const CHAKRA_LEVELS = [
 ] as const;
 
 export const POINTS = {
-    // Contributions
-    CREATE_DISCUSSION: 10,
-    CREATE_COMMENT: 5,
-    CREATE_REVIEW: 15,
+    // contributions (WCS Base Weights)
+    CITATION: 30, // x3 multiplier vs baseline 10
+    REVIEW: 20,   // x2 multiplier
+    COMMENT: 10,  // x1 baseline
 
-    // Interactions Received
+    // Negative Feedback
+    NEGATIVE_FEEDBACK: -20, // x-2 multiplier
+
+    // Thresholds
+    PILLAR_EXPERTISE_THRESHOLD: 500, // WCS needed in a specific pillar
+
+    // Interactions Received (Secondary)
     UPVOTE_RECEIVED: 2,
 
     // Emoticon Reactions Received (Weighted)

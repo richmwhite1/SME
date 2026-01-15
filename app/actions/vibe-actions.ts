@@ -1,6 +1,6 @@
 "use server";
 
-import { checkVibeForGuest } from "@/lib/ai/gemma-vibe-check";
+import { checkVibeForGuest } from "@/lib/ai/vibe-check";
 
 /**
  * Server action to check guest comment content

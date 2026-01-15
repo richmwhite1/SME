@@ -125,8 +125,10 @@ export default function DisclaimerPage() {
               </ul>
               <p className="mt-4">
                 Our <strong>SME Certified</strong> badge indicates that a product has met our
-                9-Pillar Analysis for transparency and quality verification. It does not mean
-                the product is safe, effective, or appropriate for your specific needs.
+                9-Pillar Analysis for <strong>transparency and process verification</strong>. It is strictly
+                an audit of the manufacturer&apos;s transparency, documentation, and quality control processes.
+                <strong>It does NOT guarantee</strong> that the product is safe, effective, free from side effects,
+                or appropriate for your specific health needs.
               </p>
             </div>
           </div>

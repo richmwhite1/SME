@@ -1,16 +1,17 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+// @ts-ignore - types might be missing or in beta for the new SDK
+import { GoogleGenAI } from '@google/genai';
 
 /**
- * Gemma Client for AI operations
- * Centralized client for all Gemma/Gemini model interactions
- * Supports both Google Cloud API and local Ollama
+ * Gemini Client for AI operations
+ * Centralized client for all Gemini model interactions
+ * Supports Google Cloud (Vertex AI / Gemini API) and local Ollama
  */
 
-export type GemmaModel = 'gemini-2.0-flash' | 'gemma:2b' | 'gemma:7b';
+export type GeminiModel = 'gemini-2.0-flash' | 'gemini-1.5-flash' | 'gemma:2b' | 'gemma:7b';
 
-export type AIProvider = 'google' | 'ollama';
+export type AIProvider = 'google' | 'ollama' | 'vertex';
 
-export interface GemmaGenerateOptions {
+export interface GeminiGenerateOptions {
     temperature?: number;
     maxTokens?: number;
     topP?: number;
@@ -40,29 +41,61 @@ export interface IntentResult {
     confidence: number;
 }
 
-class GemmaClient {
-    private googleClient: GoogleGenerativeAI | null = null;
+class GeminiClient {
+    private client: any | null = null; // GoogleGenAI instance
     private provider: AIProvider = 'google';
     private ollamaBaseUrl: string = 'http://127.0.0.1:11434';
 
     // Default models per provider
-    private readonly googleModel: string = 'gemini-2.0-flash';
+    private readonly googleModel: string = 'gemini-2.0-flash-exp';
+    private readonly vertexModel: string = 'gemini-2.0-flash-exp'; // Using 2.0 Flash Exp as it is verified working
     private readonly ollamaModel: string = 'gemma:2b';
 
     constructor() {
         const providerEnv = process.env.AI_PROVIDER?.toLowerCase();
+        const vertexProject = process.env.GOOGLE_VERTEX_PROJECT;
+        const vertexLocation = process.env.GOOGLE_VERTEX_LOCATION;
+        const vertexApiKey = process.env.GOOGLE_VERTEX_API_KEY;
 
         if (providerEnv === 'ollama') {
             this.provider = 'ollama';
             this.ollamaBaseUrl = process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434';
             console.log(`🤖 AI Client initialized with OLLAMA provider (${this.ollamaBaseUrl})`);
+        } else if (vertexProject && vertexLocation) {
+            this.provider = 'vertex';
+
+            try {
+                // Initialize @google/genai for Vertex AI
+                // The SDK enforces strict separation: 
+                // - apiKey -> Generative Language API (Express Mode)
+                // - vertexAI: true + project/location -> Vertex AI API (ADC Auth)
+
+                if (vertexApiKey) {
+                    // Express Mode: Uses API Key, targets Generative Language API
+                    // We intentionally omit vertexAI: true and project/location as they conflict with apiKey in the SDK
+                    this.client = new GoogleGenAI({ apiKey: vertexApiKey });
+                    console.log(`🤖 AI Client initialized with @google/genai (Express Mode via API Key: ${this.vertexModel})`);
+                } else {
+                    // Standard Vertex (ADC / Service Account)
+                    this.client = new GoogleGenAI({
+                        vertexai: true,
+                        project: vertexProject,
+                        location: vertexLocation
+                    });
+                    console.log(`🤖 AI Client initialized with @google/genai (Vertex AI ADC: ${this.vertexModel})`);
+                }
+            } catch (e) {
+                console.error("Failed to initialize @google/genai:", e);
+            }
+
         } else {
+            // Legacy/Personal AI Studio Fallback
             this.provider = 'google';
             const apiKey = process.env.GOOGLE_AI_API_KEY;
             if (!apiKey) {
                 console.warn('⚠️ GOOGLE_AI_API_KEY not set and provider is google. AI features may fail.');
             } else {
-                this.googleClient = new GoogleGenerativeAI(apiKey);
+                this.client = new GoogleGenAI({ apiKey });
             }
         }
     }
@@ -73,54 +106,86 @@ class GemmaClient {
     async generateText(
         modelOverride: string | undefined, // Pass undefined to use default
         prompt: string,
-        options: GemmaGenerateOptions = {}
+        options: GeminiGenerateOptions = {}
     ): Promise<string> {
         if (this.provider === 'ollama') {
             return this.generateWithOllama(modelOverride || this.ollamaModel, prompt, options);
         } else {
-            return this.generateWithGoogle(modelOverride || this.googleModel, prompt, options);
+            // Both 'google' and 'vertex' utilize the same SDK instance now
+            const modelName = this.provider === 'vertex'
+                ? (modelOverride || this.vertexModel)
+                : (modelOverride || this.googleModel);
+
+            return this.generateWithGoogleGenAI(modelName, prompt, options);
         }
     }
 
-    private async generateWithGoogle(
+    private async generateWithGoogleGenAI(
         model: string,
         prompt: string,
-        options: GemmaGenerateOptions
+        options: GeminiGenerateOptions
     ): Promise<string> {
-        if (!this.googleClient) {
-            throw new Error('Google AI Client not initialized (missing API key)');
+        if (!this.client) {
+            throw new Error('Google/Vertex AI Client not initialized');
         }
 
         try {
-            // Map legacy gemma names to gemini if we are forced to use google but request came for gemma
+            // Map legacy gemma names if needed
             let targetModel = model;
-            if (model.includes('gemma') && !model.includes('gemini')) {
+            if (model.includes('gemma') && !model.includes('gemini') && this.provider !== 'ollama') {
                 const apiModels = ['gemini-2.0-flash', 'gemini-1.5-flash'];
                 targetModel = apiModels[0];
             }
 
-            const gemmaModel = this.googleClient.getGenerativeModel({
+            // Prepare config
+            const config = {
+                temperature: options.temperature ?? 0.3,
+                maxOutputTokens: options.maxTokens ?? 500,
+                topP: options.topP ?? 0.95,
+                topK: options.topK ?? 40,
+                responseMimeType: options.jsonMode ? "application/json" : "text/plain",
+            };
+
+            // Call models.generateContent (Unified SDK Syntax)
+            const response = await this.client.models.generateContent({
                 model: targetModel,
-                generationConfig: {
-                    temperature: options.temperature ?? 0.3,
-                    maxOutputTokens: options.maxTokens ?? 500,
-                    topP: options.topP ?? 0.95,
-                    topK: options.topK ?? 40,
-                    responseMimeType: options.jsonMode ? "application/json" : "text/plain",
-                }
+                config: config,
+                contents: [
+                    {
+                        role: 'user',
+                        parts: [{ text: prompt }]
+                    }
+                ]
             });
 
-            const result = await gemmaModel.generateContent(prompt);
-            const response = result.response;
-            const text = response.text();
-
-            if (!text) {
-                throw new Error('No text generated from Google AI model');
+            // Parse response
+            let text = '';
+            // @ts-ignore
+            if (typeof response.text === 'function') {
+                // @ts-ignore
+                text = response.text();
+            } else if (typeof response.text === 'string') {
+                // @ts-ignore
+                text = response.text;
+            } else if (
+                response.candidates &&
+                response.candidates.length > 0 &&
+                response.candidates[0].content &&
+                response.candidates[0].content.parts &&
+                response.candidates[0].content.parts.length > 0
+            ) {
+                text = response.candidates[0].content.parts[0].text || '';
             }
 
-            return text.trim();
+            if (!text) {
+                // Debug: Log full response if text missing
+                console.error("Full Response Structure:", JSON.stringify(response, null, 2));
+                throw new Error('No text generated from AI model');
+            }
+
+            return typeof text === 'string' ? text.trim() : String(text).trim();
         } catch (error) {
-            console.error('Error generating text with Google AI:', error);
+            console.error('Error generating text with Google/Vertex AI:', error);
             throw error;
         }
     }
@@ -128,7 +193,7 @@ class GemmaClient {
     private async generateWithOllama(
         model: string,
         prompt: string,
-        options: GemmaGenerateOptions
+        options: GeminiGenerateOptions
     ): Promise<string> {
         try {
             const response = await fetch(`${this.ollamaBaseUrl}/api/generate`, {
@@ -156,7 +221,6 @@ class GemmaClient {
             return data.response.trim();
         } catch (error) {
             console.error('Error generating text with Ollama:', error);
-            // Hint to user if connection failed
             if (error instanceof TypeError && error.message.includes('fetch')) {
                 throw new Error(`Ollama connection failed. Is Ollama running at ${this.ollamaBaseUrl}?`);
             }
@@ -165,15 +229,15 @@ class GemmaClient {
     }
 
     /**
-     * Moderate content with credibility-aware logic
+     * Moderate content
      */
     async moderateContent(
         content: string,
         context: ModerationContext = {}
     ): Promise<ModerationResult> {
+        // Reuse generateText (which uses generateWithGoogleGenAI)
         try {
             const credibilityContext = this.buildCredibilityContext(context);
-
             const prompt = `You are a content moderator for a health science platform.
 ${credibilityContext}
 
@@ -190,20 +254,16 @@ IMPORTANT: SME users get benefit of doubt.
 Respond with ONLY valid JSON:
 { "isSafe": true, "reason": "explanation", "confidence": "high" }`;
 
-            // Use undefined model to trigger default for provider
             const response = await this.generateText(undefined, prompt, {
                 temperature: 0.2,
                 maxTokens: 150,
-                jsonMode: true // Helper for providers that support it
+                jsonMode: true
             });
 
             console.log('Raw AI moderation response:', response);
 
-            // Extract JSON from response 
             let jsonStr = response.trim();
-            // Basic cleanup if model adds code blocks
             jsonStr = jsonStr.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-
             const firstBrace = jsonStr.indexOf('{');
             const lastBrace = jsonStr.lastIndexOf('}');
             if (firstBrace >= 0 && lastBrace > firstBrace) {
@@ -212,13 +272,11 @@ Respond with ONLY valid JSON:
 
             const result = JSON.parse(jsonStr) as ModerationResult;
 
-            // Apply credibility adjustment
             if (context.isSme && result.confidence === 'low' && !result.isSafe) {
                 result.isSafe = true;
                 result.reason = 'Approved due to SME status (borderline content)';
                 result.credibilityAdjusted = true;
             }
-
             return result;
         } catch (error) {
             console.error('Error in AI moderation:', error);
@@ -237,48 +295,62 @@ Respond with ONLY valid JSON:
         prompt: string,
         imageBase64: string,
         mimeType: string = "image/jpeg",
-        options: GemmaGenerateOptions = {}
+        options: GeminiGenerateOptions = {}
     ): Promise<string> {
         if (this.provider === 'ollama') {
-            throw new Error("Vision capabilities are currently only supported with Google AI provider.");
+            throw new Error("Vision capabilities are currently only supported with Google/Vertex AI provider.");
         }
 
-        if (!this.googleClient) {
-            throw new Error('Google AI Client not initialized');
+        if (!this.client) {
+            throw new Error('Google/Vertex AI Client not initialized');
         }
 
         try {
-            const model = this.googleClient.getGenerativeModel({
-                model: 'gemini-2.0-flash', // Explicitly use vision-capable model
-                generationConfig: {
-                    temperature: options.temperature ?? 0.3,
-                    maxOutputTokens: options.maxTokens ?? 1000,
-                    responseMimeType: options.jsonMode ? "application/json" : "text/plain",
-                }
-            });
+            // For Vertex, we ideally use gemini-1.5-flash or pro. 
+            // Defaulting to the configured model or 1.5-flash
+            const modelName = this.provider === 'vertex' ? 'gemini-1.5-flash' : 'gemini-2.0-flash';
 
-            const imagePart = {
-                inlineData: {
-                    data: imageBase64,
-                    mimeType
-                }
+            const config = {
+                temperature: options.temperature ?? 0.3,
+                maxOutputTokens: options.maxTokens ?? 1000,
+                responseMimeType: options.jsonMode ? "application/json" : "text/plain",
             };
 
-            const result = await model.generateContent([prompt, imagePart]);
-            const text = result.response.text();
+            const response = await this.client.models.generateContent({
+                model: modelName,
+                config: config,
+                contents: [
+                    {
+                        role: 'user',
+                        parts: [
+                            { text: prompt },
+                            {
+                                inlineData: {
+                                    data: imageBase64,
+                                    mimeType: mimeType
+                                }
+                            }
+                        ]
+                    }
+                ]
+            });
 
-            if (!text) throw new Error('No analysis generated');
+            const text = response.text ? response.text() : response?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!text) {
+                if (response && response.candidates && response.candidates.length > 0) {
+                    return response.candidates[0].content.parts[0].text;
+                }
+                throw new Error('No analysis generated');
+            }
 
-            return text.trim();
+            return typeof text === 'string' ? text.trim() : String(text).trim();
+
         } catch (error) {
             console.error('Error in Vision analysis:', error);
             throw error;
         }
     }
 
-    /**
-     * Extract intent from natural language query
-     */
     async extractIntent(query: string): Promise<IntentResult> {
         try {
             const prompt = `Extract intent from this health query: "${query}"
@@ -332,13 +404,13 @@ Example: "Is turmeric safe?" -> { "topic": "turmeric", "intent": "safety_info", 
     }
 }
 
-let gemmaClientInstance: GemmaClient | null = null;
+let geminiClientInstance: GeminiClient | null = null;
 
-export function getGemmaClient(): GemmaClient {
-    if (!gemmaClientInstance) {
-        gemmaClientInstance = new GemmaClient();
+export function getGeminiClient(): GeminiClient {
+    if (!geminiClientInstance) {
+        geminiClientInstance = new GeminiClient();
     }
-    return gemmaClientInstance;
+    return geminiClientInstance;
 }
 
-export default GemmaClient;
+export default GeminiClient;

@@ -64,7 +64,10 @@ export async function updateUserSMEScore(userId: string) {
             success: true,
             score: result.score,
             level: result.level,
-            levelName: result.levelName
+            levelName: result.levelName,
+            details: result.details,
+            pillarScores: result.pillarScores,
+            gainedExpertise: result.gainedExpertise
         };
     } catch (error) {
         console.error("Error updating SME score:", error);
@@ -74,35 +77,71 @@ export async function updateUserSMEScore(userId: string) {
 
 /**
  * Update a user's declared pillar expertise
- * Users can declare which of the 9 pillars they have expertise in
+ * NOTE: With the new Self-Regulating System, expertise is earned, not just declared.
+ * This function now validates that the user actually HAS the expertise they want to highlight,
+ * or it could be used to select WHICH of their earned expertise to display if we limit it.
+ * For now, this effectively becomes a "Display Preferences" update for earned pillars.
  */
 export async function updatePillarExpertise(pillars: string[]) {
     try {
         const user = await currentUser();
         if (!user) throw new Error("Unauthorized");
 
-        // Validate pillars against the 9 SME pillars
-        const validPillars = [
-            "Purity", "Bioavailability", "Potency", "Evidence",
-            "Sustainability", "Experience", "Safety", "Transparency", "Synergy"
-        ];
+        const sql = getDb();
 
-        const filteredPillars = pillars.filter(p => validPillars.includes(p));
+        // 1. Get user's EARNED expertise
+        const profile = await sql`
+            SELECT pillar_expertise FROM profiles WHERE id = ${user.id}
+        `;
+
+        const earnedExpertise = profile[0]?.pillar_expertise || [];
+        const earnedList = Array.isArray(earnedExpertise)
+            ? earnedExpertise
+            : (typeof earnedExpertise === 'string' ? JSON.parse(earnedExpertise) : []);
+
+        // 2. Filter requested pillars against EARNED pillars
+        // Only allow selecting pillars that are effectively earned
+        const validPillars = pillars.filter(p => earnedList.includes(p));
+
+        // If they try to set something they haven't earned, we reject it (or just ignore it).
+        // For now, let's strictly enforce "Earned only".
+
+        // However, if the user has NO earned expertise, they can't set anything.
+        // This replaces the old "Self-Declare" behavior.
 
         // Limit to 5 pillars max
-        const selectedPillars = filteredPillars.slice(0, 5);
+        const selectedPillars = validPillars.slice(0, 5);
 
-        const sql = getDb();
+        // Update DB
+        // NOTE: This might be redundant if calculateSMEScore always overwrites 'pillar_expertise'.
+        // If we want 'pillar_expertise' to be the LIST of ALL earned, 
+        // and a separate field for 'displayed_expertise', we'd need a schema change.
+        // For now, 'pillar_expertise' IS the earned list.
+        // So this function might actually be DANGEROUS to call if it shrinks the list?
+        // If 'pillar_expertise' stores ALL earned, we should NOT let users reduce it via this action 
+        // unless this action is meant to "Toggle Visibility".
+        // The prompt says: "Develop a mechanism to grant...".
+        // Use Case: User earns 7 pillars, wants to show top 3.
+        // Schema only has `pillar_expertise`.
+        // Decision: `pillar_expertise` is the SOURCE OF TRUTH for what they ARE.
+        // We should NOT let them "update" it manually anymore. It's system managed.
+        // I will throw an error or depreciate this.
+
+        throw new Error("Pillar expertise is now automatically awarded based on your contributions.");
+
+        // Historic code commented out for reference in case we revert
+        /*
         await sql`
-      UPDATE profiles
-      SET pillar_expertise = ${sql.json(selectedPillars)}
-      WHERE id = ${user.id}
-    `;
+          UPDATE profiles
+          SET pillar_expertise = ${sql.json(selectedPillars)}
+          WHERE id = ${user.id}
+        `;
 
         revalidatePath(`/u/${user.username}`);
         revalidatePath("/community");
 
         return { success: true, pillars: selectedPillars };
+        */
     } catch (error) {
         console.error("Error updating pillar expertise:", error);
         throw error;

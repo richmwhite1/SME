@@ -55,33 +55,86 @@ export function ChakraLevelDisplay({
                 />
 
                 {/* Score Breakdown */}
-                {scoreDetails && Object.keys(scoreDetails).length > 0 && (
+                {scoreDetails && (
                     <div className="mt-4 border-t border-translucent-emerald pt-4">
-                        <h4 className="mb-2 text-xs font-semibold text-bone-white/70 font-mono uppercase">Score Breakdown</h4>
+                        <h4 className="mb-2 text-xs font-semibold text-bone-white/70 font-mono uppercase">WCS Breakdown</h4>
                         <div className="space-y-1 text-xs font-mono">
-                            {scoreDetails.discussions !== undefined && (
-                                <div className="flex justify-between text-bone-white/60">
-                                    <span>Discussions:</span>
-                                    <span className="text-heart-green">+{scoreDetails.discussions}</span>
-                                </div>
-                            )}
-                            {scoreDetails.comments !== undefined && (
-                                <div className="flex justify-between text-bone-white/60">
-                                    <span>Comments:</span>
-                                    <span className="text-heart-green">+{scoreDetails.comments}</span>
-                                </div>
-                            )}
-                            {scoreDetails.reviews !== undefined && (
-                                <div className="flex justify-between text-bone-white/60">
-                                    <span>Reviews:</span>
-                                    <span className="text-heart-green">+{scoreDetails.reviews}</span>
-                                </div>
-                            )}
-                            {scoreDetails.expert_bonus !== undefined && scoreDetails.expert_bonus > 0 && (
-                                <div className="flex justify-between text-bone-white/60">
-                                    <span>Expert Bonus:</span>
-                                    <span className="text-sme-gold">+{scoreDetails.expert_bonus}</span>
-                                </div>
+                            {/* New Structure Support */}
+                            {scoreDetails.breakdown ? (
+                                <>
+                                    {scoreDetails.breakdown.discussions > 0 && (
+                                        <div className="flex justify-between text-bone-white/60">
+                                            <span>Discussions:</span>
+                                            <span className="text-heart-green">+{scoreDetails.breakdown.discussions}</span>
+                                        </div>
+                                    )}
+                                    {scoreDetails.breakdown.comments > 0 && (
+                                        <div className="flex justify-between text-bone-white/60">
+                                            <span>Comments:</span>
+                                            <span className="text-heart-green">+{scoreDetails.breakdown.comments}</span>
+                                        </div>
+                                    )}
+                                    {scoreDetails.breakdown.reviews > 0 && (
+                                        <div className="flex justify-between text-bone-white/60">
+                                            <span>Reviews:</span>
+                                            <span className="text-heart-green">+{scoreDetails.breakdown.reviews}</span>
+                                        </div>
+                                    )}
+                                    {scoreDetails.breakdown.upvotes > 0 && (
+                                        <div className="flex justify-between text-bone-white/60">
+                                            <span>Upvotes Received:</span>
+                                            <span className="text-heart-green">+{scoreDetails.breakdown.upvotes}</span>
+                                        </div>
+                                    )}
+                                    {scoreDetails.breakdown.citations > 0 && (
+                                        <div className="flex justify-between text-bone-white/60">
+                                            <span>Citations:</span>
+                                            <span className="text-heart-green">+{scoreDetails.breakdown.citations}</span>
+                                        </div>
+                                    )}
+                                    {scoreDetails.breakdown.bonus > 0 && (
+                                        <div className="flex justify-between text-bone-white/60">
+                                            <span>Expert Bonus:</span>
+                                            <span className="text-sme-gold">+{scoreDetails.breakdown.bonus}</span>
+                                        </div>
+                                    )}
+
+                                    {/* Time Decay Display */}
+                                    {scoreDetails.decay_penalty > 0 && (
+                                        <div className="flex justify-between text-bone-white/60 border-t border-bone-white/10 mt-1 pt-1">
+                                            <span>Time Decay:</span>
+                                            <span className="text-destructive-red">-{scoreDetails.decay_penalty}</span>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                // Legacy Structure Fallback
+                                <>
+                                    {scoreDetails.discussions !== undefined && (
+                                        <div className="flex justify-between text-bone-white/60">
+                                            <span>Discussions:</span>
+                                            <span className="text-heart-green">+{scoreDetails.discussions}</span>
+                                        </div>
+                                    )}
+                                    {scoreDetails.comments !== undefined && (
+                                        <div className="flex justify-between text-bone-white/60">
+                                            <span>Comments:</span>
+                                            <span className="text-heart-green">+{scoreDetails.comments}</span>
+                                        </div>
+                                    )}
+                                    {scoreDetails.reviews !== undefined && (
+                                        <div className="flex justify-between text-bone-white/60">
+                                            <span>Reviews:</span>
+                                            <span className="text-heart-green">+{scoreDetails.reviews}</span>
+                                        </div>
+                                    )}
+                                    {scoreDetails.expert_bonus !== undefined && scoreDetails.expert_bonus > 0 && (
+                                        <div className="flex justify-between text-bone-white/60">
+                                            <span>Expert Bonus:</span>
+                                            <span className="text-sme-gold">+{scoreDetails.expert_bonus}</span>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
                     </div>

@@ -7,7 +7,7 @@ import { Lightbulb } from 'lucide-react';
 import VoteControl from '@/components/ui/VoteControl';
 import ReactionBar from '@/components/ui/ReactionBar';
 import SentimentSummary from '@/components/ui/SentimentSummary';
-import { Tweet } from 'react-tweet';
+import CompactTweetPreview from '@/components/discussions/CompactTweetPreview';
 
 export default function CommentItem({ comment, depth, discussionId, parentUsername }: any) {
   const { user } = useUser();
@@ -74,8 +74,8 @@ export default function CommentItem({ comment, depth, discussionId, parentUserna
 
         {/* X/Twitter Embed */}
         {comment.metadata?.x_post_url && (
-          <div className="mt-3 max-w-[500px] border border-white/10 rounded-xl overflow-hidden bg-black/40">
-            <Tweet id={comment.metadata.x_post_url.split('/status/')[1]?.split('?')[0]} />
+          <div className="mt-3 max-w-[500px]">
+            <CompactTweetPreview xPostUrl={comment.metadata.x_post_url} />
           </div>
         )}
 

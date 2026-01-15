@@ -2,7 +2,12 @@ import Link from "next/link";
 import Image from "next/image";
 import Button from "@/components/ui/Button";
 import ProductListCard from "@/components/holistic/ProductListCard";
-import LatestIntelligence from "@/components/social/LatestIntelligence";
+import dynamicImport from "next/dynamic";
+
+const LatestIntelligence = dynamicImport(() => import("@/components/social/LatestIntelligence"), {
+  ssr: false,
+  loading: () => <div className="h-[400px] bg-muted-moss animate-pulse rounded-lg border border-translucent-emerald" />
+});
 import { getDb } from "@/lib/db";
 import LiveLedger from "@/components/feed/LiveLedger";
 import { MessageSquare, ArrowRight, ThumbsUp, Activity } from "lucide-react";
@@ -282,10 +287,10 @@ export default async function Home() {
             <div>
               <h2 className="text-2xl md:text-3xl font-serif font-semibold text-bone-white flex items-center gap-3">
                 <span className="text-heart-green">●</span> Top Verified Products
-                <Tooltip content={TERMINOLOGY.COMMUNITY_SIGNALS} />
+                <Tooltip content={TERMINOLOGY.COMMUNITY_VALIDATION_SCORE} />
               </h2>
               <p className="mt-2 text-sm text-bone-white/60 font-mono">
-                Highest rated by community consensus and Community Signals.
+                Highest rated by community consensus and Community Validation Scores.
               </p>
             </div>
             <Link href="/products" className="hidden sm:flex items-center gap-2 text-sm font-mono text-sme-gold hover:text-white transition-colors group">

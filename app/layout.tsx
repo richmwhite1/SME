@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import { Inter, Playfair_Display, JetBrains_Mono } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
-import { dark } from "@clerk/themes";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -48,6 +46,8 @@ export const metadata: Metadata = {
   },
 };
 
+import DynamicClerkProvider from "@/components/providers/DynamicClerkProvider";
+
 export default function RootLayout({
   children,
 }: {
@@ -56,43 +56,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${playfair.variable} ${geistMono.variable} ${inter.className}`} suppressHydrationWarning>
       <body className="min-h-screen bg-forest-obsidian flex flex-col overflow-x-hidden">
-        <ClerkProvider
-          appearance={{
-            baseTheme: dark,
-            variables: {
-              colorPrimary: "#D4AF37", // SME Gold
-              colorBackground: "#0A0F0D", // forest-obsidian
-              colorText: "#F5F1E8", // bone-white
-              colorTextSecondary: "#F5F1E8CC", // bone-white with opacity
-              colorInputBackground: "#0A0F0D",
-              colorInputText: "#F5F1E8",
-            },
-            elements: {
-              rootBox: "w-full",
-              card: "bg-forest-obsidian border border-translucent-emerald",
-              headerTitle: "text-bone-white",
-              headerSubtitle: "text-bone-white/70",
-              socialButtonsBlockButton: "bg-white/10 border-white/20 text-bone-white hover:bg-white/20",
-              socialButtonsBlockButtonText: "text-bone-white font-medium",
-              socialButtonsProviderIcon__google: "brightness-0 invert",
-              formButtonPrimary: "bg-heart-green text-forest-black hover:bg-heart-green/90",
-              footerActionLink: "text-heart-green hover:text-heart-green/80",
-              identityPreviewText: "text-bone-white",
-              identityPreviewEditButton: "text-heart-green",
-              userButtonPopoverCard: "bg-forest-obsidian border border-translucent-emerald",
-              userButtonPopoverActionButton: "text-bone-white hover:bg-white/10",
-              userButtonPopoverActionButtonText: "text-bone-white",
-              userButtonPopoverFooter: "hidden",
-              userPreviewTextContainer: "text-bone-white",
-              userPreviewMainIdentifier: "text-bone-white",
-              userPreviewSecondaryIdentifier: "text-bone-white/70",
-            },
-          }}
-          signInUrl="/"
-          signUpUrl="/"
-          signInFallbackRedirectUrl="/"
-          signUpFallbackRedirectUrl="/"
-        >
+        <DynamicClerkProvider>
           <ToastProvider>
             <ChatProvider>
               <SignalProvider>
@@ -107,7 +71,7 @@ export default function RootLayout({
               </SignalProvider>
             </ChatProvider>
           </ToastProvider>
-        </ClerkProvider>
+        </DynamicClerkProvider>
       </body>
     </html>
   );

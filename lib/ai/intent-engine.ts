@@ -1,4 +1,4 @@
-import { getGemmaClient } from './gemma-client';
+import { getGeminiClient } from './gemini-client';
 import { getDb } from '../db/server';
 
 /**
@@ -51,8 +51,8 @@ export interface SynthesizedResponse {
  * Extract intent from natural language query
  */
 export async function extractIntent(query: string): Promise<IntentExtractionResult> {
-    const gemma = getGemmaClient();
-    return await gemma.extractIntent(query);
+    const gemini = getGeminiClient();
+    return await gemini.extractIntent(query);
 }
 
 /**
@@ -131,7 +131,7 @@ export async function synthesizeResponse(
     intent: IntentExtractionResult,
     dbResults: DatabaseResults
 ): Promise<SynthesizedResponse> {
-    const gemma = getGemmaClient();
+    const gemini = getGeminiClient();
 
     // Build context from database results
     const productContext = dbResults.products
@@ -166,7 +166,7 @@ Instructions:
 Answer:`;
 
     try {
-        const answer = await gemma.generateText('gemma-2-9b-it', prompt, {
+        const answer = await gemini.generateText('gemini-2.0-flash-exp', prompt, {
             temperature: 0.4,
             maxTokens: 300,
         });

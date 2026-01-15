@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useUser } from "@clerk/nextjs";
-import { UserButton } from "@clerk/nextjs";
+import { useUser, UserButton } from "@/lib/auth";
 
 export default function SMEUserButton() {
   const { user, isLoaded } = useUser();

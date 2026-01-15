@@ -1,4 +1,4 @@
-import { getGemmaClient } from './gemma-client';
+import { getGeminiClient } from './gemini-client';
 import { getDb } from '../db/server';
 
 /**
@@ -30,7 +30,7 @@ const MASTER_TOPICS = [
 ];
 
 /**
- * Suggest tags for content using Gemma and credibility weighting
+ * Suggest tags for content using Gemini and credibility weighting
  */
 export async function suggestTags(
     content: string,
@@ -40,11 +40,11 @@ export async function suggestTags(
         reputationScore: number;
     }
 ): Promise<TagSuggestion[]> {
-    const gemma = getGemmaClient();
+    const gemini = getGeminiClient();
     const db = getDb();
 
     try {
-        // Use Gemma to suggest initial tags
+        // Use Gemini to suggest initial tags
         const prompt = `Suggest relevant tags for this ${contentType} from the following list: ${MASTER_TOPICS.join(', ')}
 
 Content: "${content}"
@@ -58,7 +58,7 @@ Example: ["Supplements", "Sleep", "Wellness"]
 
 Tags:`;
 
-        const response = await gemma.generateText('gemma-2-2b-it', prompt, {
+        const response = await gemini.generateText('gemini-2.0-flash-exp', prompt, {
             temperature: 0.3,
             maxTokens: 100,
         });

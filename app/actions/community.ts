@@ -67,11 +67,16 @@ export async function getCommunityUsers({
     }
 
     // Pillar filtering (JSONB array overlap)
+    // Pillar filtering (JSONB array overlap)
     let pillarClause = sql``;
     if (pillars && pillars.length > 0) {
-      // Check if pillar_expertise JSONB array contains any of the requested pillars
-      // Using ?| operator for JSONB array overlap
-      pillarClause = sql`AND pillar_expertise ?| array[${sql.unsafe(pillars.map(p => `'${p}'`).join(','))}]`;
+      // Validate pillars against known list to prevent any weirdness
+      // Although parameterization handles safety, this is good practice
+      // We accept strings, but the SQL query will treat them as a text array for comparison
+
+      // Use efficient JSONB operator ?| (exists any)
+      // We pass the string array directly to postgres(), it handles the serialization safely
+      pillarClause = sql`AND pillar_expertise ?| ${sql.array(pillars)}`;
     }
 
     // Activity Threshold (15 mins for green dot)

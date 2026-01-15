@@ -7,7 +7,6 @@ import { formatDistanceToNow } from "date-fns";
 import TopicBadge from "@/components/topics/TopicBadge";
 import TopicLeaderboard from "@/components/topics/TopicLeaderboard";
 import MyTopics from "@/components/topics/MyTopics";
-import LatestIntelligence from "@/components/social/LatestIntelligence";
 import FeedCalibration from "@/components/feed/FeedCalibration";
 import FeedVisitTracker from "@/components/feed/FeedVisitTracker";
 import FeedClient from "@/components/feed/FeedClient";
@@ -15,6 +14,12 @@ import FeedRefresher from "@/components/feed/FeedRefresher";
 import FeedItemCard from "@/components/feed/FeedItemCard";
 import { getFollowedTopics } from "@/app/actions/topic-actions";
 import { getDb } from "@/lib/db";
+import dynamicImport from "next/dynamic";
+
+const LatestIntelligence = dynamicImport(() => import("@/components/social/LatestIntelligence"), {
+  ssr: false,
+  loading: () => <div className="h-[400px] bg-muted-moss animate-pulse rounded-lg border border-translucent-emerald" />
+});
 
 export const dynamic = "force-dynamic";
 

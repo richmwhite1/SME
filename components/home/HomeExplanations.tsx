@@ -99,11 +99,11 @@ export default function HomeExplanations() {
                         </div>
                         <div className="flex-1">
                             <h4 className="text-xs font-mono text-heart-green uppercase tracking-widest mb-2 flex items-center gap-2">
-                                Community Signals
-                                <Tooltip content={TERMINOLOGY.COMMUNITY_SIGNALS} />
+                                Community Validation
+                                <Tooltip content={TERMINOLOGY.COMMUNITY_VALIDATION_SCORE} />
                             </h4>
                             <p className="text-xs text-bone-white/60 font-mono leading-relaxed">
-                                {TERMINOLOGY.COMMUNITY_SIGNALS}
+                                {TERMINOLOGY.COMMUNITY_VALIDATION_SCORE}
                             </p>
                         </div>
                     </div>

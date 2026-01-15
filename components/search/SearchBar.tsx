@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Search, FlaskConical, MessageSquare, BookOpen, Award, Loader2, Sparkles, ChevronRight } from "lucide-react";
+import { Search, FlaskConical, MessageSquare, BookOpen, Award, Loader2, Sparkles, ChevronRight, Scale, Users } from "lucide-react";
 import { searchGlobal } from "@/app/actions/search-actions";
+import type { DeepSearchSummary } from "@/lib/ai/deep-search";
 
 interface SearchResult {
   result_type: "Product" | "Discussion" | "Resource" | "Evidence";
@@ -31,7 +32,7 @@ export default function SearchBar({ onExpand, onCollapse, autoFocus = false }: S
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [activeFilter, setActiveFilter] = useState("All");
-  const [synthesis, setSynthesis] = useState<string | null>(null);
+  const [synthesis, setSynthesis] = useState<DeepSearchSummary | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -285,7 +286,7 @@ export default function SearchBar({ onExpand, onCollapse, autoFocus = false }: S
 
       {/* Dropdown Results - Apothecary Terminal */}
       {isOpen && query.trim().length >= 2 && (
-        <div className="absolute top-full left-0 z-[9999] mt-2 w-full border border-translucent-emerald bg-muted-moss shadow-2xl overflow-hidden ring-1 ring-black/5">
+        <div className="absolute top-full left-0 z-[9999] mt-2 w-full border border-translucent-emerald bg-muted-moss shadow-2xl overflow-hidden ring-1 ring-black/5 rounded-b-lg">
           {/* Debug: {results.length} results found */}
           {loading ? (
             <div className="flex items-center justify-center p-8">
@@ -301,16 +302,72 @@ export default function SearchBar({ onExpand, onCollapse, autoFocus = false }: S
               </p>
             </div>
           ) : (
-            <div className="max-h-96 overflow-y-auto">
+            <div className="max-h-[600px] overflow-y-auto">
+
               {/* AI Synthesis Section */}
               {synthesis && (
-                <div className="p-4 bg-forest-obsidian/80 border-b border-translucent-emerald backdrop-blur-sm">
-                  <div className="flex items-start gap-2.5">
-                    <Sparkles size={16} className="text-sme-gold flex-shrink-0 mt-0.5 animate-pulse" />
-                    <div>
-                      <h4 className="text-[10px] font-mono text-sme-gold uppercase tracking-wider mb-1 font-bold">Laboratory Insight</h4>
-                      <p className="text-xs text-bone-white leading-relaxed font-sans">{synthesis}</p>
+                <div className="p-4 bg-forest-obsidian/90 border-b border-translucent-emerald backdrop-blur-md">
+
+                  {/* Header */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <Sparkles size={14} className="text-sme-gold animate-pulse" />
+                    <h4 className="text-[10px] font-mono text-sme-gold uppercase tracking-wider font-bold">Laboratory Analysis</h4>
+                    <div className="h-[1px] flex-grow bg-gradient-to-r from-sme-gold/50 to-transparent"></div>
+                  </div>
+
+                  {/* Content Grid */}
+                  <div className="grid gap-4">
+
+                    {/* 1. Main Answer */}
+                    <div className="text-sm text-bone-white leading-relaxed font-sans font-medium">
+                      {synthesis.main_answer}
                     </div>
+
+                    {/* 2. SME Perspective */}
+                    <div className="bg-forest-obsidian/50 border border-sme-gold/20 rounded p-3">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <Scale size={12} className="text-sme-gold" />
+                        <span className="text-[10px] text-sme-gold uppercase tracking-widest font-bold">Expert Consensus</span>
+                      </div>
+                      <p className="text-xs text-bone-white/90 leading-relaxed font-serif italic">
+                        &quot;{synthesis.sme_perspective}&quot;
+                      </p>
+                    </div>
+
+                    {/* 3. Community Perspective */}
+                    <div className="bg-forest-obsidian/50 border border-third-eye-indigo/30 rounded p-3">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <Users size={12} className="text-third-eye-indigo" />
+                        <span className="text-[10px] text-third-eye-indigo uppercase tracking-widest font-bold">Community Voice</span>
+                      </div>
+                      <p className="text-xs text-bone-white/90 leading-relaxed font-serif italic">
+                        &quot;{synthesis.community_perspective}&quot;
+                      </p>
+                    </div>
+
+                    {/* 4. Sources */}
+                    {synthesis.citations && synthesis.citations.length > 0 && (
+                      <div className="flex flex-wrap gap-2 text-[10px]">
+                        <span className="text-bone-white/50 font-mono uppercase">Sources:</span>
+                        {synthesis.citations.map((cite) => (
+                          <a
+                            key={cite.id}
+                            href={cite.url}
+                            className="inline-flex items-center px-2 py-0.5 rounded-full bg-white/5 hover:bg-white/10 text-bone-white/70 hover:text-sme-gold border border-white/5 transition-colors truncate max-w-[150px]"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              router.push(cite.url);
+                              setIsOpen(false);
+                              onCollapse?.();
+                              setQuery("");
+                            }}
+                          >
+                            <BookOpen size={8} className="mr-1 opacity-50" />
+                            <span className="truncate">{cite.title}</span>
+                          </a>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

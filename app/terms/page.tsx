@@ -170,6 +170,45 @@ export default function TermsPage() {
 
             <div>
               <h3 className="mb-3 font-serif text-xl font-semibold text-bone-white">
+                SME Status & Liability
+              </h3>
+              <p>
+                The &quot;SME&quot; (Subject Matter Expert) status on this platform is a <strong className="text-bone-white">community-awarded title</strong> based on
+                contribution history, reputation metrics, and peer validation. It is <strong>not</strong> a professional
+                certification, medical credential, or verification of educational background.
+              </p>
+              <ul className="ml-6 mt-2 list-disc space-y-2">
+                <li>SMEs are independent users, not employees or agents of The Health SME</li>
+                <li>SMEs are solely responsible for the content and advice they provide</li>
+                <li>The Health SME does not vet the professional credentials of users labeled as SMEs</li>
+                <li>Reliability of SME contributions should be judged by the community via established reputation mechanisms</li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="mb-3 font-serif text-xl font-semibold text-bone-white">
+                Limitation of Liability & Indemnification
+              </h3>
+              <p>
+                By using this platform, you agree to indemnify, defend, and hold harmless The Health SME, its
+                officers, directors, employees, and agents from any and all claims, damages, obligations, losses,
+                liabilities, costs, and expenses arising from:
+              </p>
+              <ul className="ml-6 mt-2 list-disc space-y-2">
+                <li>Your use of and access to the Service</li>
+                <li>Your violation of any term of these Terms of Service</li>
+                <li>Your violation of any third-party right, including without limitation any copyright, property, or privacy right</li>
+                <li>Any claim that your Content caused damage to a third party</li>
+              </ul>
+              <p className="mt-4">
+                This defense and indemnification obligation will survive these Terms of Service and your use of the Service.
+                This expressly includes any claims arising from advice, products, or protocols discussed or recommended by
+                users designated as &quot;SMEs&quot;.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="mb-3 font-serif text-xl font-semibold text-bone-white">
                 Modifications to Terms
               </h3>
               <p>

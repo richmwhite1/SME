@@ -12,6 +12,7 @@
     "@clerk/nextjs": "^5.0.0",
     "@clerk/themes": "^2.4.46",
     "@distube/ytdl-core": "^4.16.12",
+    "@google/genai": "^1.37.0",
     "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^3.3.4",
     "@mozilla/readability": "^0.6.0",

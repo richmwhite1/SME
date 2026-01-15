@@ -125,7 +125,8 @@ export default function UserCard({ user }: UserCardProps) {
                             </span>
                         ))
                     ) : (
-                        <span className="text-xs text-bone-white/40 italic">No declared pillar expertise</span>
+                        /* Only show empty state if we really want to emphasize lack of expertise, otherwise keep clean */
+                        null
                     )}
                 </div>
 
