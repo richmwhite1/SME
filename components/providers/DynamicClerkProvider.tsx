@@ -104,36 +104,6 @@ export default function DynamicClerkProvider({
 
     const isLoggedIn = !!sessionCookie || !!clientUatCookie;
 
-    // Checking headers for path (if middleware sets it, or if we can infer)
-    // In standard Next.js, we don't get path in Layout comfortably without middleware help.
-    // However, we can check if the USER REQUEST requested a logical path? No.
-
-    return (
-        <ClerkConditionalWrapper shouldLoad={isLoggedIn}>
-            {children}
-        </ClerkConditionalWrapper>
-    );
-}
-
-import { headers } from "next/headers";
-
-function ClerkConditionalWrapper({
-    shouldLoad,
-    children
-}: {
-    shouldLoad: boolean;
-    children: React.ReactNode;
-}) {
-    const headerList = headers();
-    // Try to find path info. 
-    // Common headers: x-invoke-path, x-middleware-invoke-path... none are guaranteed standard public API.
-    // x-url might be set by custom middleware.
-
-    const pathname = headerList.get("x-current-path") || "";
-    const isAuthRoute = pathname.startsWith("/sign-in") || pathname.startsWith("/sign-up") || pathname.startsWith("/login");
-
-    const shouldRenderProvider = shouldLoad || isAuthRoute;
-
     // Configuration for Clerk
     const appearance = {
         baseTheme: dark,
@@ -167,19 +137,19 @@ function ClerkConditionalWrapper({
         },
     };
 
-    if (shouldRenderProvider) {
-        return (
-            <ClerkProvider
-                appearance={appearance}
-                signInUrl="/sign-in"
-                signUpUrl="/sign-up"
-                signInFallbackRedirectUrl="/"
-                signUpFallbackRedirectUrl="/"
-            >
-                {children}
-            </ClerkProvider>
-        );
-    }
-
-    return <>{children}</>;
+    // Always render ClerkProvider...
+    return (
+        <ClerkProvider
+            appearance={appearance}
+            signInUrl="/sign-in"
+            signUpUrl="/sign-up"
+            signInFallbackRedirectUrl="/"
+            signUpFallbackRedirectUrl="/"
+        >
+            {children}
+        </ClerkProvider>
+    );
 }
+
+// Remove the conditional wrapper helper as it's no longer needed
+// function ClerkConditionalWrapper... removed
