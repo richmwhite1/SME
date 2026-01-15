@@ -134,10 +134,10 @@ export default function ProductListCard({
                     {title}
                 </h3>
                 {/* Activity Score - Technical Metadata */}
-                <p className="mb-2 text-[10px] font-mono text-bone-white flex items-center gap-1" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
+                <div className="mb-2 text-[10px] font-mono text-bone-white flex items-center gap-1" style={{ fontFamily: 'var(--font-geist-mono), monospace' }}>
                     [{activityScore}] Community Validation Score
                     <Tooltip content={TERMINOLOGY.COMMUNITY_VALIDATION_SCORE} />
-                </p>
+                </div>
 
                 <p className="text-sm text-bone-white/80 line-clamp-2 leading-relaxed mb-3">{problemSolved}</p>
 
