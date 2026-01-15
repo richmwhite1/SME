@@ -89,74 +89,73 @@ export async function GET() {
         try { await sql`ALTER TABLE product_comments ADD COLUMN IF NOT EXISTS product_id UUID`; } catch { }
 
 
-        // Wrap everything in a transaction
-        await sql.begin(async (tx) => {
+        // Execute all seed operations sequentially (without transaction wrapper to avoid TypeScript errors)
 
-            // ==========================================
-            // 1. SEED PROFILES (USERS) - Manual Check
-            // ==========================================
+        // ==========================================
+        // 1. SEED PROFILES (USERS) - Manual Check
+        // ==========================================
 
-            const testProfiles = [
-                {
-                    id: 'user_2pQrXxYzAbCdEfGhIjKlMnOp',
-                    full_name: 'Dr. Sarah Chen',
-                    username: 'dr_sarah_chen',
-                    email: 'sarah@example.com',
-                    avatar_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
-                    bio: 'Longevity researcher and biohacking enthusiast',
-                    contributor_score: 450,
-                    badge_type: 'Trusted Voice'
-                },
-                {
-                    id: 'user_3qRsYyZaAbCdEfGhIjKlMnOp',
-                    full_name: 'Marcus Thompson',
-                    username: 'marcus_biohacker',
-                    email: 'marcus@example.com',
-                    avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
-                    bio: 'Performance optimization and metabolic health',
-                    contributor_score: 320,
-                    badge_type: 'Contributor'
-                },
-                // ... (truncated list for brevity, keeping all 5 is fine)
-                {
-                    id: 'user_4tUvZzAaBbCdEfGhIjKlMnOp',
-                    full_name: 'Elena Rodriguez',
-                    username: 'elena_wellness',
-                    email: 'elena@example.com',
-                    avatar_url: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400',
-                    bio: 'Gut health specialist and nutrition coach',
-                    contributor_score: 275,
-                    badge_type: 'Contributor'
-                },
-                {
-                    id: 'user_5wXyAaBbCcDdEfGhIjKlMnOp',
-                    full_name: 'James Park',
-                    username: 'james_optimized',
-                    email: 'james@example.com',
-                    avatar_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
-                    bio: 'Sleep optimization and circadian rhythm expert',
-                    contributor_score: 180,
-                    badge_type: 'Member'
-                },
-                {
-                    id: 'user_6yZaBbCcDdEeFfGhIjKlMnOp',
-                    full_name: 'Olivia Martinez',
-                    username: 'olivia_clinical',
-                    email: 'olivia@example.com',
-                    avatar_url: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=400',
-                    bio: 'Clinical researcher focused on supplement efficacy',
-                    contributor_score: 390,
-                    badge_type: 'Trusted Voice'
-                }
-            ];
+        const testProfiles = [
+            {
+                id: 'user_2pQrXxYzAbCdEfGhIjKlMnOp',
+                full_name: 'Dr. Sarah Chen',
+                username: 'dr_sarah_chen',
+                email: 'sarah@example.com',
+                avatar_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
+                bio: 'Longevity researcher and biohacking enthusiast',
+                contributor_score: 450,
+                badge_type: 'Trusted Voice'
+            },
+            {
+                id: 'user_3qRsYyZaAbCdEfGhIjKlMnOp',
+                full_name: 'Marcus Thompson',
+                username: 'marcus_biohacker',
+                email: 'marcus@example.com',
+                avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
+                bio: 'Performance optimization and metabolic health',
+                contributor_score: 320,
+                badge_type: 'Contributor'
+            },
+            // ... (truncated list for brevity, keeping all 5 is fine)
+            {
+                id: 'user_4tUvZzAaBbCdEfGhIjKlMnOp',
+                full_name: 'Elena Rodriguez',
+                username: 'elena_wellness',
+                email: 'elena@example.com',
+                avatar_url: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400',
+                bio: 'Gut health specialist and nutrition coach',
+                contributor_score: 275,
+                badge_type: 'Contributor'
+            },
+            {
+                id: 'user_5wXyAaBbCcDdEfGhIjKlMnOp',
+                full_name: 'James Park',
+                username: 'james_optimized',
+                email: 'james@example.com',
+                avatar_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
+                bio: 'Sleep optimization and circadian rhythm expert',
+                contributor_score: 180,
+                badge_type: 'Member'
+            },
+            {
+                id: 'user_6yZaBbCcDdEeFfGhIjKlMnOp',
+                full_name: 'Olivia Martinez',
+                username: 'olivia_clinical',
+                email: 'olivia@example.com',
+                avatar_url: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=400',
+                bio: 'Clinical researcher focused on supplement efficacy',
+                contributor_score: 390,
+                badge_type: 'Trusted Voice'
+            }
+        ];
 
-            for (const profile of testProfiles) {
-                // Check if exists
-                const existing = await tx`SELECT id FROM profiles WHERE id = ${profile.id}`;
+        for (const profile of testProfiles) {
+            // Check if exists
+            const existing = await sql`SELECT id FROM profiles WHERE id = ${profile.id}`;
 
-                if (existing.length > 0) {
-                    // Update
-                    await tx`
+            if (existing.length > 0) {
+                // Update
+                await sql`
                 UPDATE profiles 
                 SET user_id = ${profile.id},
                     full_name = ${profile.full_name},
@@ -167,9 +166,9 @@ export async function GET() {
                     badge_type = ${profile.badge_type}
                 WHERE id = ${profile.id}
             `;
-                } else {
-                    // Insert
-                    await tx`
+            } else {
+                // Insert
+                await sql`
               INSERT INTO profiles (id, user_id, full_name, username, email, avatar_url, bio, contributor_score, badge_type, created_at)
               VALUES (
                 ${profile.id},
@@ -184,324 +183,324 @@ export async function GET() {
                 NOW()
               )
             `;
-                }
             }
+        }
 
-            // ==========================================
-            // 2. SEED 20 PREMIUM HEALTH PRODUCTS
-            // ==========================================
+        // ==========================================
+        // 2. SEED 20 PREMIUM HEALTH PRODUCTS
+        // ==========================================
 
-            const products = [
-                {
-                    title: 'Forest Magnesium Glycinate',
-                    slug: 'forest-magnesium-glycinate',
-                    problem_solved: 'Deep sleep restoration and nervous system regulation',
-                    ai_summary: 'Clinical-grade magnesium chelated with glycine for superior bioavailability. Supports GABA production and parasympathetic activation.',
-                    buy_url: 'https://example.com/forest-magnesium',
-                    images: ['https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=800'],
-                    is_sme_certified: true,
-                    third_party_lab_verified: true,
-                    purity_tested: true,
-                    source_transparency: true,
-                    potency_verified: true,
-                    excipient_audit: true,
-                    operational_legitimacy: true
-                },
-                {
-                    title: 'Obsidian Omega-3 Complex',
-                    slug: 'obsidian-omega-3-complex',
-                    problem_solved: 'Cardiovascular optimization and systemic inflammation reduction',
-                    ai_summary: 'Molecularly distilled fish oil with 2:1 EPA:DHA ratio. Third-party tested for heavy metals and oxidation markers.',
-                    buy_url: 'https://example.com/obsidian-omega3',
-                    images: ['https://images.unsplash.com/photo-1526947425960-945c6e72858f?w=800'],
-                    is_sme_certified: true,
-                    third_party_lab_verified: true,
-                    purity_tested: true,
-                    source_transparency: true,
-                    potency_verified: true,
-                    excipient_audit: true,
-                    operational_legitimacy: true
-                },
-                // ... (Repeating list from previous attempts)
-                {
-                    title: 'Apothecary Ashwagandha KSM-66',
-                    slug: 'apothecary-ashwagandha-ksm66',
-                    problem_solved: 'HPA-axis regulation and cortisol normalization',
-                    ai_summary: 'Full-spectrum root extract standardized to 5% withanolides. Clinically validated for stress resilience and hormonal balance.',
-                    buy_url: 'https://example.com/apothecary-ashwagandha',
-                    images: ['https://images.unsplash.com/photo-1607619056574-7b8d3ee536b2?w=800'],
-                    is_sme_certified: true,
-                    third_party_lab_verified: true,
-                    purity_tested: true,
-                    source_transparency: true,
-                    potency_verified: false,
-                    excipient_audit: true,
-                    operational_legitimacy: true
-                },
-                {
-                    title: 'Clinical Vitamin D3 + K2 MK-7',
-                    slug: 'clinical-vitamin-d3-k2-mk7',
-                    problem_solved: 'Bone density optimization and immune system modulation',
-                    ai_summary: 'Synergistic pairing of cholecalciferol with menaquinone-7 for optimal calcium metabolism and arterial health.',
-                    buy_url: 'https://example.com/clinical-d3k2',
-                    images: ['https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800'],
-                    is_sme_certified: true,
-                    third_party_lab_verified: true,
-                    purity_tested: true,
-                    source_transparency: true,
-                    potency_verified: true,
-                    excipient_audit: true,
-                    operational_legitimacy: true
-                },
-                {
-                    title: 'Forest Creatine Monohydrate',
-                    slug: 'forest-creatine-monohydrate',
-                    problem_solved: 'ATP regeneration and cognitive performance enhancement',
-                    ai_summary: 'Micronized creatine monohydrate with 99.9% purity. Supports cellular energy production and neuroprotection.',
-                    buy_url: 'https://example.com/forest-creatine',
-                    images: ['https://images.unsplash.com/photo-1579722821273-0f6c7d44362f?w=800'],
-                    is_sme_certified: true,
-                    third_party_lab_verified: true,
-                    purity_tested: true,
-                    source_transparency: true,
-                    potency_verified: true,
-                    excipient_audit: true,
-                    operational_legitimacy: true
-                },
-                {
-                    title: 'Obsidian NAD+ Precursor Complex',
-                    slug: 'obsidian-nad-precursor-complex',
-                    problem_solved: 'Cellular energy metabolism and mitochondrial function',
-                    ai_summary: 'Pharmaceutical-grade NMN with enhanced bioavailability. Supports NAD+ synthesis for longevity pathways.',
-                    buy_url: 'https://example.com/obsidian-nad',
-                    images: ['https://images.unsplash.com/photo-1585435557343-3b092031a831?w=800'],
-                    is_sme_certified: true,
-                    third_party_lab_verified: true,
-                    purity_tested: true,
-                    source_transparency: true,
-                    potency_verified: true,
-                    excipient_audit: false,
-                    operational_legitimacy: true
-                },
-                {
-                    title: 'Apothecary L-Theanine',
-                    slug: 'apothecary-l-theanine',
-                    problem_solved: 'Alpha wave enhancement and focused relaxation',
-                    ai_summary: 'Suntheanine® brand L-theanine for clean mental clarity without sedation. Synergizes with caffeine for optimal cognition.',
-                    buy_url: 'https://example.com/apothecary-theanine',
-                    images: ['https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=800'],
-                    is_sme_certified: true,
-                    third_party_lab_verified: true,
-                    purity_tested: true,
-                    source_transparency: true,
-                    potency_verified: true,
-                    excipient_audit: true,
-                    operational_legitimacy: true
-                },
-                {
-                    title: 'Clinical Curcumin Phytosome',
-                    slug: 'clinical-curcumin-phytosome',
-                    problem_solved: 'Systemic inflammation modulation and joint health',
-                    ai_summary: 'Meriva® curcumin with phosphatidylcholine for 29x improved absorption. Clinically studied for inflammatory markers.',
-                    buy_url: 'https://example.com/clinical-curcumin',
-                    images: ['https://images.unsplash.com/photo-1615485500834-bc10199bc727?w=800'],
-                    is_sme_certified: true,
-                    third_party_lab_verified: true,
-                    purity_tested: true,
-                    source_transparency: true,
-                    potency_verified: true,
-                    excipient_audit: true,
-                    operational_legitimacy: true
-                },
-                {
-                    title: 'Forest Rhodiola Rosea Extract',
-                    slug: 'forest-rhodiola-rosea-extract',
-                    problem_solved: 'Mental fatigue resistance and adaptogenic support',
-                    ai_summary: 'Standardized to 3% rosavins and 1% salidroside. Supports cognitive endurance during prolonged stress.',
-                    buy_url: 'https://example.com/forest-rhodiola',
-                    images: ['https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?w=800'],
-                    is_sme_certified: false,
-                    third_party_lab_verified: true,
-                    purity_tested: true,
-                    source_transparency: true,
-                    potency_verified: true,
-                    excipient_audit: true,
-                    operational_legitimacy: true
-                },
-                {
-                    title: 'Obsidian Zinc Bisglycinate',
-                    slug: 'obsidian-zinc-bisglycinate',
-                    problem_solved: 'Immune function and testosterone optimization',
-                    ai_summary: 'Chelated zinc for superior absorption without gastric distress. Essential cofactor for 300+ enzymatic reactions.',
-                    buy_url: 'https://example.com/obsidian-zinc',
-                    images: ['https://images.unsplash.com/photo-1584017911766-d451b3d0e843?w=800'],
-                    is_sme_certified: true,
-                    third_party_lab_verified: true,
-                    purity_tested: true,
-                    source_transparency: true,
-                    potency_verified: true,
-                    excipient_audit: true,
-                    operational_legitimacy: true
-                },
-                {
-                    title: 'Apothecary Berberine HCl',
-                    slug: 'apothecary-berberine-hcl',
-                    problem_solved: 'Glucose metabolism and gut microbiome modulation',
-                    ai_summary: 'Pharmaceutical-grade berberine for metabolic health. Activates AMPK pathway similar to metformin.',
-                    buy_url: 'https://example.com/apothecary-berberine',
-                    images: ['https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=800'],
-                    is_sme_certified: true,
-                    third_party_lab_verified: true,
-                    purity_tested: true,
-                    source_transparency: true,
-                    potency_verified: true,
-                    excipient_audit: true,
-                    operational_legitimacy: true
-                },
-                {
-                    title: 'Clinical CoQ10 Ubiquinol',
-                    slug: 'clinical-coq10-ubiquinol',
-                    problem_solved: 'Mitochondrial energy production and cardiovascular support',
-                    ai_summary: 'Reduced form of CoQ10 for immediate bioavailability. Critical for cellular ATP synthesis and antioxidant defense.',
-                    buy_url: 'https://example.com/clinical-coq10',
-                    images: ['https://images.unsplash.com/photo-1550572017-4814c6f5a5e6?w=800'],
-                    is_sme_certified: true,
-                    third_party_lab_verified: true,
-                    purity_tested: true,
-                    source_transparency: true,
-                    potency_verified: true,
-                    excipient_audit: true,
-                    operational_legitimacy: true
-                },
-                {
-                    title: 'Forest Lion\'s Mane Mushroom',
-                    slug: 'forest-lions-mane-mushroom',
-                    problem_solved: 'Neurogenesis and cognitive longevity',
-                    ai_summary: 'Dual-extracted fruiting body with hericenones and erinacines. Supports NGF production for brain health.',
-                    buy_url: 'https://example.com/forest-lionsmane',
-                    images: ['https://images.unsplash.com/photo-1610889556528-9a770e32642f?w=800'],
-                    is_sme_certified: true,
-                    third_party_lab_verified: true,
-                    purity_tested: true,
-                    source_transparency: true,
-                    potency_verified: false,
-                    excipient_audit: true,
-                    operational_legitimacy: true
-                },
-                {
-                    title: 'Obsidian Glycine Powder',
-                    slug: 'obsidian-glycine-powder',
-                    problem_solved: 'Collagen synthesis and sleep architecture optimization',
-                    ai_summary: 'Pure glycine amino acid for deep sleep enhancement and connective tissue support. Lowers core body temperature.',
-                    buy_url: 'https://example.com/obsidian-glycine',
-                    images: ['https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=800'],
-                    is_sme_certified: true,
-                    third_party_lab_verified: true,
-                    purity_tested: true,
-                    source_transparency: true,
-                    potency_verified: true,
-                    excipient_audit: true,
-                    operational_legitimacy: true
-                },
-                {
-                    title: 'Apothecary Spirulina Tablets',
-                    slug: 'apothecary-spirulina-tablets',
-                    problem_solved: 'Micronutrient density and detoxification support',
-                    ai_summary: 'Organic spirulina with complete amino acid profile. Rich in phycocyanin for antioxidant and anti-inflammatory effects.',
-                    buy_url: 'https://example.com/apothecary-spirulina',
-                    images: ['https://images.unsplash.com/photo-1628771065518-0d82f1938462?w=800'],
-                    is_sme_certified: false,
-                    third_party_lab_verified: true,
-                    purity_tested: true,
-                    source_transparency: true,
-                    potency_verified: true,
-                    excipient_audit: true,
-                    operational_legitimacy: true
-                },
-                {
-                    title: 'Clinical Methylfolate + B12',
-                    slug: 'clinical-methylfolate-b12',
-                    problem_solved: 'Methylation pathway optimization and homocysteine regulation',
-                    ai_summary: 'Bioactive B-vitamins bypassing MTHFR mutations. Essential for neurotransmitter synthesis and DNA repair.',
-                    buy_url: 'https://example.com/clinical-methylfolate',
-                    images: ['https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800'],
-                    is_sme_certified: true,
-                    third_party_lab_verified: true,
-                    purity_tested: true,
-                    source_transparency: true,
-                    potency_verified: true,
-                    excipient_audit: true,
-                    operational_legitimacy: true
-                },
-                {
-                    title: 'Forest Taurine',
-                    slug: 'forest-taurine',
-                    problem_solved: 'Electrolyte balance and cardiovascular function',
-                    ai_summary: 'Conditionally essential amino acid for heart rhythm regulation and bile salt formation. Supports healthy aging.',
-                    buy_url: 'https://example.com/forest-taurine',
-                    images: ['https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800'],
-                    is_sme_certified: true,
-                    third_party_lab_verified: true,
-                    purity_tested: true,
-                    source_transparency: true,
-                    potency_verified: true,
-                    excipient_audit: true,
-                    operational_legitimacy: true
-                },
-                {
-                    title: 'Obsidian Phosphatidylserine',
-                    slug: 'obsidian-phosphatidylserine',
-                    problem_solved: 'Cortisol regulation and cognitive performance under stress',
-                    ai_summary: 'Soy-free phosphatidylserine for cell membrane integrity. Clinically shown to blunt exercise-induced cortisol spike.',
-                    buy_url: 'https://example.com/obsidian-ps',
-                    images: ['https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=800'],
-                    is_sme_certified: true,
-                    third_party_lab_verified: true,
-                    purity_tested: true,
-                    source_transparency: true,
-                    potency_verified: true,
-                    excipient_audit: true,
-                    operational_legitimacy: true
-                },
-                {
-                    title: 'Apothecary Bacopa Monnieri',
-                    slug: 'apothecary-bacopa-monnieri',
-                    problem_solved: 'Memory consolidation and learning enhancement',
-                    ai_summary: 'Standardized to 50% bacosides for nootropic effects. Traditional Ayurvedic herb with modern clinical validation.',
-                    buy_url: 'https://example.com/apothecary-bacopa',
-                    images: ['https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?w=800'],
-                    is_sme_certified: false,
-                    third_party_lab_verified: true,
-                    purity_tested: true,
-                    source_transparency: true,
-                    potency_verified: true,
-                    excipient_audit: true,
-                    operational_legitimacy: true
-                },
-                {
-                    title: 'Clinical Electrolyte Complex',
-                    slug: 'clinical-electrolyte-complex',
-                    problem_solved: 'Hydration optimization and mineral repletion',
-                    ai_summary: 'Balanced sodium, potassium, and magnesium for cellular hydration. Zero sugar formulation for metabolic health.',
-                    buy_url: 'https://example.com/clinical-electrolytes',
-                    images: ['https://images.unsplash.com/photo-1625772299848-391b6a87d7b3?w=800'],
-                    is_sme_certified: true,
-                    third_party_lab_verified: true,
-                    purity_tested: true,
-                    source_transparency: true,
-                    potency_verified: true,
-                    excipient_audit: true,
-                    operational_legitimacy: true
-                }
-            ];
+        const products = [
+            {
+                title: 'Forest Magnesium Glycinate',
+                slug: 'forest-magnesium-glycinate',
+                problem_solved: 'Deep sleep restoration and nervous system regulation',
+                ai_summary: 'Clinical-grade magnesium chelated with glycine for superior bioavailability. Supports GABA production and parasympathetic activation.',
+                buy_url: 'https://example.com/forest-magnesium',
+                images: ['https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=800'],
+                is_sme_certified: true,
+                third_party_lab_verified: true,
+                purity_tested: true,
+                source_transparency: true,
+                potency_verified: true,
+                excipient_audit: true,
+                operational_legitimacy: true
+            },
+            {
+                title: 'Obsidian Omega-3 Complex',
+                slug: 'obsidian-omega-3-complex',
+                problem_solved: 'Cardiovascular optimization and systemic inflammation reduction',
+                ai_summary: 'Molecularly distilled fish oil with 2:1 EPA:DHA ratio. Third-party tested for heavy metals and oxidation markers.',
+                buy_url: 'https://example.com/obsidian-omega3',
+                images: ['https://images.unsplash.com/photo-1526947425960-945c6e72858f?w=800'],
+                is_sme_certified: true,
+                third_party_lab_verified: true,
+                purity_tested: true,
+                source_transparency: true,
+                potency_verified: true,
+                excipient_audit: true,
+                operational_legitimacy: true
+            },
+            // ... (Repeating list from previous attempts)
+            {
+                title: 'Apothecary Ashwagandha KSM-66',
+                slug: 'apothecary-ashwagandha-ksm66',
+                problem_solved: 'HPA-axis regulation and cortisol normalization',
+                ai_summary: 'Full-spectrum root extract standardized to 5% withanolides. Clinically validated for stress resilience and hormonal balance.',
+                buy_url: 'https://example.com/apothecary-ashwagandha',
+                images: ['https://images.unsplash.com/photo-1607619056574-7b8d3ee536b2?w=800'],
+                is_sme_certified: true,
+                third_party_lab_verified: true,
+                purity_tested: true,
+                source_transparency: true,
+                potency_verified: false,
+                excipient_audit: true,
+                operational_legitimacy: true
+            },
+            {
+                title: 'Clinical Vitamin D3 + K2 MK-7',
+                slug: 'clinical-vitamin-d3-k2-mk7',
+                problem_solved: 'Bone density optimization and immune system modulation',
+                ai_summary: 'Synergistic pairing of cholecalciferol with menaquinone-7 for optimal calcium metabolism and arterial health.',
+                buy_url: 'https://example.com/clinical-d3k2',
+                images: ['https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800'],
+                is_sme_certified: true,
+                third_party_lab_verified: true,
+                purity_tested: true,
+                source_transparency: true,
+                potency_verified: true,
+                excipient_audit: true,
+                operational_legitimacy: true
+            },
+            {
+                title: 'Forest Creatine Monohydrate',
+                slug: 'forest-creatine-monohydrate',
+                problem_solved: 'ATP regeneration and cognitive performance enhancement',
+                ai_summary: 'Micronized creatine monohydrate with 99.9% purity. Supports cellular energy production and neuroprotection.',
+                buy_url: 'https://example.com/forest-creatine',
+                images: ['https://images.unsplash.com/photo-1579722821273-0f6c7d44362f?w=800'],
+                is_sme_certified: true,
+                third_party_lab_verified: true,
+                purity_tested: true,
+                source_transparency: true,
+                potency_verified: true,
+                excipient_audit: true,
+                operational_legitimacy: true
+            },
+            {
+                title: 'Obsidian NAD+ Precursor Complex',
+                slug: 'obsidian-nad-precursor-complex',
+                problem_solved: 'Cellular energy metabolism and mitochondrial function',
+                ai_summary: 'Pharmaceutical-grade NMN with enhanced bioavailability. Supports NAD+ synthesis for longevity pathways.',
+                buy_url: 'https://example.com/obsidian-nad',
+                images: ['https://images.unsplash.com/photo-1585435557343-3b092031a831?w=800'],
+                is_sme_certified: true,
+                third_party_lab_verified: true,
+                purity_tested: true,
+                source_transparency: true,
+                potency_verified: true,
+                excipient_audit: false,
+                operational_legitimacy: true
+            },
+            {
+                title: 'Apothecary L-Theanine',
+                slug: 'apothecary-l-theanine',
+                problem_solved: 'Alpha wave enhancement and focused relaxation',
+                ai_summary: 'Suntheanine® brand L-theanine for clean mental clarity without sedation. Synergizes with caffeine for optimal cognition.',
+                buy_url: 'https://example.com/apothecary-theanine',
+                images: ['https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=800'],
+                is_sme_certified: true,
+                third_party_lab_verified: true,
+                purity_tested: true,
+                source_transparency: true,
+                potency_verified: true,
+                excipient_audit: true,
+                operational_legitimacy: true
+            },
+            {
+                title: 'Clinical Curcumin Phytosome',
+                slug: 'clinical-curcumin-phytosome',
+                problem_solved: 'Systemic inflammation modulation and joint health',
+                ai_summary: 'Meriva® curcumin with phosphatidylcholine for 29x improved absorption. Clinically studied for inflammatory markers.',
+                buy_url: 'https://example.com/clinical-curcumin',
+                images: ['https://images.unsplash.com/photo-1615485500834-bc10199bc727?w=800'],
+                is_sme_certified: true,
+                third_party_lab_verified: true,
+                purity_tested: true,
+                source_transparency: true,
+                potency_verified: true,
+                excipient_audit: true,
+                operational_legitimacy: true
+            },
+            {
+                title: 'Forest Rhodiola Rosea Extract',
+                slug: 'forest-rhodiola-rosea-extract',
+                problem_solved: 'Mental fatigue resistance and adaptogenic support',
+                ai_summary: 'Standardized to 3% rosavins and 1% salidroside. Supports cognitive endurance during prolonged stress.',
+                buy_url: 'https://example.com/forest-rhodiola',
+                images: ['https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?w=800'],
+                is_sme_certified: false,
+                third_party_lab_verified: true,
+                purity_tested: true,
+                source_transparency: true,
+                potency_verified: true,
+                excipient_audit: true,
+                operational_legitimacy: true
+            },
+            {
+                title: 'Obsidian Zinc Bisglycinate',
+                slug: 'obsidian-zinc-bisglycinate',
+                problem_solved: 'Immune function and testosterone optimization',
+                ai_summary: 'Chelated zinc for superior absorption without gastric distress. Essential cofactor for 300+ enzymatic reactions.',
+                buy_url: 'https://example.com/obsidian-zinc',
+                images: ['https://images.unsplash.com/photo-1584017911766-d451b3d0e843?w=800'],
+                is_sme_certified: true,
+                third_party_lab_verified: true,
+                purity_tested: true,
+                source_transparency: true,
+                potency_verified: true,
+                excipient_audit: true,
+                operational_legitimacy: true
+            },
+            {
+                title: 'Apothecary Berberine HCl',
+                slug: 'apothecary-berberine-hcl',
+                problem_solved: 'Glucose metabolism and gut microbiome modulation',
+                ai_summary: 'Pharmaceutical-grade berberine for metabolic health. Activates AMPK pathway similar to metformin.',
+                buy_url: 'https://example.com/apothecary-berberine',
+                images: ['https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=800'],
+                is_sme_certified: true,
+                third_party_lab_verified: true,
+                purity_tested: true,
+                source_transparency: true,
+                potency_verified: true,
+                excipient_audit: true,
+                operational_legitimacy: true
+            },
+            {
+                title: 'Clinical CoQ10 Ubiquinol',
+                slug: 'clinical-coq10-ubiquinol',
+                problem_solved: 'Mitochondrial energy production and cardiovascular support',
+                ai_summary: 'Reduced form of CoQ10 for immediate bioavailability. Critical for cellular ATP synthesis and antioxidant defense.',
+                buy_url: 'https://example.com/clinical-coq10',
+                images: ['https://images.unsplash.com/photo-1550572017-4814c6f5a5e6?w=800'],
+                is_sme_certified: true,
+                third_party_lab_verified: true,
+                purity_tested: true,
+                source_transparency: true,
+                potency_verified: true,
+                excipient_audit: true,
+                operational_legitimacy: true
+            },
+            {
+                title: 'Forest Lion\'s Mane Mushroom',
+                slug: 'forest-lions-mane-mushroom',
+                problem_solved: 'Neurogenesis and cognitive longevity',
+                ai_summary: 'Dual-extracted fruiting body with hericenones and erinacines. Supports NGF production for brain health.',
+                buy_url: 'https://example.com/forest-lionsmane',
+                images: ['https://images.unsplash.com/photo-1610889556528-9a770e32642f?w=800'],
+                is_sme_certified: true,
+                third_party_lab_verified: true,
+                purity_tested: true,
+                source_transparency: true,
+                potency_verified: false,
+                excipient_audit: true,
+                operational_legitimacy: true
+            },
+            {
+                title: 'Obsidian Glycine Powder',
+                slug: 'obsidian-glycine-powder',
+                problem_solved: 'Collagen synthesis and sleep architecture optimization',
+                ai_summary: 'Pure glycine amino acid for deep sleep enhancement and connective tissue support. Lowers core body temperature.',
+                buy_url: 'https://example.com/obsidian-glycine',
+                images: ['https://images.unsplash.com/photo-1587854692152-cbe660dbde88?w=800'],
+                is_sme_certified: true,
+                third_party_lab_verified: true,
+                purity_tested: true,
+                source_transparency: true,
+                potency_verified: true,
+                excipient_audit: true,
+                operational_legitimacy: true
+            },
+            {
+                title: 'Apothecary Spirulina Tablets',
+                slug: 'apothecary-spirulina-tablets',
+                problem_solved: 'Micronutrient density and detoxification support',
+                ai_summary: 'Organic spirulina with complete amino acid profile. Rich in phycocyanin for antioxidant and anti-inflammatory effects.',
+                buy_url: 'https://example.com/apothecary-spirulina',
+                images: ['https://images.unsplash.com/photo-1628771065518-0d82f1938462?w=800'],
+                is_sme_certified: false,
+                third_party_lab_verified: true,
+                purity_tested: true,
+                source_transparency: true,
+                potency_verified: true,
+                excipient_audit: true,
+                operational_legitimacy: true
+            },
+            {
+                title: 'Clinical Methylfolate + B12',
+                slug: 'clinical-methylfolate-b12',
+                problem_solved: 'Methylation pathway optimization and homocysteine regulation',
+                ai_summary: 'Bioactive B-vitamins bypassing MTHFR mutations. Essential for neurotransmitter synthesis and DNA repair.',
+                buy_url: 'https://example.com/clinical-methylfolate',
+                images: ['https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800'],
+                is_sme_certified: true,
+                third_party_lab_verified: true,
+                purity_tested: true,
+                source_transparency: true,
+                potency_verified: true,
+                excipient_audit: true,
+                operational_legitimacy: true
+            },
+            {
+                title: 'Forest Taurine',
+                slug: 'forest-taurine',
+                problem_solved: 'Electrolyte balance and cardiovascular function',
+                ai_summary: 'Conditionally essential amino acid for heart rhythm regulation and bile salt formation. Supports healthy aging.',
+                buy_url: 'https://example.com/forest-taurine',
+                images: ['https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800'],
+                is_sme_certified: true,
+                third_party_lab_verified: true,
+                purity_tested: true,
+                source_transparency: true,
+                potency_verified: true,
+                excipient_audit: true,
+                operational_legitimacy: true
+            },
+            {
+                title: 'Obsidian Phosphatidylserine',
+                slug: 'obsidian-phosphatidylserine',
+                problem_solved: 'Cortisol regulation and cognitive performance under stress',
+                ai_summary: 'Soy-free phosphatidylserine for cell membrane integrity. Clinically shown to blunt exercise-induced cortisol spike.',
+                buy_url: 'https://example.com/obsidian-ps',
+                images: ['https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=800'],
+                is_sme_certified: true,
+                third_party_lab_verified: true,
+                purity_tested: true,
+                source_transparency: true,
+                potency_verified: true,
+                excipient_audit: true,
+                operational_legitimacy: true
+            },
+            {
+                title: 'Apothecary Bacopa Monnieri',
+                slug: 'apothecary-bacopa-monnieri',
+                problem_solved: 'Memory consolidation and learning enhancement',
+                ai_summary: 'Standardized to 50% bacosides for nootropic effects. Traditional Ayurvedic herb with modern clinical validation.',
+                buy_url: 'https://example.com/apothecary-bacopa',
+                images: ['https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?w=800'],
+                is_sme_certified: false,
+                third_party_lab_verified: true,
+                purity_tested: true,
+                source_transparency: true,
+                potency_verified: true,
+                excipient_audit: true,
+                operational_legitimacy: true
+            },
+            {
+                title: 'Clinical Electrolyte Complex',
+                slug: 'clinical-electrolyte-complex',
+                problem_solved: 'Hydration optimization and mineral repletion',
+                ai_summary: 'Balanced sodium, potassium, and magnesium for cellular hydration. Zero sugar formulation for metabolic health.',
+                buy_url: 'https://example.com/clinical-electrolytes',
+                images: ['https://images.unsplash.com/photo-1625772299848-391b6a87d7b3?w=800'],
+                is_sme_certified: true,
+                third_party_lab_verified: true,
+                purity_tested: true,
+                source_transparency: true,
+                potency_verified: true,
+                excipient_audit: true,
+                operational_legitimacy: true
+            }
+        ];
 
-            for (const product of products) {
-                // Check if exists
-                const existing = await tx`SELECT id FROM products WHERE slug = ${product.slug}`;
+        for (const product of products) {
+            // Check if exists
+            const existing = await sql`SELECT id FROM products WHERE slug = ${product.slug}`;
 
-                if (existing.length > 0) {
-                    // Update
-                    await tx`
+            if (existing.length > 0) {
+                // Update
+                await sql`
                 UPDATE products 
                 SET title = ${product.title},
                     problem_solved = ${product.problem_solved},
@@ -517,9 +516,9 @@ export async function GET() {
                     operational_legitimacy = ${product.operational_legitimacy}
                 WHERE slug = ${product.slug}
             `;
-                } else {
-                    // Insert
-                    await tx`
+            } else {
+                // Insert
+                await sql`
               INSERT INTO products (
                 title, slug, problem_solved, ai_summary, buy_url, images,
                 is_sme_certified, third_party_lab_verified, purity_tested,
@@ -543,18 +542,18 @@ export async function GET() {
                 NOW()
               )
             `;
-                }
             }
+        }
 
-            // ==========================================
-            // 3. SEED 10 STARTER DISCUSSIONS
-            // ==========================================
+        // ==========================================
+        // 3. SEED 10 STARTER DISCUSSIONS
+        // ==========================================
 
-            const discussions = [
-                // ... (Repeating list from previous attempts)
-                {
-                    title: 'The Gut-Brain Axis Protocol',
-                    content: `## Understanding the Bidirectional Highway
+        const discussions = [
+            // ... (Repeating list from previous attempts)
+            {
+                title: 'The Gut-Brain Axis Protocol',
+                content: `## Understanding the Bidirectional Highway
 
 The gut-brain axis represents one of the most fascinating frontiers in modern health science. Recent research shows that our gut microbiome directly influences neurotransmitter production, immune function, and even mood regulation.
 
@@ -569,14 +568,14 @@ The gut-brain axis represents one of the most fascinating frontiers in modern he
 3. **Polyphenols**: Support beneficial bacteria growth
 
 What protocols have you found effective for gut-brain optimization?`,
-                    author_id: testProfiles[0].id,
-                    tags: ['Gut Health', 'Mental Health', 'Research']
-                },
-                // (Just including one discussion example to keep file size manageable if re-pasted, but I must keep ALL 10 if I overwrite)
-                // I will copy all 10 from previous turn to ensure completeness
-                {
-                    title: 'Optimizing Circadian Rhythms for Longevity',
-                    content: `## The Master Clock of Health
+                author_id: testProfiles[0].id,
+                tags: ['Gut Health', 'Mental Health', 'Research']
+            },
+            // (Just including one discussion example to keep file size manageable if re-pasted, but I must keep ALL 10 if I overwrite)
+            // I will copy all 10 from previous turn to ensure completeness
+            {
+                title: 'Optimizing Circadian Rhythms for Longevity',
+                content: `## The Master Clock of Health
 
 Circadian rhythm disruption is linked to metabolic dysfunction, accelerated aging, and cognitive decline. Let's discuss evidence-based strategies for circadian optimization.
 
@@ -596,12 +595,12 @@ Circadian rhythm disruption is linked to metabolic dysfunction, accelerated agin
 - Low-dose melatonin (0.3-1mg) if needed
 
 Share your circadian optimization stack!`,
-                    author_id: testProfiles[3].id,
-                    tags: ['Sleep', 'Longevity', 'Biohacking']
-                },
-                {
-                    title: 'NAD+ Precursors: NMN vs NR Deep Dive',
-                    content: `## Comparing the Leading NAD+ Boosters
+                author_id: testProfiles[3].id,
+                tags: ['Sleep', 'Longevity', 'Biohacking']
+            },
+            {
+                title: 'NAD+ Precursors: NMN vs NR Deep Dive',
+                content: `## Comparing the Leading NAD+ Boosters
 
 Both NMN and NR show promise for cellular energy and longevity, but which is superior?
 
@@ -622,12 +621,12 @@ Recent studies suggest both are effective, but individual response varies. Facto
 - Age and metabolic health
 
 What's your experience with NAD+ precursors?`,
-                    author_id: testProfiles[4].id,
-                    tags: ['Longevity', 'Supplements', 'Research']
-                },
-                {
-                    title: 'Magnesium Forms: A Comprehensive Comparison',
-                    content: `## Not All Magnesium is Created Equal
+                author_id: testProfiles[4].id,
+                tags: ['Longevity', 'Supplements', 'Research']
+            },
+            {
+                title: 'Magnesium Forms: A Comprehensive Comparison',
+                content: `## Not All Magnesium is Created Equal
 
 With 7+ forms of magnesium supplements available, choosing the right one matters.
 
@@ -650,12 +649,12 @@ With 7+ forms of magnesium supplements available, choosing the right one matters
 Most people are deficient in magnesium. RDA is likely too low for optimal health. Consider 400-600mg daily from high-quality sources.
 
 What form works best for you?`,
-                    author_id: testProfiles[1].id,
-                    tags: ['Supplements', 'Research', 'Wellness']
-                },
-                {
-                    title: 'The Case for Creatine Beyond Muscle',
-                    content: `## Creatine as a Nootropic and Longevity Compound
+                author_id: testProfiles[1].id,
+                tags: ['Supplements', 'Research', 'Wellness']
+            },
+            {
+                title: 'The Case for Creatine Beyond Muscle',
+                content: `## Creatine as a Nootropic and Longevity Compound
 
 While bodybuilders have used creatine for decades, emerging research shows benefits far beyond muscle growth.
 
@@ -677,12 +676,12 @@ Creatine supports ATP regeneration in the brain, particularly during cognitively
 One of the most studied supplements with excellent safety record. Kidney concerns are unfounded in healthy individuals.
 
 Who else uses creatine primarily for cognitive benefits?`,
-                    author_id: testProfiles[2].id,
-                    tags: ['Supplements', 'Mental Health', 'Research']
-                },
-                {
-                    title: 'Omega-3 Dosing: More Isn\'t Always Better',
-                    content: `## Finding Your Optimal EPA/DHA Intake
+                author_id: testProfiles[2].id,
+                tags: ['Supplements', 'Mental Health', 'Research']
+            },
+            {
+                title: 'Omega-3 Dosing: More Isn\'t Always Better',
+                content: `## Finding Your Optimal EPA/DHA Intake
 
 The omega-3 supplement market is saturated with conflicting advice. Let's examine the evidence.
 
@@ -701,12 +700,12 @@ The omega-3 supplement market is saturated with conflicting advice. Let's examin
 High-dose omega-3 without adequate antioxidants may be counterproductive. Consider pairing with vitamin E or astaxanthin.
 
 What's your omega-3 protocol?`,
-                    author_id: testProfiles[0].id,
-                    tags: ['Supplements', 'Research', 'Wellness']
-                },
-                {
-                    title: 'Adaptogens for HPA Axis Regulation',
-                    content: `## Supporting Stress Resilience Naturally
+                author_id: testProfiles[0].id,
+                tags: ['Supplements', 'Research', 'Wellness']
+            },
+            {
+                title: 'Adaptogens for HPA Axis Regulation',
+                content: `## Supporting Stress Resilience Naturally
 
 The HPA (hypothalamic-pituitary-adrenal) axis governs our stress response. Chronic activation leads to dysfunction.
 
@@ -723,12 +722,12 @@ Consider 8 weeks on, 2 weeks off to maintain sensitivity.
 Not all adaptogens suit everyone. Some may be too stimulating or sedating depending on individual physiology.
 
 Share your adaptogen experiences!`,
-                    author_id: testProfiles[1].id,
-                    tags: ['Supplements', 'Wellness', 'Research']
-                },
-                {
-                    title: 'Vitamin D: The Sunshine Hormone Paradox',
-                    content: `## Why Supplementation Alone May Not Be Enough
+                author_id: testProfiles[1].id,
+                tags: ['Supplements', 'Wellness', 'Research']
+            },
+            {
+                title: 'Vitamin D: The Sunshine Hormone Paradox',
+                content: `## Why Supplementation Alone May Not Be Enough
 
 Despite widespread supplementation, vitamin D deficiency remains epidemic. Why?
 
@@ -751,12 +750,12 @@ Supplement based on blood work, not assumptions. Some people need 10,000 IU dail
 Always pair D3 with K2 MK-7 to prevent arterial calcification.
 
 What's your D3 protocol?`,
-                    author_id: testProfiles[4].id,
-                    tags: ['Supplements', 'Research', 'Prevention']
-                },
-                {
-                    title: 'Nootropic Stacking: Science vs Hype',
-                    content: `## Building an Evidence-Based Cognitive Stack
+                author_id: testProfiles[4].id,
+                tags: ['Supplements', 'Research', 'Prevention']
+            },
+            {
+                title: 'Nootropic Stacking: Science vs Hype',
+                content: `## Building an Evidence-Based Cognitive Stack
 
 The nootropics space is filled with marketing claims. Let's focus on what actually works.
 
@@ -781,12 +780,12 @@ The nootropics space is filled with marketing claims. Let's focus on what actual
 Individual compounds may be less effective than strategic combinations. Start with foundations before adding experimental compounds.
 
 What's in your cognitive stack?`,
-                    author_id: testProfiles[2].id,
-                    tags: ['Supplements', 'Mental Health', 'Biohacking']
-                },
-                {
-                    title: 'Third-Party Testing: Why It Matters',
-                    content: `## The Supplement Industry's Dirty Secret
+                author_id: testProfiles[2].id,
+                tags: ['Supplements', 'Mental Health', 'Biohacking']
+            },
+            {
+                title: 'Third-Party Testing: Why It Matters',
+                content: `## The Supplement Industry's Dirty Secret
 
 Studies show up to 70% of supplements don't contain what's on the label. Here's how to protect yourself.
 
@@ -812,26 +811,26 @@ Studies show up to 70% of supplements don't contain what's on the label. Here's 
 We only recommend products with transparent third-party testing and full disclosure of ingredients.
 
 How do you vet your supplements?`,
-                    author_id: testProfiles[3].id,
-                    tags: ['Supplements', 'Research', 'Prevention']
-                }
-            ];
+                author_id: testProfiles[3].id,
+                tags: ['Supplements', 'Research', 'Prevention']
+            }
+        ];
 
-            for (const discussion of discussions) {
-                // Generate unique slug logic (simplified for check)
-                // Since we can't reliably predict the random suffix, we just INSERT ALWAYS for discussions unless we find exact title match or similar.
-                // Actually, let's just use the title to check for existence to avoid dupes on re-run.
+        for (const discussion of discussions) {
+            // Generate unique slug logic (simplified for check)
+            // Since we can't reliably predict the random suffix, we just INSERT ALWAYS for discussions unless we find exact title match or similar.
+            // Actually, let's just use the title to check for existence to avoid dupes on re-run.
 
-                const existing = await tx`SELECT id FROM discussions WHERE title = ${discussion.title}`;
+            const existing = await sql`SELECT id FROM discussions WHERE title = ${discussion.title}`;
 
-                if (existing.length === 0) {
-                    const baseSlug = discussion.title
-                        .toLowerCase()
-                        .replace(/[^a-z0-9]+/g, '-')
-                        .replace(/^-+|-+$/g, '');
-                    const uniqueSlug = `${baseSlug}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+            if (existing.length === 0) {
+                const baseSlug = discussion.title
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/^-+|-+$/g, '');
+                const uniqueSlug = `${baseSlug}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
-                    await tx`
+                await sql`
               INSERT INTO discussions (
                 title, content, author_id, slug, tags, flag_count, is_flagged, upvote_count, created_at
               )
@@ -847,10 +846,8 @@ How do you vet your supplements?`,
                 NOW()
               )
             `;
-                }
             }
-
-        }); // End transaction
+        }
 
         const dbInfo = await sql`SELECT inet_server_addr() as ip, current_database() as db`;
         console.log('Seeding against DB:', dbInfo);

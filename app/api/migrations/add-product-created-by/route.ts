@@ -7,13 +7,11 @@ export async function GET() {
     const sql = getDb();
 
     try {
-        await sql.begin(async (sql) => {
-            // Add created_by column
-            await sql`
-        ALTER TABLE products 
-        ADD COLUMN IF NOT EXISTS created_by TEXT;
-      `;
-        });
+        // Add created_by column
+        await sql`
+      ALTER TABLE products 
+      ADD COLUMN IF NOT EXISTS created_by TEXT;
+    `;
 
         return NextResponse.json({ success: true, message: "Migration (created_by) applied successfully" });
     } catch (error: any) {
