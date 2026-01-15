@@ -464,134 +464,132 @@ export async function handleBrandVerificationWebhook(event: any) {
           const subscriptionId = session.subscription;
           const customerId = session.customer;
 
-          // Use atomic transaction for all updates
-          await sql.begin(async (sql) => {
-            // Try product_onboarding first (new system)
-            const onboarding = await sql`
-              SELECT product_id, verification_status, submission_type
-              FROM product_onboarding
+          // Execute all updates sequentially
+          // Try product_onboarding first (new system)
+          const onboarding = await sql`
+            SELECT product_id, verification_status, submission_type
+            FROM product_onboarding
+            WHERE id = ${verificationId}
+          `;
+
+          if (onboarding.length > 0) {
+            // New system: product_onboarding
+            const { product_id, verification_status, submission_type } = onboarding[0];
+
+            // Update onboarding with Stripe data
+            await sql`
+              UPDATE product_onboarding
+              SET 
+                stripe_subscription_id = ${subscriptionId},
+                stripe_customer_id = ${customerId},
+                subscription_status = 'active'
               WHERE id = ${verificationId}
             `;
 
-            if (onboarding.length > 0) {
-              // New system: product_onboarding
-              const { product_id, verification_status, submission_type } = onboarding[0];
+            // Create subscription record
+            await sql`
+              INSERT INTO stripe_subscriptions (
+                user_id,
+                stripe_subscription_id,
+                stripe_customer_id,
+                subscription_type,
+                status
+              ) VALUES (
+                ${userId},
+                ${subscriptionId},
+                ${customerId},
+                'brand_base',
+                'active'
+              )
+              ON CONFLICT (stripe_subscription_id) DO UPDATE
+              SET status = 'active'
+            `;
 
-              // Update onboarding with Stripe data
+            // If verified AND brand_claim AND payment complete, finalize
+            if (verification_status === 'verified' && submission_type === 'brand_claim') {
+              // Update user role to BRAND_REP
               await sql`
-                UPDATE product_onboarding
+                UPDATE profiles
+                SET is_brand_rep = true,
+                    role = 'BRAND_REP'
+                WHERE id = ${userId}
+              `;
+
+              // Update product: set is_verified = true and brand_owner_id
+              await sql`
+                UPDATE products
                 SET 
-                  stripe_subscription_id = ${subscriptionId},
-                  stripe_customer_id = ${customerId},
-                  subscription_status = 'active'
-                WHERE id = ${verificationId}
+                  is_verified = true,
+                  brand_owner_id = ${userId}
+                WHERE id = ${product_id}
               `;
 
-              // Create subscription record
-              await sql`
-                INSERT INTO stripe_subscriptions (
-                  user_id,
-                  stripe_subscription_id,
-                  stripe_customer_id,
-                  subscription_type,
-                  status
-                ) VALUES (
-                  ${userId},
-                  ${subscriptionId},
-                  ${customerId},
-                  'brand_base',
-                  'active'
-                )
-                ON CONFLICT (stripe_subscription_id) DO UPDATE
-                SET status = 'active'
-              `;
-
-              // If verified AND brand_claim AND payment complete, finalize
-              if (verification_status === 'verified' && submission_type === 'brand_claim') {
-                // Update user role to BRAND_REP
-                await sql`
-                  UPDATE profiles
-                  SET is_brand_rep = true,
-                      role = 'BRAND_REP'
-                  WHERE id = ${userId}
-                `;
-
-                // Update product: set is_verified = true and brand_owner_id
-                await sql`
-                  UPDATE products
-                  SET 
-                    is_verified = true,
-                    brand_owner_id = ${userId}
-                  WHERE id = ${product_id}
-                `;
-
-                console.log('✅ Brand claim payment completed:', userId, 'product:', product_id);
-              }
-            } else {
-              // Fallback: Legacy brand_verifications table
-              const verification = await sql`
-                SELECT product_id, status
-                FROM brand_verifications
-                WHERE id = ${verificationId}
-              `;
-
-              if (verification.length === 0) {
-                console.error('❌ Verification not found:', verificationId);
-                return;
-              }
-
-              const { product_id, status } = verification[0];
-
-              // Update verification with Stripe data
-              await sql`
-                UPDATE brand_verifications
-                SET 
-                  stripe_subscription_id = ${subscriptionId},
-                  stripe_customer_id = ${customerId},
-                  subscription_status = 'active'
-                WHERE id = ${verificationId}
-              `;
-
-              // Create subscription record
-              await sql`
-                INSERT INTO stripe_subscriptions (
-                  user_id,
-                  stripe_subscription_id,
-                  stripe_customer_id,
-                  subscription_type,
-                  status
-                ) VALUES (
-                  ${userId},
-                  ${subscriptionId},
-                  ${customerId},
-                  'brand_base',
-                  'active'
-                )
-                ON CONFLICT (stripe_subscription_id) DO UPDATE
-                SET status = 'active'
-              `;
-
-              // If approved AND payment complete, finalize
-              if (status === 'approved') {
-                await sql`
-                  UPDATE profiles
-                  SET is_brand_rep = true,
-                      role = 'BRAND_REP'
-                  WHERE id = ${userId}
-                `;
-
-                await sql`
-                  UPDATE products
-                  SET 
-                    is_verified = true,
-                    brand_owner_id = ${userId}
-                  WHERE id = ${product_id}
-                `;
-
-                console.log('✅ Legacy brand verification completed:', userId, 'product:', product_id);
-              }
+              console.log('✅ Brand claim payment completed:', userId, 'product:', product_id);
             }
-          });
+          } else {
+            // Fallback: Legacy brand_verifications table
+            const verification = await sql`
+              SELECT product_id, status
+              FROM brand_verifications
+              WHERE id = ${verificationId}
+            `;
+
+            if (verification.length === 0) {
+              console.error('❌ Verification not found:', verificationId);
+              return;
+            }
+
+            const { product_id, status } = verification[0];
+
+            // Update verification with Stripe data
+            await sql`
+              UPDATE brand_verifications
+              SET 
+                stripe_subscription_id = ${subscriptionId},
+                stripe_customer_id = ${customerId},
+                subscription_status = 'active'
+              WHERE id = ${verificationId}
+            `;
+
+            // Create subscription record
+            await sql`
+              INSERT INTO stripe_subscriptions (
+                user_id,
+                stripe_subscription_id,
+                stripe_customer_id,
+                subscription_type,
+                status
+              ) VALUES (
+                ${userId},
+                ${subscriptionId},
+                ${customerId},
+                'brand_base',
+                'active'
+              )
+              ON CONFLICT (stripe_subscription_id) DO UPDATE
+              SET status = 'active'
+            `;
+
+            // If approved AND payment complete, finalize
+            if (status === 'approved') {
+              await sql`
+                UPDATE profiles
+                SET is_brand_rep = true,
+                    role = 'BRAND_REP'
+                WHERE id = ${userId}
+              `;
+
+              await sql`
+                UPDATE products
+                SET 
+                  is_verified = true,
+                  brand_owner_id = ${userId}
+                WHERE id = ${product_id}
+              `;
+
+              console.log('✅ Legacy brand verification completed:', userId, 'product:', product_id);
+            }
+          }
         }
         break;
       }

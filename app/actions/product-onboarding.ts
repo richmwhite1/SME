@@ -158,82 +158,81 @@ export async function onboardProduct(
             .replace(/[^a-z0-9]+/g, "-")
             .replace(/(^-|-$)/g, "") + "-" + Date.now().toString().slice(-4);
 
-        await sql.begin(async (sql) => {
-            // 1. Insert Product
-            const [product] = await sql`
-                INSERT INTO products (
-                    title, 
-                    brand, 
-                    category, 
-                    founder_video_url, 
-                    ingredients, 
-                    coa_url,
-                    lab_report_url,
-                    serving_size,
-                    servings_per_container,
-                    form,
-                    recommended_dosage,
-                    best_time_take,
-                    storage_instructions,
-                    price,
-                    manufacturer,
-                    target_audience,
-                    allergens,
-                    dietary_tags,
-                    excipients,
-                    warnings,
-                    technical_docs_url,
-                    certifications,
-                    admin_status,
-                    slug,
-                    created_by,
-                    problem_solved
-                ) VALUES (
-                    ${data.name}, 
-                    ${data.brand}, 
-                    ${data.job_function}, 
-                    ${data.founder_video_url || null}, 
-                    ${data.ingredients || null}, 
-                    ${data.coa_url || null},
-                    ${data.lab_report_url || null},
-                    ${data.serving_size || null},
-                    ${data.servings_per_container || null},
-                    ${data.form || null},
-                    ${data.recommended_dosage || null},
-                    ${data.best_time_take || null},
-                    ${data.storage_instructions || null},
-                    ${data.price || null},
-                    ${data.manufacturer || null},
-                    ${data.target_audience || null},
-                    ${data.allergens || []},
-                    ${data.dietary_tags || []},
-                    ${data.excipients || []},
-                    ${data.warnings || null},
-                    ${data.technical_docs_url || null},
-                    ${data.certifications || []},
-                    'pending_review',
-                    ${slug},
-                    ${user.id},
-                    'Pending Review'
-                )
-                RETURNING id
+        // Execute all inserts sequentially
+        // 1. Insert Product
+        const [product] = await sql`
+            INSERT INTO products (
+                title, 
+                brand, 
+                category, 
+                founder_video_url, 
+                ingredients, 
+                coa_url,
+                lab_report_url,
+                serving_size,
+                servings_per_container,
+                form,
+                recommended_dosage,
+                best_time_take,
+                storage_instructions,
+                price,
+                manufacturer,
+                target_audience,
+                allergens,
+                dietary_tags,
+                excipients,
+                warnings,
+                technical_docs_url,
+                certifications,
+                admin_status,
+                slug,
+                created_by,
+                problem_solved
+            ) VALUES (
+                ${data.name}, 
+                ${data.brand}, 
+                ${data.job_function}, 
+                ${data.founder_video_url || null}, 
+                ${data.ingredients || null}, 
+                ${data.coa_url || null},
+                ${data.lab_report_url || null},
+                ${data.serving_size || null},
+                ${data.servings_per_container || null},
+                ${data.form || null},
+                ${data.recommended_dosage || null},
+                ${data.best_time_take || null},
+                ${data.storage_instructions || null},
+                ${data.price || null},
+                ${data.manufacturer || null},
+                ${data.target_audience || null},
+                ${data.allergens || []},
+                ${data.dietary_tags || []},
+                ${data.excipients || []},
+                ${data.warnings || null},
+                ${data.technical_docs_url || null},
+                ${data.certifications || []},
+                'pending_review',
+                ${slug},
+                ${user.id},
+                'Pending Review'
+            )
+            RETURNING id
+        `;
+
+        // 2. Insert Signals with separate reason field
+        if (data.signals.length > 0) {
+            // Prepare rows for insertion with reason in separate column
+            const signalRows = data.signals.map(s => ({
+                product_id: product.id,
+                signal: s.signal,
+                lens_type: s.lens_type,
+                reason: s.reason
+            }));
+
+            await sql`
+                INSERT INTO product_truth_signals ${sql(signalRows)}
             `;
-
-            // 2. Insert Signals with separate reason field
-            if (data.signals.length > 0) {
-                // Prepare rows for insertion with reason in separate column
-                const signalRows = data.signals.map(s => ({
-                    product_id: product.id,
-                    signal: s.signal,
-                    lens_type: s.lens_type,
-                    reason: s.reason
-                }));
-
-                await sql`
-                    INSERT INTO product_truth_signals ${sql(signalRows)}
-                `;
-            }
-        });
+        }
 
         revalidatePath("/products");
         return { success: true, message: "Product submitted successfully!" };

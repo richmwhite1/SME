@@ -130,85 +130,83 @@ export async function approveProductOnboarding(id: string) {
         const record = onboardingRecord[0];
         const { product_id, user_id, submission_type, proposed_data, current_brand_owner } = record;
 
-        // Use atomic transaction to ensure all updates succeed or none do
-        await sql.begin(async (sql) => {
-            // 1. Update onboarding status
+        // Execute all updates sequentially
+        // 1. Update onboarding status
+        await sql`
+      UPDATE product_onboarding 
+      SET 
+        verification_status = 'verified',
+        reviewed_by = ${userId},
+        reviewed_at = NOW()
+      WHERE id = ${id}
+    `;
+
+        // 2. Handle brand_claim submissions
+        if (submission_type === 'brand_claim') {
+            // Update product ownership and verification
             await sql`
-        UPDATE product_onboarding 
+        UPDATE products
         SET 
-          verification_status = 'verified',
-          reviewed_by = ${userId},
-          reviewed_at = NOW()
-        WHERE id = ${id}
+          brand_owner_id = ${user_id},
+          is_verified = true,
+          updated_at = NOW()
+        WHERE id = ${product_id}
       `;
 
-            // 2. Handle brand_claim submissions
-            if (submission_type === 'brand_claim') {
-                // Update product ownership and verification
+            // Update user role to BRAND_REP
+            await sql`
+        UPDATE profiles
+        SET 
+          is_brand_rep = true,
+          role = 'BRAND_REP',
+          updated_at = NOW()
+        WHERE id = ${user_id}
+      `;
+
+            console.log(`✅ Brand claim approved: Product ${product_id} assigned to user ${user_id}`);
+        }
+
+        // 3. Handle product_edit submissions
+        if (submission_type === 'product_edit' && proposed_data) {
+            // Verify user owns the product or is admin
+            if (current_brand_owner !== user_id && !adminStatus) {
+                throw new Error("User does not own this product");
+            }
+
+            // Apply proposed changes to product
+            const updates = proposed_data as any;
+            const updateFields: string[] = [];
+            const updateValues: any[] = [];
+
+            // Build dynamic update query based on proposed_data
+            if (updates.title) {
+                updateFields.push('title = $' + (updateValues.length + 1));
+                updateValues.push(updates.title);
+            }
+            if (updates.problem_solved) {
+                updateFields.push('problem_solved = $' + (updateValues.length + 1));
+                updateValues.push(updates.problem_solved);
+            }
+            if (updates.buy_url) {
+                updateFields.push('buy_url = $' + (updateValues.length + 1));
+                updateValues.push(updates.buy_url);
+            }
+            if (updates.images) {
+                updateFields.push('images = $' + (updateValues.length + 1));
+                updateValues.push(updates.images);
+            }
+
+            if (updateFields.length > 0) {
+                updateFields.push('updated_at = NOW()');
                 await sql`
           UPDATE products
-          SET 
-            brand_owner_id = ${user_id},
-            is_verified = true,
-            updated_at = NOW()
+          SET ${sql(updateFields.join(', '))}
           WHERE id = ${product_id}
         `;
-
-                // Update user role to BRAND_REP
-                await sql`
-          UPDATE profiles
-          SET 
-            is_brand_rep = true,
-            role = 'BRAND_REP',
-            updated_at = NOW()
-          WHERE id = ${user_id}
-        `;
-
-                console.log(`✅ Brand claim approved: Product ${product_id} assigned to user ${user_id}`);
             }
 
-            // 3. Handle product_edit submissions
-            if (submission_type === 'product_edit' && proposed_data) {
-                // Verify user owns the product or is admin
-                if (current_brand_owner !== user_id && !adminStatus) {
-                    throw new Error("User does not own this product");
-                }
-
-                // Apply proposed changes to product
-                const updates = proposed_data as any;
-                const updateFields: string[] = [];
-                const updateValues: any[] = [];
-
-                // Build dynamic update query based on proposed_data
-                if (updates.title) {
-                    updateFields.push('title = $' + (updateValues.length + 1));
-                    updateValues.push(updates.title);
-                }
-                if (updates.problem_solved) {
-                    updateFields.push('problem_solved = $' + (updateValues.length + 1));
-                    updateValues.push(updates.problem_solved);
-                }
-                if (updates.buy_url) {
-                    updateFields.push('buy_url = $' + (updateValues.length + 1));
-                    updateValues.push(updates.buy_url);
-                }
-                if (updates.images) {
-                    updateFields.push('images = $' + (updateValues.length + 1));
-                    updateValues.push(updates.images);
-                }
-
-                if (updateFields.length > 0) {
-                    updateFields.push('updated_at = NOW()');
-                    await sql`
-            UPDATE products
-            SET ${sql(updateFields.join(', '))}
-            WHERE id = ${product_id}
-          `;
-                }
-
-                console.log(`✅ Product edit approved: Product ${product_id} updated`);
-            }
-        });
+            console.log(`✅ Product edit approved: Product ${product_id} updated`);
+        }
 
         revalidatePath("/admin/review");
         revalidatePath("/products");

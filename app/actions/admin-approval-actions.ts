@@ -57,35 +57,32 @@ export async function updateProductApproval(
   const sql = getDb();
 
   try {
-    // Update product in a transaction
-    await sql.begin(async (tx) => {
-      // Update the product
-      await tx`
-        UPDATE products
-        SET 
-          admin_status = ${data.admin_status},
-          certification_tier = ${data.certification_tier},
-          admin_notes = ${data.admin_notes || null},
-          is_sme_certified = ${data.admin_status === 'approved' && data.certification_tier !== 'None'},
-          updated_at = NOW()
-        WHERE id = ${productId}
-      `;
+    // Update the product
+    await sql`
+      UPDATE products
+      SET 
+        admin_status = ${data.admin_status},
+        certification_tier = ${data.certification_tier},
+        admin_notes = ${data.admin_notes || null},
+        is_sme_certified = ${data.admin_status === 'approved' && data.certification_tier !== 'None'},
+        updated_at = NOW()
+      WHERE id = ${productId}
+    `;
 
-      // Log the admin action
-      await tx`
-        INSERT INTO admin_logs (admin_id, action, details)
-        VALUES (
-          ${adminId},
-          'product_approval_decision',
-          ${JSON.stringify({
-        product_id: productId,
-        admin_status: data.admin_status,
-        certification_tier: data.certification_tier,
-        has_notes: !!data.admin_notes,
-      })}
-        )
-      `;
-    });
+    // Log the admin action
+    await sql`
+      INSERT INTO admin_logs (admin_id, action, details)
+      VALUES (
+        ${adminId},
+        'product_approval_decision',
+        ${JSON.stringify({
+      product_id: productId,
+      admin_status: data.admin_status,
+      certification_tier: data.certification_tier,
+      has_notes: !!data.admin_notes,
+    })}
+      )
+    `;
 
     // Revalidate the dashboard page
     revalidatePath('/admin/dashboard');
@@ -209,85 +206,79 @@ export async function submitProductAudit(
   const sql = getDb();
 
   try {
-    // Update product in a transaction
-    await sql.begin(async (tx) => {
-      // Update the product
-      await tx`
-        UPDATE products
-        SET 
-          name = ${data.name || null},
-          title = ${data.title || data.name || null},
-          brand = ${data.brand || null},
-          category = ${data.category || null},
-          third_party_lab_link = ${data.third_party_lab_link || null},
-          admin_status = ${data.admin_status},
-          certification_tier = ${data.certification_tier},
-          admin_notes = ${data.admin_notes || null},
-          product_photos = ${data.product_photos},
-          youtube_link = ${data.video_url || null},
-          company_blurb = ${data.company_blurb || null},
-          sme_signals = ${JSON.stringify(data.sme_signals)},
-          tech_docs = ${JSON.stringify(data.tech_docs || [])}, -- Use new column
-          target_audience = ${data.target_audience || null},
-          core_value_proposition = ${data.core_value_proposition || null},
-          technical_specs = ${data.technical_specs ? JSON.stringify(data.technical_specs) : null},
-          active_ingredients = ${JSON.stringify(data.active_ingredients || [])},
-          excipients = ${JSON.stringify(data.excipients || [])},
-          sme_access_note = ${data.sme_access_note || null},
-          is_sme_certified = ${data.admin_status === 'approved' && data.certification_tier === 'SME Certified'},
-          updated_at = NOW()
-        WHERE id = ${productId}
-      `;
+    // Update the product
+    await sql`
+      UPDATE products
+      SET 
+        name = ${data.name || null},
+        title = ${data.title || data.name || null},
+        brand = ${data.brand || null},
+        category = ${data.category || null},
+        third_party_lab_link = ${data.third_party_lab_link || null},
+        admin_status = ${data.admin_status},
+        certification_tier = ${data.certification_tier},
+        admin_notes = ${data.admin_notes || null},
+        product_photos = ${data.product_photos},
+        youtube_link = ${data.video_url || null},
+        company_blurb = ${data.company_blurb || null},
+        sme_signals = ${JSON.stringify(data.sme_signals)},
+        tech_docs = ${JSON.stringify(data.tech_docs || [])},
+        target_audience = ${data.target_audience || null},
+        core_value_proposition = ${data.core_value_proposition || null},
+        technical_specs = ${data.technical_specs ? JSON.stringify(data.technical_specs) : null},
+        active_ingredients = ${JSON.stringify(data.active_ingredients || [])},
+        excipients = ${JSON.stringify(data.excipients || [])},
+        sme_access_note = ${data.sme_access_note || null},
+        is_sme_certified = ${data.admin_status === 'approved' && data.certification_tier === 'SME Certified'},
+        updated_at = NOW()
+      WHERE id = ${productId}
+    `;
 
-      // Handle Benefits (Delete all and re-insert)
-      await tx`DELETE FROM product_benefits WHERE product_id = ${productId}`;
+    // Handle Benefits (Delete all and re-insert)
+    await sql`DELETE FROM product_benefits WHERE product_id = ${productId}`;
 
-      if (data.benefits && data.benefits.length > 0) {
-        for (const benefit of data.benefits) {
-          // Handle benefits that might just be titles or full objects? 
-          // In wizard it's { title, type, citation? }. 
-          // We'll assume complete objects.
-          await tx`
-                INSERT INTO product_benefits (
-                    product_id,
-                    benefit_title,
-                    benefit_type,
-                    citation_url,
-                    source_type,
-                    submitted_by,
-                    is_verified
-                ) VALUES (
-                    ${productId}::uuid,
-                    ${benefit.benefit_title || benefit.title},
-                    ${benefit.benefit_type || benefit.type || 'functional'},
-                    ${benefit.citation_url || benefit.citation || null},
-                    'admin_audit',
-                    ${adminId},
-                    ${benefit.is_verified || true}
-                )
-             `;
-        }
+    if (data.benefits && data.benefits.length > 0) {
+      for (const benefit of data.benefits) {
+        await sql`
+          INSERT INTO product_benefits (
+            product_id,
+            benefit_title,
+            benefit_type,
+            citation_url,
+            source_type,
+            submitted_by,
+            is_verified
+          ) VALUES (
+            ${productId}::uuid,
+            ${benefit.benefit_title || benefit.title},
+            ${benefit.benefit_type || benefit.type || 'functional'},
+            ${benefit.citation_url || benefit.citation || null},
+            'admin_audit',
+            ${adminId},
+            ${benefit.is_verified || true}
+          )
+        `;
       }
+    }
 
-      // Log the admin action
-      await tx`
-        INSERT INTO admin_logs (admin_id, action, details)
-        VALUES (
-          ${adminId},
-          'product_audit_submission',
-          ${JSON.stringify({
-        product_id: productId,
-        admin_status: data.admin_status,
-        certification_tier: data.certification_tier,
-        changes: {
-          photos_count: data.product_photos.length,
-          audit_fields_updated: true,
-          benefits_updated: true
-        }
-      })}
-        )
-      `;
-    });
+    // Log the admin action
+    await sql`
+      INSERT INTO admin_logs (admin_id, action, details)
+      VALUES (
+        ${adminId},
+        'product_audit_submission',
+        ${JSON.stringify({
+      product_id: productId,
+      admin_status: data.admin_status,
+      certification_tier: data.certification_tier,
+      changes: {
+        photos_count: data.product_photos.length,
+        audit_fields_updated: true,
+        benefits_updated: true
+      }
+    })}
+      )
+    `;
 
     // Revalidate relevant paths
     revalidatePath('/admin/dashboard');

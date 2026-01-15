@@ -112,59 +112,57 @@ export async function submitExpertProfile(prevState: any, formData: FormData) {
             };
         }
 
-        // Execute database transaction
-        await sql.begin(async (tx) => {
-            // Update profile with preferred topics and mark profile as completed
-            await tx`
-                UPDATE profiles
+        // Execute database updates sequentially
+        // Update profile with preferred topics and mark profile as completed
+        await sql`
+            UPDATE profiles
+            SET 
+                preferred_topics = ${sql.array(selectedTopics)},
+                has_completed_expert_profile = true,
+                updated_at = NOW()
+            WHERE id = ${user.id}
+        `;
+
+        // Check if SME application already exists
+        const existingApp = await sql`
+            SELECT id FROM sme_applications
+            WHERE user_id = ${user.id}
+            LIMIT 1
+        `;
+
+        if (existingApp.length > 0) {
+            // Update existing application
+            await sql`
+                UPDATE sme_applications
                 SET 
-                    preferred_topics = ${sql.array(selectedTopics)},
-                    has_completed_expert_profile = true,
+                    expertise_lens = ${expertiseType},
+                    statement_of_intent = ${experienceLineage},
+                    expertise_lineage = ${experienceLineage},
+                    portfolio_url = ${portfolioUrl || null},
+                    status = 'pending',
                     updated_at = NOW()
-                WHERE id = ${user.id}
-            `;
-
-            // Check if SME application already exists
-            const existingApp = await tx`
-                SELECT id FROM sme_applications
                 WHERE user_id = ${user.id}
-                LIMIT 1
             `;
-
-            if (existingApp.length > 0) {
-                // Update existing application
-                await tx`
-                    UPDATE sme_applications
-                    SET 
-                        expertise_lens = ${expertiseType},
-                        statement_of_intent = ${experienceLineage},
-                        expertise_lineage = ${experienceLineage},
-                        portfolio_url = ${portfolioUrl || null},
-                        status = 'pending',
-                        updated_at = NOW()
-                    WHERE user_id = ${user.id}
-                `;
-            } else {
-                // Create new application
-                await tx`
-                    INSERT INTO sme_applications (
-                        user_id,
-                        expertise_lens,
-                        statement_of_intent,
-                        expertise_lineage,
-                        portfolio_url,
-                        status
-                    ) VALUES (
-                        ${user.id},
-                        ${expertiseType},
-                        ${experienceLineage},
-                        ${experienceLineage},
-                        ${portfolioUrl || null},
-                        'pending'
-                    )
-                `;
-            }
-        });
+        } else {
+            // Create new application
+            await sql`
+                INSERT INTO sme_applications (
+                    user_id,
+                    expertise_lens,
+                    statement_of_intent,
+                    expertise_lineage,
+                    portfolio_url,
+                    status
+                ) VALUES (
+                    ${user.id},
+                    ${expertiseType},
+                    ${experienceLineage},
+                    ${experienceLineage},
+                    ${portfolioUrl || null},
+                    'pending'
+                )
+            `;
+        }
 
         return {
             success: true,
